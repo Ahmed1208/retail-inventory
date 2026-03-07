@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
+import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 
 const DEBOUNCE_MS = 300
@@ -56,7 +57,7 @@ interface POLine {
 export function PurchaseOrders() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -91,13 +92,7 @@ export function PurchaseOrders() {
     queryFn: () => getAllPurchaseOrders(filters),
   })
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n)
+  const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
@@ -222,7 +217,7 @@ export function PurchaseOrders() {
                         : t('purchaseOrders.itemsCount', { count: po.items.length })}
                     </td>
                     <td className="px-4 py-3 text-end tabular-nums">
-                      {formatCurrency(po.total_amount)}
+                      {formatCurrencyDisplay(po.total_amount)}
                     </td>
                     <td className="px-4 py-3">
                       <POStatusBadge status={po.status} t={t} />
@@ -265,7 +260,7 @@ export function PurchaseOrders() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         t={t}
-        formatCurrency={formatCurrency}
+        formatCurrency={formatCurrencyDisplay}
         onSuccess={() => {
           invalidatePO()
           toast.success(t('purchaseOrders.toastCreated'))
@@ -280,7 +275,7 @@ export function PurchaseOrders() {
           open={!!detailPO}
           onOpenChange={(open) => !open && setDetailPO(null)}
           t={t}
-          formatCurrency={formatCurrency}
+          formatCurrency={formatCurrencyDisplay}
           formatDate={formatDate}
           onCancelClick={() => {
             setDetailPO(null)

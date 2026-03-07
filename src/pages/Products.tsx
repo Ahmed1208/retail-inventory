@@ -63,6 +63,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
+import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 
 const productSchema = z.object({
@@ -95,7 +96,7 @@ export function Products() {
   const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const lowStockOnly = searchParams.get('lowStock') === '1'
-  const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   const [search, setSearch] = useState('')
   const [categoryId, setCategoryId] = useState<string | null>(null)
@@ -143,13 +144,7 @@ export function Products() {
     })
   }, [products, debouncedSearch, categoryId, brandId, lowStockOnly])
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n)
+  const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const columns = useMemo<ColumnDef<ProductWithRelations>[]>(
     () => [
@@ -173,17 +168,17 @@ export function Products() {
       {
         accessorKey: 'customer_price',
         header: t('products.customerPrice'),
-        cell: ({ getValue }) => formatCurrency(getValue() as number),
+        cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
         accessorKey: 'business_price',
         header: t('products.businessPrice'),
-        cell: ({ getValue }) => formatCurrency(getValue() as number),
+        cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
         accessorKey: 'cost_price',
         header: t('products.costPrice'),
-        cell: ({ getValue }) => formatCurrency(getValue() as number),
+        cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
         accessorKey: 'quantity',

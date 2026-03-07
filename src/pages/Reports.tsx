@@ -17,6 +17,7 @@ import { getAllOrders } from '@/services/orderService'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatCurrency } from '@/utils/currency'
 
 function getDefaultDateRange() {
   const to = new Date()
@@ -30,7 +31,7 @@ function getDefaultDateRange() {
 
 export function Reports() {
   const { t, i18n } = useTranslation()
-  const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const [dateRange, setDateRange] = useState(getDefaultDateRange)
 
   useEffect(() => {
@@ -40,13 +41,7 @@ export function Reports() {
     }
   }, [])
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n)
+  const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const { data: products = [], isLoading: productsLoading } = useQuery({
     queryKey: ['products'],
@@ -259,19 +254,19 @@ export function Reports() {
                         {row.quantity}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
-                        {formatCurrency(row.cost_price)}
+                        {formatCurrencyDisplay(row.cost_price)}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
-                        {formatCurrency(row.customer_price)}
+                        {formatCurrencyDisplay(row.customer_price)}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
-                        {formatCurrency(row.business_price)}
+                        {formatCurrencyDisplay(row.business_price)}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
-                        {formatCurrency(row.totalCost)}
+                        {formatCurrencyDisplay(row.totalCost)}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
-                        {formatCurrency(row.totalRetail)}
+                        {formatCurrencyDisplay(row.totalRetail)}
                       </td>
                       <td className="px-4 py-3 text-end tabular-nums">
                         {row.margin.toFixed(1)}%
@@ -283,10 +278,10 @@ export function Reports() {
                       {t('reports.totals')}
                     </td>
                     <td className="px-4 py-3 text-end tabular-nums">
-                      {formatCurrency(inventoryTotals.totalCost)}
+                      {formatCurrencyDisplay(inventoryTotals.totalCost)}
                     </td>
                     <td className="px-4 py-3 text-end tabular-nums">
-                      {formatCurrency(inventoryTotals.totalRetail)}
+                      {formatCurrencyDisplay(inventoryTotals.totalRetail)}
                     </td>
                     <td className="px-4 py-3" />
                   </tr>
@@ -340,7 +335,7 @@ export function Reports() {
                   {t('reports.totalRevenue')}
                 </p>
                 <p className="text-lg font-semibold tabular-nums">
-                  {formatCurrency(salesStats.totalRevenue)}
+                  {formatCurrencyDisplay(salesStats.totalRevenue)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
@@ -356,7 +351,7 @@ export function Reports() {
                   {t('reports.averageOrderValue')}
                 </p>
                 <p className="text-lg font-semibold tabular-nums">
-                  {formatCurrency(salesStats.avgOrder)}
+                  {formatCurrencyDisplay(salesStats.avgOrder)}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-card p-3">
@@ -404,7 +399,7 @@ export function Reports() {
                       />
                       <Tooltip
                         formatter={(value) =>
-                          value != null ? [formatCurrency(Number(value)), ''] : []
+                          value != null ? [formatCurrencyDisplay(Number(value)), ''] : []
                         }
                         labelFormatter={(label) =>
                           new Date(String(label)).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US')

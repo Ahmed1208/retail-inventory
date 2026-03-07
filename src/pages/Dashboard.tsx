@@ -15,6 +15,7 @@ import {
   getLowStockProducts,
 } from '@/services/productService'
 import type { StockMovementType } from '@/types'
+import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 
 const REFETCH_INTERVAL_MS = 60_000
@@ -106,7 +107,7 @@ function MovementTypeBadge({
 
 export function Dashboard() {
   const { t, i18n } = useTranslation()
-  const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   useEffect(() => {
     document.title = 'Dashboard | StockPilot'
@@ -133,13 +134,7 @@ export function Dashboard() {
     refetchInterval: REFETCH_INTERVAL_MS,
   })
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(n)
+  const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const movementTypeKey = (type: StockMovementType) =>
     `stockMovements.${type}` as const
@@ -157,7 +152,7 @@ export function Dashboard() {
         />
         <StatCard
           label={t('dashboard.totalInventoryValue')}
-          value={formatCurrency(stats?.totalValue ?? 0)}
+          value={formatCurrencyDisplay(stats?.totalValue ?? 0)}
           icon={DollarSign}
           accent="bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
           loading={statsLoading}

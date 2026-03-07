@@ -40,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 
 const DEBOUNCE_MS = 300
@@ -67,7 +68,7 @@ function paymentLabel(key: string, t: (k: string) => string): string {
 export function Orders() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
-  const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -120,13 +121,7 @@ export function Orders() {
     [orders]
   )
 
-  const formatCurrency = (n: number) =>
-    new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(n)
+  const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
@@ -218,7 +213,7 @@ export function Orders() {
         />
         <StatCard
           label={t('orders.totalRevenue')}
-          value={formatCurrency(totalRevenue)}
+          value={formatCurrencyDisplay(totalRevenue)}
         />
         <StatCard
           label={t('orders.pendingOrders')}
@@ -296,7 +291,7 @@ export function Orders() {
                         : t('orders.itemsCount', { count: order.items.length })}
                     </td>
                     <td className="px-4 py-3 text-end tabular-nums">
-                      {formatCurrency(order.total_amount)}
+                      {formatCurrencyDisplay(order.total_amount)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {order.payment_method
@@ -347,7 +342,7 @@ export function Orders() {
         open={createOpen}
         onOpenChange={setCreateOpen}
         t={t}
-        formatCurrency={formatCurrency}
+        formatCurrency={formatCurrencyDisplay}
         onSuccess={() => {
           invalidateOrders()
           toast.success(t('orders.toastOrderCreated'))
@@ -362,7 +357,7 @@ export function Orders() {
           open={!!detailOrder}
           onOpenChange={(open) => !open && setDetailOrder(null)}
           t={t}
-          formatCurrency={formatCurrency}
+          formatCurrency={formatCurrencyDisplay}
           formatDate={formatDate}
           paymentLabel={(key) => paymentLabel(key, t)}
           onCancelClick={() => {
