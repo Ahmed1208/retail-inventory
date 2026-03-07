@@ -1,69 +1,88 @@
 # StockPilot — Retail Inventory
 
-A bilingual (English / Arabic) retail inventory management app built with React, TypeScript, Vite, Supabase, and Tailwind CSS. Manage products, categories, brands, stock movements, and orders with RTL support and i18n.
+Retail inventory management system with bilingual support (English / Arabic), RTL layout, and full CRUD for products, categories, brands, stock movements, and orders.
 
 ## Tech stack
 
-- **React 19** + **TypeScript** + **Vite**
+- **React** + **TypeScript** + **Vite**
 - **Supabase** (backend)
-- **TanStack Query** (server state)
-- **React Router** (routing)
-- **Tailwind CSS** + **shadcn-style UI**
+- **Tailwind CSS** + **shadcn/ui**
+- **TanStack Query** (server state), **React Router** (routing)
 - **i18next** (Arabic/English, RTL/LTR)
-- **React Hook Form** + **Zod** (forms/validation)
-- **Recharts** (reports)
-- **Sonner** (toasts)
+- **React Hook Form** + **Zod** (forms and validation)
+- **Recharts** (reports), **Sonner** (toasts)
 
-## Setup
+## Required environment variables
 
-1. **Clone and install**
+| Variable | Description |
+|----------|-------------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous (public) key |
+
+All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
+
+## Local setup
+
+1. **Clone the repo**
+
+   ```bash
+   git clone <repo-url>
+   cd retail-inventory
+   ```
+
+2. **Install dependencies**
 
    ```bash
    npm install
    ```
 
-2. **Environment variables**
+3. **Configure environment**
 
-   Create a `.env` or `.env.local` in the project root with:
+   Copy `.env.example` to `.env.local` and fill in your Supabase values:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Edit `.env.local`:
 
    ```env
    VITE_SUPABASE_URL=https://your-project.supabase.co
    VITE_SUPABASE_ANON_KEY=your-anon-key
    ```
 
-   All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
-
-3. **Run development server**
+4. **Run the dev server**
 
    ```bash
    npm run dev
    ```
 
-4. **Production build**
+## Build
 
-   ```bash
-   npm run build
-   ```
+```bash
+npm run build
+```
 
-   Output is in `dist/`. Preview with:
-
-   ```bash
-   npm run preview
-   ```
+Output is in `dist/`. Preview with `npm run preview`.
 
 ## Scripts
 
-| Command         | Description                |
-|----------------|----------------------------|
-| `npm run dev`  | Start dev server           |
-| `npm run build`| TypeScript check + build   |
-| `npm run preview` | Preview production build |
-| `npm run lint` | Run ESLint                 |
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | TypeScript check + production build |
+| `npm run preview` | Preview production build locally |
+| `npm run lint` | Run ESLint |
 
-## Deployment (e.g. Vercel)
+## Branching strategy
 
-- The repo includes a `vercel.json` that rewrites all routes to `/index.html` for client-side routing.
-- Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your deployment environment.
+We use a simple Git workflow with `master`, `develop`, and short-lived feature/fix branches. See **[BRANCHES.md](./BRANCHES.md)** for the full branching strategy and daily workflow.
+
+## Deployment (Vercel)
+
+- `vercel.json` is set up so all routes rewrite to `/index.html` for client-side routing.
+- Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your Vercel project environment.
+- Production deploys from `master` are done manually.
 
 ## License
 
