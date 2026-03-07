@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   Package,
+  ShoppingCart,
   ArrowLeftRight,
   Tag,
   Layers,
@@ -14,6 +15,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { to: '/', icon: LayoutDashboard, key: 'nav.dashboard' },
   { to: '/products', icon: Package, key: 'nav.products' },
+  { to: '/orders', icon: ShoppingCart, key: 'nav.orders' },
   { to: '/movements', icon: ArrowLeftRight, key: 'nav.stockMovements' },
   { to: '/categories', icon: Tag, key: 'nav.categories' },
   { to: '/brands', icon: Layers, key: 'nav.brands' },

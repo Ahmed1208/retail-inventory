@@ -2,6 +2,7 @@
   "nav": {
     "dashboard": "لوحة التحكم",
     "products": "المنتجات",
+    "orders": "الطلبات",
     "categories": "الفئات",
     "brands": "العلامات التجارية",
     "stockMovements": "حركات المخزون",
