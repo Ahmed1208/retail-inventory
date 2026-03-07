@@ -285,6 +285,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: productsForValue, error: valueError },
     { data: lowStockData, error: lowStockError },
     { count: todayMovements, error: movementsError },
+    { count: totalPurchasesToday, error: purchasesError },
   ] = await Promise.all([
     supabase.from(PRODUCTS).select('*', { count: 'exact', head: true }),
     supabase.from(PRODUCTS).select('quantity, cost_price'),
@@ -293,12 +294,17 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from(STOCK_MOVEMENTS)
       .select('*', { count: 'exact', head: true })
       .gte('created_at', todayStartIso),
+    supabase
+      .from('purchase_orders')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', todayStartIso),
   ])
 
   if (countError) throw countError
   if (valueError) throw valueError
   if (lowStockError) throw lowStockError
   if (movementsError) throw movementsError
+  if (purchasesError) throw purchasesError
 
   const totalValue = (productsForValue ?? []).reduce(
     (sum: number, p: { quantity: number; cost_price: number }) =>
@@ -316,5 +322,6 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     totalValue,
     lowStockCount,
     todayMovements: todayMovements ?? 0,
+    totalPurchasesToday: totalPurchasesToday ?? 0,
   }
 }

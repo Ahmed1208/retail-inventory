@@ -6,6 +6,7 @@ import {
   DollarSign,
   AlertTriangle,
   TrendingUp,
+  Truck,
 } from 'lucide-react'
 
 import {
@@ -146,7 +147,7 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
           label={t('dashboard.totalProducts')}
           value={stats?.totalProducts ?? 0}
@@ -177,6 +178,13 @@ export function Dashboard() {
           value={stats?.todayMovements ?? 0}
           icon={TrendingUp}
           accent="bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+          loading={statsLoading}
+        />
+        <StatCard
+          label={t('dashboard.totalPurchasesToday')}
+          value={stats?.totalPurchasesToday ?? 0}
+          icon={Truck}
+          accent="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
           loading={statsLoading}
         />
       </div>

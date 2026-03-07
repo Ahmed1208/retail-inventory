@@ -10,6 +10,7 @@ import { Orders } from '@/pages/Orders'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
 import { Reports } from '@/pages/Reports'
+import { PurchaseOrders } from '@/pages/PurchaseOrders'
 import { NotFound } from '@/pages/NotFound'
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/purchase-orders" element={<PurchaseOrders />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>

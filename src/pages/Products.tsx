@@ -72,7 +72,6 @@ const productSchema = z.object({
   customer_price: z.number().min(0, 'products.validationMinZero'),
   business_price: z.number().min(0, 'products.validationMinZero'),
   cost_price: z.number().min(0, 'products.validationMinZero').optional(),
-  quantity: z.number().int().min(0, 'products.validationMinZero'),
   low_stock_threshold: z.number().int().min(0, 'products.validationMinZero'),
   unit: z.string().min(1, 'products.validationRequired'),
   description: z.string().nullable(),
@@ -86,7 +85,6 @@ const defaultProductValues: ProductFormValues = {
   customer_price: 0,
   business_price: 0,
   cost_price: 0,
-  quantity: 0,
   low_stock_threshold: 5,
   unit: 'piece',
   description: null,
@@ -196,8 +194,9 @@ export function Products() {
           const isLow = qty <= threshold
           return (
             <span
+              title={t('products.quantityManagedByPurchaseOrders')}
               className={cn(
-                'inline-flex items-center gap-1',
+                'inline-flex items-center gap-1 cursor-help',
                 isLow ? 'text-red-600 font-medium' : 'text-green-600'
               )}
             >
@@ -498,7 +497,6 @@ function ProductFormDialog({
         customer_price: initialProduct.customer_price,
         business_price: initialProduct.business_price,
         cost_price: initialProduct.cost_price ?? 0,
-        quantity: initialProduct.quantity,
         low_stock_threshold: initialProduct.low_stock_threshold,
         unit: initialProduct.unit,
         description: initialProduct.description ?? null,
@@ -517,7 +515,7 @@ function ProductFormDialog({
         customer_price: values.customer_price,
         business_price: values.business_price,
         cost_price: values.cost_price ?? 0,
-        quantity: values.quantity,
+        quantity: mode === 'add' ? 0 : initialProduct!.quantity,
         low_stock_threshold: values.low_stock_threshold,
         unit: values.unit,
         description: values.description || null,
@@ -644,23 +642,8 @@ function ProductFormDialog({
               )}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>{t('common.quantity')}</Label>
-              <Input
-                type="number"
-                min={0}
-                className="mt-1"
-                {...form.register('quantity', { valueAsNumber: true })}
-              />
-              {form.formState.errors.quantity && (
-                <p className="text-sm text-destructive mt-1">
-                  {t(form.formState.errors.quantity.message!)}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label>{t('products.lowStockThreshold')}</Label>
+          <div>
+            <Label>{t('products.lowStockThreshold')}</Label>
               <Input
                 type="number"
                 min={0}
@@ -674,7 +657,6 @@ function ProductFormDialog({
                   {t(form.formState.errors.low_stock_threshold.message!)}
                 </p>
               )}
-            </div>
           </div>
           <div>
             <Label>{t('products.unit')}</Label>

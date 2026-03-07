@@ -51,6 +51,7 @@ export interface DashboardStats {
   totalValue: number
   lowStockCount: number
   todayMovements: number
+  totalPurchasesToday: number
 }
 
 export interface StockMovementWithProduct extends StockMovement {
@@ -96,4 +97,39 @@ export interface OrderItemWithProduct extends OrderItem {
 
 export interface OrderWithItems extends Order {
   items: OrderItemWithProduct[]
+}
+
+// ============ Purchase Order types ============
+
+export type PurchaseOrderStatus = 'received' | 'cancelled'
+
+export interface PurchaseOrder {
+  id: string
+  order_number: number
+  supplier_name: string | null
+  note: string | null
+  total_amount: number
+  status: PurchaseOrderStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface PurchaseOrderItem {
+  id: string
+  purchase_order_id: string
+  product_id: string
+  quantity: number
+  cost_price: number
+  total_price: number
+  previous_cost_price: number | null
+  cost_price_updated: boolean
+  created_at: string
+}
+
+export interface PurchaseOrderItemWithProduct extends PurchaseOrderItem {
+  product: Product
+}
+
+export interface PurchaseOrderWithItems extends PurchaseOrder {
+  items: PurchaseOrderItemWithProduct[]
 }
