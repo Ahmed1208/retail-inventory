@@ -1,28 +1,41 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
-  Package,
   ShoppingCart,
-  Truck,
-  ArrowLeftRight,
-  Tag,
-  Layers,
   BarChart3,
+  Warehouse,
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { to: '/', icon: LayoutDashboard, key: 'nav.dashboard' },
-  { to: '/products', icon: Package, key: 'nav.products' },
+const INVENTORY_PATHS = [
+  '/inventory',
+  '/products',
+  '/purchase-orders',
+  '/movements',
+  '/categories',
+  '/brands',
+] as const
+
+const afterInventoryNav = [
   { to: '/orders', icon: ShoppingCart, key: 'nav.orders' },
-  { to: '/purchase-orders', icon: Truck, key: 'nav.purchaseOrders' },
-  { to: '/movements', icon: ArrowLeftRight, key: 'nav.stockMovements' },
-  { to: '/categories', icon: Tag, key: 'nav.categories' },
-  { to: '/brands', icon: Layers, key: 'nav.brands' },
   { to: '/reports', icon: BarChart3, key: 'nav.reports' },
 ] as const
+
+function pathMatchesInventory(pathname: string): boolean {
+  return INVENTORY_PATHS.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  )
+}
+
+const linkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-white/15 text-white'
+      : 'text-white/80 hover:bg-white/10 hover:text-white'
+  )
 
 interface SidebarProps {
   isRTL: boolean
@@ -34,6 +47,7 @@ interface SidebarProps {
 
 export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
+  const { pathname } = useLocation()
 
   const content = (
     <>
@@ -43,22 +57,28 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
         </span>
       </div>
 
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-        {navItems.map(({ to, icon: Icon, key }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/80 hover:bg-white/10 hover:text-white'
-              )
-            }
-          >
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Main">
+        <NavLink to="/" end onClick={onNavigate} className={linkClass}>
+          <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
+          <span>{t('nav.dashboard')}</span>
+        </NavLink>
+
+        <NavLink
+          to="/inventory"
+          end
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            linkClass({
+              isActive: isActive || pathMatchesInventory(pathname),
+            })
+          }
+        >
+          <Warehouse className="h-5 w-5 shrink-0" aria-hidden />
+          <span>{t('nav.inventory')}</span>
+        </NavLink>
+
+        {afterInventoryNav.map(({ to, icon: Icon, key }) => (
+          <NavLink key={to} to={to} onClick={onNavigate} className={linkClass}>
             <Icon className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t(key)}</span>
           </NavLink>

@@ -95,8 +95,17 @@ export interface OrderItemWithProduct extends OrderItem {
   product: Product
 }
 
+/** Single payment method and amount (for split payments) */
+export interface OrderPayment {
+  id?: string
+  payment_method: PaymentMethod
+  amount: number
+}
+
 export interface OrderWithItems extends Order {
   items: OrderItemWithProduct[]
+  /** When present, order was paid with multiple methods; otherwise use payment_method */
+  payments?: OrderPayment[]
 }
 
 // ============ Purchase Order types ============
@@ -130,6 +139,15 @@ export interface PurchaseOrderItemWithProduct extends PurchaseOrderItem {
   product: Product
 }
 
+/** Single payment method and amount for a purchase order (split payments) */
+export interface PurchaseOrderPayment {
+  id?: string
+  payment_method: PaymentMethod
+  amount: number
+}
+
 export interface PurchaseOrderWithItems extends PurchaseOrder {
   items: PurchaseOrderItemWithProduct[]
+  /** When present, PO was paid with multiple methods */
+  payments?: PurchaseOrderPayment[]
 }

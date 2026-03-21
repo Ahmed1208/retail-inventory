@@ -11,6 +11,7 @@ import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
 import { Reports } from '@/pages/Reports'
 import { PurchaseOrders } from '@/pages/PurchaseOrders'
+import { InventoryHub } from '@/pages/InventoryHub'
 import { NotFound } from '@/pages/NotFound'
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
         <AppLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/inventory" element={<InventoryHub />} />
             <Route path="/products" element={<Products />} />
             <Route path="/movements" element={<StockMovements />} />
             <Route path="/orders" element={<Orders />} />

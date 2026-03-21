@@ -1,5 +1,8 @@
 {
   "nav": {
+    "inventory": "Inventory",
+    "backToInventory": "Back to Inventory",
+    "inventoryHubDescription": "Choose a section to manage products, stock, and catalog data.",
     "dashboard": "Dashboard",
     "products": "Products",
     "orders": "Orders",
@@ -192,6 +195,10 @@
     "paymentTransfer": "Transfer",
     "paymentOther": "Other",
     "paymentNone": "None",
+    "paymentAmount": "Amount",
+    "paymentBreakdown": "Payment breakdown",
+    "paymentRemaining": "Remaining",
+    "validationPaymentTotal": "Payment total must equal order total ({{total}})",
     "noteOptional": "Note (optional)",
     "addProducts": "Add products",
     "searchProducts": "Search products...",

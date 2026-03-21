@@ -19,12 +19,14 @@ import { useState } from 'react'
 
 const pathToTitleKey: Record<string, string> = {
   '/': 'dashboard.title',
+  '/inventory': 'nav.inventory',
   '/products': 'products.title',
   '/movements': 'stockMovements.title',
   '/orders': 'orders.title',
   '/categories': 'categories.title',
   '/brands': 'brands.title',
   '/reports': 'reports.title',
+  '/purchase-orders': 'purchaseOrders.title',
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {

@@ -62,6 +62,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
@@ -263,6 +264,7 @@ export function Products() {
 
   return (
     <div className="space-y-4">
+      <BackToInventoryLink />
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3">
         <Input

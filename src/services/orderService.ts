@@ -4,6 +4,7 @@ import type {
   Order,
   OrderWithItems,
   OrderItemWithProduct,
+  OrderPayment,
   OrderStatus,
   OrderType,
   PaymentMethod,
@@ -12,6 +13,7 @@ import type {
 
 const ORDERS = 'orders'
 const ORDER_ITEMS = 'order_items'
+const ORDER_PAYMENTS = 'order_payments'
 const PRODUCTS = 'products'
 
 type OrderFilters = {
@@ -22,7 +24,7 @@ type OrderFilters = {
   to?: string
 }
 
-function toOrderWithItems(row: {
+type OrderRow = {
   id: string
   order_number: number
   type: OrderType
@@ -42,8 +44,11 @@ function toOrderWithItems(row: {
     created_at: string
     product: Product
   }>
-}): OrderWithItems {
-  const { order_items, ...order } = row
+  order_payments?: Array<{ id: string; payment_method: PaymentMethod; amount: number }>
+}
+
+function toOrderWithItems(row: OrderRow): OrderWithItems {
+  const { order_items, order_payments, ...order } = row
   const items: OrderItemWithProduct[] = (order_items ?? []).map((oi) => ({
     id: oi.id,
     order_id: oi.order_id,
@@ -54,7 +59,14 @@ function toOrderWithItems(row: {
     created_at: oi.created_at,
     product: oi.product,
   }))
-  return { ...order, items }
+  const payments: OrderPayment[] | undefined = (order_payments ?? []).length
+    ? (order_payments ?? []).map((p) => ({
+        id: p.id,
+        payment_method: p.payment_method,
+        amount: Number(p.amount),
+      }))
+    : undefined
+  return { ...order, items, payments }
 }
 
 export async function getAllOrders(
@@ -92,13 +104,33 @@ export async function getAllOrders(
 
   if (error) throw error
 
-  let orders = (data ?? []).map(toOrderWithItems)
+  let orders = (data ?? []).map((row) => toOrderWithItems(row as OrderRow))
 
   if (filters?.search?.trim()) {
     const search = filters.search.trim().toLowerCase()
     orders = orders.filter((o) =>
       String(o.order_number).toLowerCase().includes(search)
     )
+  }
+
+  const orderIds = orders.map((o) => o.id)
+  if (orderIds.length > 0) {
+    const { data: paymentsData } = await supabase
+      .from(ORDER_PAYMENTS)
+      .select('id, order_id, payment_method, amount')
+      .in('order_id', orderIds)
+    if (paymentsData && paymentsData.length > 0) {
+      const byOrderId = new Map<string, OrderPayment[]>()
+      for (const p of paymentsData as Array<{ id: string; order_id: string; payment_method: PaymentMethod; amount: number }>) {
+        const list = byOrderId.get(p.order_id) ?? []
+        list.push({ id: p.id, payment_method: p.payment_method, amount: Number(p.amount) })
+        byOrderId.set(p.order_id, list)
+      }
+      orders = orders.map((o) => ({
+        ...o,
+        payments: byOrderId.get(o.id),
+      }))
+    }
   }
 
   return orders
@@ -123,12 +155,24 @@ export async function getOrderById(
 
   if (error) throw error
   if (!data) return null
-  return toOrderWithItems(data as Parameters<typeof toOrderWithItems>[0])
+
+  const order = toOrderWithItems(data as OrderRow)
+  const { data: paymentsData } = await supabase
+    .from(ORDER_PAYMENTS)
+    .select('id, payment_method, amount')
+    .eq('order_id', id)
+  if (paymentsData && paymentsData.length > 0) {
+    order.payments = (paymentsData as Array<{ id: string; payment_method: PaymentMethod; amount: number }>).map(
+      (p) => ({ id: p.id, payment_method: p.payment_method, amount: Number(p.amount) })
+    )
+  }
+  return order
 }
 
 export async function createOrder(data: {
   type: OrderType
-  payment_method: PaymentMethod | null
+  /** Multiple payments with amounts; sum must equal order total */
+  payments: { payment_method: PaymentMethod; amount: number }[]
   note?: string
   items: { product_id: string; quantity: number; unit_price: number }[]
 }): Promise<OrderWithItems> {
@@ -165,6 +209,14 @@ export async function createOrder(data: {
     0
   )
 
+  const payments = (data.payments ?? []).filter((p) => p.amount > 0)
+  const paymentsSum = payments.reduce((s, p) => s + p.amount, 0)
+  if (payments.length > 0 && Math.abs(paymentsSum - total_amount) > 0.01) {
+    throw new Error(
+      `Payment total (${paymentsSum}) must equal order total (${total_amount})`
+    )
+  }
+
   const { data: maxOrder, error: maxError } = await supabase
     .from(ORDERS)
     .select('order_number')
@@ -175,11 +227,14 @@ export async function createOrder(data: {
   if (maxError) throw maxError
   const order_number = (maxOrder?.order_number ?? 0) + 1
 
+  const payment_method: PaymentMethod | null =
+    payments.length > 0 ? payments[0].payment_method : null
+
   const orderPayload = {
     order_number,
     type: data.type,
     status: 'pending' as OrderStatus,
-    payment_method: data.payment_method,
+    payment_method,
     note: data.note ?? null,
     total_amount,
   }
@@ -193,6 +248,31 @@ export async function createOrder(data: {
   if (orderError) throw orderError
 
   const orderId = (insertedOrder as Order).id
+
+  if (payments.length > 0) {
+    const paymentsPayload = payments.map((p) => ({
+      order_id: orderId,
+      payment_method: p.payment_method,
+      amount: p.amount,
+    }))
+    const { error: paymentsError } = await supabase
+      .from(ORDER_PAYMENTS)
+      .insert(paymentsPayload)
+    if (paymentsError) {
+      const msg = paymentsError.message ?? ''
+      const tableMissing =
+        msg.includes('does not exist') ||
+        msg.includes('relation') ||
+        paymentsError.code === '42P01'
+      if (tableMissing) {
+        console.warn(
+          'order_payments table missing. Run migration 002_order_payments.sql. Order created with primary payment method only.'
+        )
+      } else {
+        throw paymentsError
+      }
+    }
+  }
 
   const itemsPayload = data.items.map((item) => ({
     order_id: orderId,

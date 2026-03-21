@@ -10,7 +10,13 @@ import {
   cancelOrder,
 } from '@/services/orderService'
 import { getAllProducts } from '@/services/productService'
-import type { OrderWithItems, OrderType, OrderStatus, PaymentMethod } from '@/types'
+import type {
+  OrderWithItems,
+  OrderType,
+  OrderStatus,
+  PaymentMethod,
+  OrderPayment,
+} from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,6 +69,22 @@ function paymentLabel(key: string, t: (k: string) => string): string {
     other: 'orders.paymentOther',
   }
   return t(map[key] ?? 'orders.paymentNone')
+}
+
+function formatPaymentSummary(
+  order: OrderWithItems,
+  t: (k: string) => string,
+  formatCurrency: (n: number) => string
+): string {
+  if (order.payments && order.payments.length > 0) {
+    return order.payments
+      .map((p) => `${paymentLabel(p.payment_method, t)} ${formatCurrency(p.amount)}`)
+      .join(', ')
+  }
+  if (order.payment_method) {
+    return paymentLabel(order.payment_method, t)
+  }
+  return '—'
 }
 
 export function Orders() {
@@ -294,9 +316,7 @@ export function Orders() {
                       {formatCurrencyDisplay(order.total_amount)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {order.payment_method
-                        ? paymentLabel(order.payment_method, t)
-                        : '—'}
+                      {formatPaymentSummary(order, t, formatCurrencyDisplay)}
                     </td>
                     <td
                       className="px-4 py-3 text-muted-foreground max-w-[180px] truncate"
@@ -348,7 +368,9 @@ export function Orders() {
           toast.success(t('orders.toastOrderCreated'))
           setCreateOpen(false)
         }}
-        onError={() => toast.error(t('orders.toastError'))}
+        onError={(message) =>
+          toast.error(message || t('orders.toastError'))
+        }
       />
 
       {detailOrder && (
@@ -483,10 +505,23 @@ function CreateOrderDialog({
   t: (k: string) => string
   formatCurrency: (n: number) => string
   onSuccess: () => void
-  onError: () => void
+  onError: (message?: string) => void
 }) {
+  const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'transfer', 'other']
   const [orderType, setOrderType] = useState<OrderType>('retail')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [paymentSelected, setPaymentSelected] = useState<Record<PaymentMethod, boolean>>({
+    cash: false,
+    card: false,
+    transfer: false,
+    other: false,
+  })
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<PaymentMethod, number>>({
+    cash: 0,
+    card: 0,
+    transfer: 0,
+    other: 0,
+  })
+  const [paymentError, setPaymentError] = useState<string | null>(null)
   const [note, setNote] = useState('')
   const [lines, setLines] = useState<OrderLine[]>([])
   const [productSearch, setProductSearch] = useState('')
@@ -566,6 +601,26 @@ function CreateOrderDialog({
     }, 0)
   }, [lines, orderType, products])
 
+  const paymentTotal = useMemo(
+    () =>
+      (PAYMENT_METHODS as PaymentMethod[]).reduce(
+        (sum, method) => sum + (paymentAmounts[method] || 0),
+        0
+      ),
+    [paymentAmounts]
+  )
+
+  const setPaymentAmount = (method: PaymentMethod, value: number) => {
+    setPaymentAmounts((prev) => ({ ...prev, [method]: Math.max(0, value) }))
+    setPaymentError(null)
+  }
+
+  const togglePaymentMethod = (method: PaymentMethod, checked: boolean) => {
+    setPaymentSelected((prev) => ({ ...prev, [method]: checked }))
+    if (!checked) setPaymentAmounts((prev) => ({ ...prev, [method]: 0 }))
+    setPaymentError(null)
+  }
+
   const validate = (): boolean => {
     if (lines.length === 0) {
       return false
@@ -581,6 +636,19 @@ function CreateOrderDialog({
       }
     }
     setLineErrors(errors)
+    const hasPayment = (PAYMENT_METHODS as PaymentMethod[]).some(
+      (m) => (paymentAmounts[m] || 0) > 0
+    )
+    if (hasPayment && Math.abs(paymentTotal - runningTotal) > 0.01) {
+      setPaymentError(
+        (t as (key: string, opts?: Record<string, number>) => string)(
+          'orders.validationPaymentTotal',
+          { total: runningTotal }
+        )
+      )
+      return false
+    }
+    setPaymentError(null)
     return Object.keys(errors).length === 0
   }
 
@@ -590,10 +658,13 @@ function CreateOrderDialog({
       return
     }
     if (!validate()) return
+    const payments = (PAYMENT_METHODS as PaymentMethod[])
+      .filter((m) => (paymentAmounts[m] || 0) > 0)
+      .map((method) => ({ payment_method: method, amount: paymentAmounts[method] }))
     try {
       await createOrder({
         type: orderType,
-        payment_method: paymentMethod,
+        payments,
         note: note.trim() || undefined,
         items: lines.map((l) => ({
           product_id: l.product_id,
@@ -604,9 +675,16 @@ function CreateOrderDialog({
       onSuccess()
       setLines([])
       setNote('')
-      setPaymentMethod(null)
-    } catch {
-      onError()
+      setPaymentSelected({ cash: false, card: false, transfer: false, other: false })
+      setPaymentAmounts({ cash: 0, card: 0, transfer: 0, other: 0 })
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof (err as { message?: string })?.message === 'string'
+            ? (err as { message: string }).message
+            : undefined
+      onError(message)
     }
   }
 
@@ -643,26 +721,59 @@ function CreateOrderDialog({
             </div>
           </div>
           <div>
-            <Label>{t('orders.paymentMethod')}</Label>
-            <Select
-              value={paymentMethod ?? 'none'}
-              onValueChange={(v) =>
-                setPaymentMethod(v === 'none' ? null : (v as PaymentMethod))
-              }
-            >
-              <SelectTrigger className="mt-1 w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">{t('orders.paymentNone')}</SelectItem>
-                <SelectItem value="cash">{t('orders.paymentCash')}</SelectItem>
-                <SelectItem value="card">{t('orders.paymentCard')}</SelectItem>
-                <SelectItem value="transfer">
-                  {t('orders.paymentTransfer')}
-                </SelectItem>
-                <SelectItem value="other">{t('orders.paymentOther')}</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label className="mb-2 block">{t('orders.paymentBreakdown')}</Label>
+            <p className="text-sm text-muted-foreground mb-2">
+              {t('orders.runningTotal')}: {formatCurrency(runningTotal)}
+            </p>
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              {(PAYMENT_METHODS as PaymentMethod[]).map((method) => (
+                <div
+                  key={method}
+                  className="flex items-center gap-3 flex-wrap"
+                >
+                  <label className="flex items-center gap-2 cursor-pointer min-w-[100px]">
+                    <input
+                      type="checkbox"
+                      checked={paymentSelected[method]}
+                      onChange={(e) =>
+                        togglePaymentMethod(method, e.target.checked)
+                      }
+                      className="rounded border-border"
+                    />
+                    <span>{paymentLabel(method, t)}</span>
+                  </label>
+                  {paymentSelected[method] && (
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      placeholder={t('orders.paymentAmount')}
+                      value={paymentAmounts[method] || ''}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value)
+                        setPaymentAmount(method, Number.isFinite(v) ? v : 0)
+                      }}
+                      className="w-28 h-8"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            {(paymentTotal > 0 || paymentError) && (
+              <p className="text-sm mt-1.5">
+                <span className="text-muted-foreground">
+                  {t('orders.paymentRemaining')}:{' '}
+                </span>
+                <span
+                  className={Math.abs(paymentTotal - runningTotal) > 0.01 ? 'text-destructive font-medium' : ''}
+                >
+                  {formatCurrency(runningTotal - paymentTotal)}
+                </span>
+              </p>
+            )}
+            {paymentError && (
+              <p className="text-sm text-destructive mt-1">{paymentError}</p>
+            )}
           </div>
           <div>
             <Label>{t('orders.noteOptional')}</Label>
@@ -813,9 +924,19 @@ function OrderDetailDialog({
             <span className="text-muted-foreground">
               {t('orders.paymentMethod')}:
             </span>{' '}
-            {order.payment_method
-              ? paymentLabel(order.payment_method)
-              : '—'}
+            {order.payments && order.payments.length > 0 ? (
+              <span className="block mt-1">
+                {order.payments.map((p: OrderPayment) => (
+                  <span key={p.id ?? p.payment_method} className="block">
+                    {paymentLabel(p.payment_method)}: {formatCurrency(p.amount)}
+                  </span>
+                ))}
+              </span>
+            ) : order.payment_method ? (
+              paymentLabel(order.payment_method)
+            ) : (
+              '—'
+            )}
           </p>
           <p>
             <span className="text-muted-foreground">{t('orders.date')}:</span>{' '}

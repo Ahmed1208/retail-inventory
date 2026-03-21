@@ -9,6 +9,7 @@ import {
 } from '@/services/productService'
 import type { StockMovementType } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -102,6 +103,7 @@ export function StockMovements() {
 
   return (
     <div className="space-y-4">
+      <BackToInventoryLink />
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input

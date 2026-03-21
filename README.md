@@ -29,7 +29,8 @@ All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
 2. Go to **Supabase → SQL Editor**.
 3. Run the migration files **in order**:
    - `supabase/migrations/001_initial_schema.sql`
-   - `supabase/migrations/002_purchase_orders.sql`  
+   - `supabase/migrations/supabase-purchase-orders.sql` (if present)
+   - `supabase/migrations/002_order_payments.sql`  
    (Always run in numerical order; never skip a file.)
 
 ### Adding new migrations

@@ -1,5 +1,8 @@
 {
   "nav": {
+    "inventory": "المخزون",
+    "backToInventory": "العودة إلى المخزون",
+    "inventoryHubDescription": "اختر قسماً لإدارة المنتجات والمخزون وبيانات الكتالوج.",
     "dashboard": "لوحة التحكم",
     "products": "المنتجات",
     "orders": "الطلبات",
@@ -192,6 +195,10 @@
     "paymentTransfer": "تحويل",
     "paymentOther": "أخرى",
     "paymentNone": "بدون",
+    "paymentAmount": "المبلغ",
+    "paymentBreakdown": "تفصيل الدفع",
+    "paymentRemaining": "المتبقي",
+    "validationPaymentTotal": "مجموع المدفوعات يجب أن يساوي إجمالي الطلب ({{total}})",
     "noteOptional": "ملاحظة (اختياري)",
     "addProducts": "إضافة منتجات",
     "searchProducts": "بحث عن منتجات...",

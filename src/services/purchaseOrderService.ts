@@ -6,12 +6,15 @@ import type {
   PurchaseOrder,
   PurchaseOrderWithItems,
   PurchaseOrderItemWithProduct,
+  PurchaseOrderPayment,
   PurchaseOrderStatus,
+  PaymentMethod,
   Product,
 } from '@/types'
 
 const PURCHASE_ORDERS = 'purchase_orders'
 const PURCHASE_ORDER_ITEMS = 'purchase_order_items'
+const PURCHASE_ORDER_PAYMENTS = 'purchase_order_payments'
 
 export type PurchaseOrderFilters = {
   status?: PurchaseOrderStatus
@@ -100,6 +103,35 @@ export async function getAllPurchaseOrders(
     )
   }
 
+  const orderIds = orders.map((o) => o.id)
+  if (orderIds.length > 0) {
+    const { data: paymentsData } = await supabase
+      .from(PURCHASE_ORDER_PAYMENTS)
+      .select('id, purchase_order_id, payment_method, amount')
+      .in('purchase_order_id', orderIds)
+    if (paymentsData && paymentsData.length > 0) {
+      const byOrderId = new Map<string, PurchaseOrderPayment[]>()
+      for (const p of paymentsData as Array<{
+        id: string
+        purchase_order_id: string
+        payment_method: PaymentMethod
+        amount: number
+      }>) {
+        const list = byOrderId.get(p.purchase_order_id) ?? []
+        list.push({
+          id: p.id,
+          payment_method: p.payment_method,
+          amount: Number(p.amount),
+        })
+        byOrderId.set(p.purchase_order_id, list)
+      }
+      orders = orders.map((o) => ({
+        ...o,
+        payments: byOrderId.get(o.id),
+      }))
+    }
+  }
+
   return orders
 }
 
@@ -122,12 +154,31 @@ export async function getPurchaseOrderById(
 
   if (error) throw error
   if (!data) return null
-  return toPurchaseOrderWithItems(data as Parameters<typeof toPurchaseOrderWithItems>[0])
+
+  const order = toPurchaseOrderWithItems(data as Parameters<typeof toPurchaseOrderWithItems>[0])
+  const { data: paymentsData } = await supabase
+    .from(PURCHASE_ORDER_PAYMENTS)
+    .select('id, payment_method, amount')
+    .eq('purchase_order_id', id)
+  if (paymentsData && paymentsData.length > 0) {
+    order.payments = (paymentsData as Array<{
+      id: string
+      payment_method: PaymentMethod
+      amount: number
+    }>).map((p) => ({
+      id: p.id,
+      payment_method: p.payment_method,
+      amount: Number(p.amount),
+    }))
+  }
+  return order
 }
 
 export async function createPurchaseOrder(data: {
   supplier_name?: string
   note?: string
+  /** Multiple payments with amounts; sum must equal order total */
+  payments?: { payment_method: PaymentMethod; amount: number }[]
   items: {
     product_id: string
     quantity: number
@@ -152,6 +203,14 @@ export async function createPurchaseOrder(data: {
     (sum, item) => sum + item.quantity * item.cost_price,
     0
   )
+
+  const payments = (data.payments ?? []).filter((p) => p.amount > 0)
+  const paymentsSum = payments.reduce((s, p) => s + p.amount, 0)
+  if (payments.length > 0 && Math.abs(paymentsSum - total_amount) > 0.01) {
+    throw new Error(
+      `Payment total (${paymentsSum}) must equal order total (${total_amount})`
+    )
+  }
 
   // Get next order_number
   const { data: maxRow, error: maxError } = await supabase
@@ -181,6 +240,25 @@ export async function createPurchaseOrder(data: {
 
   if (orderError) throw orderError
   const orderId = (insertedOrder as PurchaseOrder).id
+
+  if (payments.length > 0) {
+    const paymentsPayload = payments.map((p) => ({
+      purchase_order_id: orderId,
+      payment_method: p.payment_method,
+      amount: p.amount,
+    }))
+    const { error: paymentsError } = await supabase
+      .from(PURCHASE_ORDER_PAYMENTS)
+      .insert(paymentsPayload)
+    if (paymentsError) {
+      const msg = paymentsError.message ?? ''
+      const tableMissing =
+        msg.includes('does not exist') ||
+        msg.includes('relation') ||
+        paymentsError.code === '42P01'
+      if (!tableMissing) throw paymentsError
+    }
+  }
 
   // 4. Insert purchase_order_items
   const itemsPayload: Array<{

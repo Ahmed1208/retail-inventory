@@ -12,6 +12,7 @@ import {
 } from '@/services/brandService'
 import { getAllProducts } from '@/services/productService'
 import type { Brand } from '@/types'
+import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -154,6 +155,7 @@ export function Brands() {
 
   return (
     <div className="space-y-4">
+      <BackToInventoryLink />
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder={t('brands.searchPlaceholder')}

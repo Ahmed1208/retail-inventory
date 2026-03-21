@@ -13,9 +13,12 @@ import { getAllProducts } from '@/services/productService'
 import type {
   PurchaseOrderWithItems,
   PurchaseOrderStatus,
+  PaymentMethod,
+  PurchaseOrderPayment,
   ProductWithRelations,
 } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +47,29 @@ import { cn } from '@/lib/utils'
 const DEBOUNCE_MS = 300
 
 type StatusFilter = 'all' | PurchaseOrderStatus
+
+function paymentLabel(key: string, t: (k: string) => string): string {
+  const map: Record<string, string> = {
+    cash: 'orders.paymentCash',
+    card: 'orders.paymentCard',
+    transfer: 'orders.paymentTransfer',
+    other: 'orders.paymentOther',
+  }
+  return t(map[key] ?? 'orders.paymentNone')
+}
+
+function formatPOPaymentSummary(
+  po: PurchaseOrderWithItems,
+  t: (k: string) => string,
+  formatCurrencyFn: (n: number) => string
+): string {
+  if (po.payments && po.payments.length > 0) {
+    return po.payments
+      .map((p) => `${paymentLabel(p.payment_method, t)} ${formatCurrencyFn(p.amount)}`)
+      .join(', ')
+  }
+  return '—'
+}
 
 interface POLine {
   product_id: string
@@ -108,6 +134,7 @@ export function PurchaseOrders() {
 
   return (
     <div className="space-y-4">
+      <BackToInventoryLink />
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder={t('purchaseOrders.searchPlaceholder')}
@@ -189,6 +216,9 @@ export function PurchaseOrders() {
                     {t('purchaseOrders.totalAmount')}
                   </th>
                   <th className="px-4 py-3 text-start font-medium text-muted-foreground">
+                    {t('orders.paymentMethod')}
+                  </th>
+                  <th className="px-4 py-3 text-start font-medium text-muted-foreground">
                     {t('purchaseOrders.status')}
                   </th>
                   <th className="px-4 py-3 text-start font-medium text-muted-foreground">
@@ -218,6 +248,9 @@ export function PurchaseOrders() {
                     </td>
                     <td className="px-4 py-3 text-end tabular-nums">
                       {formatCurrencyDisplay(po.total_amount)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {formatPOPaymentSummary(po, t, formatCurrencyDisplay)}
                     </td>
                     <td className="px-4 py-3">
                       <POStatusBadge status={po.status} t={t} />
@@ -266,7 +299,9 @@ export function PurchaseOrders() {
           toast.success(t('purchaseOrders.toastCreated'))
           setCreateOpen(false)
         }}
-        onError={() => toast.error(t('purchaseOrders.toastError'))}
+        onError={(message) =>
+          toast.error(message || t('purchaseOrders.toastError'))
+        }
       />
 
       {detailPO && (
@@ -366,10 +401,24 @@ function CreatePurchaseOrderDialog({
   t: (k: string) => string
   formatCurrency: (n: number) => string
   onSuccess: () => void
-  onError: () => void
+  onError: (message?: string) => void
 }) {
+  const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'transfer', 'other']
   const [supplierName, setSupplierName] = useState('')
   const [note, setNote] = useState('')
+  const [paymentSelected, setPaymentSelected] = useState<Record<PaymentMethod, boolean>>({
+    cash: false,
+    card: false,
+    transfer: false,
+    other: false,
+  })
+  const [paymentAmounts, setPaymentAmounts] = useState<Record<PaymentMethod, number>>({
+    cash: 0,
+    card: 0,
+    transfer: 0,
+    other: 0,
+  })
+  const [paymentError, setPaymentError] = useState<string | null>(null)
   const [lines, setLines] = useState<POLine[]>([])
   const [productSearch, setProductSearch] = useState('')
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({})
@@ -439,6 +488,26 @@ function CreatePurchaseOrderDialog({
     [lines]
   )
 
+  const paymentTotal = useMemo(
+    () =>
+      PAYMENT_METHODS.reduce(
+        (sum, method) => sum + (paymentAmounts[method] || 0),
+        0
+      ),
+    [paymentAmounts]
+  )
+
+  const setPaymentAmount = (method: PaymentMethod, value: number) => {
+    setPaymentAmounts((prev) => ({ ...prev, [method]: Math.max(0, value) }))
+    setPaymentError(null)
+  }
+
+  const togglePaymentMethod = (method: PaymentMethod, checked: boolean) => {
+    setPaymentSelected((prev) => ({ ...prev, [method]: checked }))
+    if (!checked) setPaymentAmounts((prev) => ({ ...prev, [method]: 0 }))
+    setPaymentError(null)
+  }
+
   const validate = (): boolean => {
     if (lines.length === 0) {
       return false
@@ -452,6 +521,17 @@ function CreatePurchaseOrderDialog({
       }
     }
     setLineErrors(errors)
+    const hasPayment = PAYMENT_METHODS.some((m) => (paymentAmounts[m] || 0) > 0)
+    if (hasPayment && Math.abs(paymentTotal - runningTotal) > 0.01) {
+      setPaymentError(
+        (t as (key: string, opts?: Record<string, number>) => string)(
+          'orders.validationPaymentTotal',
+          { total: runningTotal }
+        )
+      )
+      return false
+    }
+    setPaymentError(null)
     return Object.keys(errors).length === 0
   }
 
@@ -462,10 +542,14 @@ function CreatePurchaseOrderDialog({
       return
     }
     if (!validate()) return
+    const payments = PAYMENT_METHODS.filter((m) => (paymentAmounts[m] || 0) > 0).map(
+      (method) => ({ payment_method: method, amount: paymentAmounts[method] })
+    )
     try {
       await createPurchaseOrder({
         supplier_name: supplierName.trim() || undefined,
         note: note.trim() || undefined,
+        payments,
         items: lines.map((l) => ({
           product_id: l.product_id,
           quantity: l.quantity,
@@ -476,9 +560,16 @@ function CreatePurchaseOrderDialog({
       onSuccess()
       setSupplierName('')
       setNote('')
-      setLines([])
-    } catch {
-      onError()
+      setPaymentSelected({ cash: false, card: false, transfer: false, other: false })
+      setPaymentAmounts({ cash: 0, card: 0, transfer: 0, other: 0 })
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof (err as { message?: string })?.message === 'string'
+            ? (err as { message: string }).message
+            : undefined
+      onError(message)
     }
   }
 
@@ -505,6 +596,61 @@ function CreatePurchaseOrderDialog({
               onChange={(e) => setNote(e.target.value)}
               className="mt-1 min-h-[60px]"
             />
+          </div>
+
+          <div>
+            <Label className="mb-2 block">{t('orders.paymentBreakdown')}</Label>
+            <p className="text-sm text-muted-foreground mb-2">
+              {t('purchaseOrders.runningTotal')}: {formatCurrency(runningTotal)}
+            </p>
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              {PAYMENT_METHODS.map((method) => (
+                <div key={method} className="flex items-center gap-3 flex-wrap">
+                  <label className="flex items-center gap-2 cursor-pointer min-w-[100px]">
+                    <input
+                      type="checkbox"
+                      checked={paymentSelected[method]}
+                      onChange={(e) => togglePaymentMethod(method, e.target.checked)}
+                      className="rounded border-border"
+                    />
+                    <span>{paymentLabel(method, t)}</span>
+                  </label>
+                  {paymentSelected[method] && (
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      placeholder={t('orders.paymentAmount')}
+                      value={paymentAmounts[method] || ''}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value)
+                        setPaymentAmount(method, Number.isFinite(v) ? v : 0)
+                      }}
+                      className="w-28 h-8"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+            {(paymentTotal > 0 || paymentError) && (
+              <p className="text-sm mt-1.5">
+                <span className="text-muted-foreground">
+                  {t('orders.paymentRemaining')}:{' '}
+                </span>
+                <span
+                  className={
+                    Math.abs(paymentTotal - runningTotal) > 0.01
+                      ? 'text-destructive font-medium'
+                      : ''
+                  }
+                >
+                  {formatCurrency(runningTotal - paymentTotal)}
+                </span>
+              </p>
+            )}
+            {paymentError && (
+              <p className="text-sm text-destructive mt-1">{paymentError}</p>
+            )}
           </div>
 
           <div>
@@ -701,6 +847,18 @@ function PODetailDialog({
               <span className="text-muted-foreground">{t('purchaseOrders.status')}:</span>{' '}
               <POStatusBadge status={po.status} t={t} />
             </p>
+            {po.payments && po.payments.length > 0 && (
+              <p className="col-span-2">
+                <span className="text-muted-foreground">{t('orders.paymentMethod')}:</span>
+                <span className="block mt-1">
+                  {po.payments.map((p: PurchaseOrderPayment) => (
+                    <span key={p.id ?? p.payment_method} className="block">
+                      {paymentLabel(p.payment_method, t)}: {formatCurrency(p.amount)}
+                    </span>
+                  ))}
+                </span>
+              </p>
+            )}
             {po.note && (
               <p className="col-span-2">
                 <span className="text-muted-foreground">{t('purchaseOrders.note')}:</span>{' '}
