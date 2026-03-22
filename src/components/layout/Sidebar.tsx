@@ -1,11 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  LayoutDashboard,
-  ShoppingCart,
-  BarChart3,
-  Warehouse,
-} from 'lucide-react'
+import { LayoutDashboard, ShoppingCart, Warehouse } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -20,7 +15,6 @@ const INVENTORY_PATHS = [
 
 const afterInventoryNav = [
   { to: '/orders', icon: ShoppingCart, key: 'nav.orders' },
-  { to: '/reports', icon: BarChart3, key: 'nav.reports' },
 ] as const
 
 function pathMatchesInventory(pathname: string): boolean {

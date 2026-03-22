@@ -29,17 +29,23 @@ function getDefaultDateRange() {
   }
 }
 
-export function Reports() {
+interface ReportsProps {
+  /** When true, skip setting document.title (used when embedded in Dashboard). */
+  embedded?: boolean
+}
+
+export function Reports({ embedded = false }: ReportsProps) {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const [dateRange, setDateRange] = useState(getDefaultDateRange)
 
   useEffect(() => {
+    if (embedded) return
     document.title = 'Reports | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [])
+  }, [embedded])
 
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 

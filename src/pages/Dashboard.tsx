@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Package,
@@ -17,6 +18,7 @@ import {
 import type { StockMovementType } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { Reports } from '@/pages/Reports'
 
 const REFETCH_INTERVAL_MS = 60_000
 
@@ -108,13 +110,27 @@ function MovementTypeBadge({
 export function Dashboard() {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab =
+    searchParams.get('tab') === 'reports' ? 'reports' : 'main'
+  const mainTabId = useId()
+  const reportsTabId = useId()
 
   useEffect(() => {
-    document.title = 'Dashboard | StockPilot'
+    document.title =
+      activeTab === 'reports' ? 'Reports | StockPilot' : 'Dashboard | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [])
+  }, [activeTab])
+
+  const setTab = (tab: 'main' | 'reports') => {
+    if (tab === 'reports') {
+      setSearchParams({ tab: 'reports' }, { replace: true })
+    } else {
+      setSearchParams({}, { replace: true })
+    }
+  }
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -139,8 +155,56 @@ export function Dashboard() {
   const movementTypeKey = (type: StockMovementType) =>
     `stockMovements.${type}` as const
 
+  const tabBtnClass = (selected: boolean) =>
+    cn(
+      'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
+      selected
+        ? 'bg-primary text-primary-foreground shadow-sm'
+        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+    )
+
   return (
     <div className="space-y-6">
+      <div
+        role="tablist"
+        aria-label={t('dashboard.title')}
+        className="flex flex-wrap gap-2 border-b border-border pb-4"
+      >
+        <button
+          type="button"
+          role="tab"
+          id={mainTabId}
+          aria-selected={activeTab === 'main'}
+          aria-controls="dashboard-main-panel"
+          className={tabBtnClass(activeTab === 'main')}
+          onClick={() => setTab('main')}
+        >
+          {t('dashboard.mainDashboard')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id={reportsTabId}
+          aria-selected={activeTab === 'reports'}
+          aria-controls="dashboard-reports-panel"
+          className={tabBtnClass(activeTab === 'reports')}
+          onClick={() => setTab('reports')}
+        >
+          {t('nav.reports')}
+        </button>
+      </div>
+
+      {activeTab === 'main' ? (
+        <section
+          id="dashboard-main-panel"
+          role="tabpanel"
+          aria-labelledby={mainTabId}
+          className="space-y-6 rounded-xl border border-border bg-card/40 p-4 md:p-6"
+        >
+          <h2 className="text-lg font-semibold text-foreground">
+            {t('dashboard.mainDashboard')}
+          </h2>
+
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard
@@ -315,6 +379,17 @@ export function Dashboard() {
           )}
         </div>
       </div>
+        </section>
+      ) : (
+        <section
+          id="dashboard-reports-panel"
+          role="tabpanel"
+          aria-labelledby={reportsTabId}
+          className="rounded-xl border border-border bg-card/40 p-4 md:p-6"
+        >
+          <Reports embedded />
+        </section>
+      )}
     </div>
   )
 }
