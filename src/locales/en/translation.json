@@ -36,6 +36,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "mainDashboard": "Main Dashboard",
     "welcome": "Welcome to StockPilot",
     "totalProducts": "Total Products",
     "totalInventoryValue": "Total Inventory Value",

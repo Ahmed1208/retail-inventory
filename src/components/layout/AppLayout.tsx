@@ -1,5 +1,5 @@
 import { useQuery, useIsMutating } from '@tanstack/react-query'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, Link, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Bell, Menu } from 'lucide-react'
 
@@ -25,13 +25,13 @@ const pathToTitleKey: Record<string, string> = {
   '/orders': 'orders.title',
   '/categories': 'categories.title',
   '/brands': 'brands.title',
-  '/reports': 'reports.title',
   '/purchase-orders': 'purchaseOrders.title',
 }
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage()
   const { pathname } = useLocation()
+  const [searchParams] = useSearchParams()
   const { t } = useTranslation()
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -42,7 +42,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     queryFn: getLowStockProducts,
   })
   const lowStockCount = lowStockProducts.length
-  const pageTitle = pathToTitleKey[pathname] ?? 'dashboard.title'
+  const dashboardReportsTab =
+    pathname === '/' && searchParams.get('tab') === 'reports'
+  const pageTitle = dashboardReportsTab
+    ? 'reports.title'
+    : (pathToTitleKey[pathname] ?? 'dashboard.title')
   const lowStockHref = '/products?lowStock=1'
 
   return (

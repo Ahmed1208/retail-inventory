@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AppLayout } from '@/components/layout/AppLayout'
@@ -9,7 +9,6 @@ import { StockMovements } from '@/pages/StockMovements'
 import { Orders } from '@/pages/Orders'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
-import { Reports } from '@/pages/Reports'
 import { PurchaseOrders } from '@/pages/PurchaseOrders'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { NotFound } from '@/pages/NotFound'
@@ -27,7 +26,10 @@ function App() {
             <Route path="/orders" element={<Orders />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route
+              path="/reports"
+              element={<Navigate to="/?tab=reports" replace />}
+            />
             <Route path="/purchase-orders" element={<PurchaseOrders />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

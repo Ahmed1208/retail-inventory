@@ -36,6 +36,7 @@
   },
   "dashboard": {
     "title": "لوحة التحكم",
+    "mainDashboard": "لوحة التحكم الرئيسية",
     "welcome": "مرحباً بك في StockPilot",
     "totalProducts": "إجمالي المنتجات",
     "totalInventoryValue": "قيمة المخزون الإجمالية",
