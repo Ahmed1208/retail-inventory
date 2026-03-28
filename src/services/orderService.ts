@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
+import { mapPersonRow, roundMoney } from '@/services/peopleService'
 import type {
   Order,
   OrderWithItems,
@@ -32,6 +33,7 @@ type OrderRow = {
   payment_method: PaymentMethod | null
   note: string | null
   total_amount: number
+  person_id: string | null
   created_at: string
   updated_at: string
   order_items?: Array<{
@@ -169,12 +171,67 @@ export async function getOrderById(
   return order
 }
 
+export async function getOrdersByPersonId(
+  personId: string
+): Promise<OrderWithItems[]> {
+  let query = supabase
+    .from(ORDERS)
+    .select(
+      `
+      *,
+      order_items(
+        *,
+        product:products(*)
+      )
+    `
+    )
+    .eq('person_id', personId)
+    .order('created_at', { ascending: false })
+
+  const { data, error } = await query
+  if (error) throw error
+
+  let orders = (data ?? []).map((row) => toOrderWithItems(row as OrderRow))
+  const orderIds = orders.map((o) => o.id)
+  if (orderIds.length > 0) {
+    const { data: paymentsData } = await supabase
+      .from(ORDER_PAYMENTS)
+      .select('id, order_id, payment_method, amount')
+      .in('order_id', orderIds)
+    if (paymentsData && paymentsData.length > 0) {
+      const byOrderId = new Map<string, OrderPayment[]>()
+      for (const p of paymentsData as Array<{
+        id: string
+        order_id: string
+        payment_method: PaymentMethod
+        amount: number
+      }>) {
+        const list = byOrderId.get(p.order_id) ?? []
+        list.push({
+          id: p.id,
+          payment_method: p.payment_method,
+          amount: Number(p.amount),
+        })
+        byOrderId.set(p.order_id, list)
+      }
+      orders = orders.map((o) => ({
+        ...o,
+        payments: byOrderId.get(o.id),
+      }))
+    }
+  }
+  return orders
+}
+
 export async function createOrder(data: {
   type: OrderType
   /** Multiple payments with amounts; sum must equal order total */
   payments: { payment_method: PaymentMethod; amount: number }[]
   note?: string
   items: { product_id: string; quantity: number; unit_price: number }[]
+  person_id?: string
+  /** When false, person discount is not applied even if set on the contact */
+  apply_person_discount?: boolean
 }): Promise<OrderWithItems> {
   if (!data.items.length) {
     throw new Error('Order must have at least one item')
@@ -204,10 +261,47 @@ export async function createOrder(data: {
     }
   }
 
-  const total_amount = data.items.reduce(
+  const subtotal = data.items.reduce(
     (sum, item) => sum + item.quantity * item.unit_price,
     0
   )
+
+  let person: ReturnType<typeof mapPersonRow> | null = null
+  if (data.person_id) {
+    const { data: prow, error: pe } = await supabase
+      .from('people')
+      .select('*')
+      .eq('id', data.person_id)
+      .maybeSingle()
+    if (pe) throw pe
+    if (!prow) throw new Error('Person not found')
+    person = mapPersonRow(prow as Record<string, unknown>)
+    if (!person.roles.includes('customer')) {
+      throw new Error('Selected person must have the customer role')
+    }
+  }
+
+  const applyDiscount =
+    person &&
+    data.apply_person_discount !== false &&
+    person.discount_rate > 0
+  const total_amount = roundMoney(
+    applyDiscount
+      ? subtotal * (1 - person!.discount_rate / 100)
+      : subtotal
+  )
+
+  if (person?.credit_limit != null) {
+    const projected = roundMoney(person.balance + total_amount)
+    if (projected > roundMoney(person.credit_limit) + 1e-6) {
+      const available = roundMoney(
+        Math.max(0, person.credit_limit - person.balance)
+      )
+      throw new Error(
+        `Credit limit exceeded. Available credit: ${available} EGP`
+      )
+    }
+  }
 
   const payments = (data.payments ?? []).filter((p) => p.amount > 0)
   const paymentsSum = payments.reduce((s, p) => s + p.amount, 0)
@@ -237,6 +331,7 @@ export async function createOrder(data: {
     payment_method,
     note: data.note ?? null,
     total_amount,
+    person_id: data.person_id ?? null,
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -292,6 +387,35 @@ export async function createOrder(data: {
     await adjustStock(item.product_id, 'out', item.quantity)
   }
 
+  if (data.person_id) {
+    const { error: btErr } = await supabase.from('balance_transactions').insert({
+      person_id: data.person_id,
+      type: 'order',
+      amount: total_amount,
+      reference_id: orderId,
+      reference_number: String(order_number),
+    })
+    if (btErr) throw btErr
+
+    const { data: balRow, error: bErr } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', data.person_id)
+      .single()
+    if (bErr) throw bErr
+    const newBal = roundMoney(
+      Number((balRow as { balance: number }).balance) + total_amount
+    )
+    const { error: pbErr } = await supabase
+      .from('people')
+      .update({
+        balance: newBal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.person_id)
+    if (pbErr) throw pbErr
+  }
+
   const created = await getOrderById(orderId)
   if (!created) throw new Error('Failed to fetch created order')
   return created
@@ -313,6 +437,36 @@ export async function cancelOrder(id: string): Promise<void> {
     .eq('id', id)
 
   if (updateError) throw updateError
+
+  if (order.person_id) {
+    const reversal = roundMoney(-order.total_amount)
+    const { error: btErr } = await supabase.from('balance_transactions').insert({
+      person_id: order.person_id,
+      type: 'order',
+      amount: reversal,
+      reference_id: order.id,
+      reference_number: String(order.order_number),
+    })
+    if (btErr) throw btErr
+
+    const { data: balRow, error: bErr } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', order.person_id)
+      .single()
+    if (bErr) throw bErr
+    const newBal = roundMoney(
+      Number((balRow as { balance: number }).balance) - order.total_amount
+    )
+    const { error: pbErr } = await supabase
+      .from('people')
+      .update({
+        balance: newBal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.person_id)
+    if (pbErr) throw pbErr
+  }
 
   const note = `Restored from cancelled order #${order.order_number}`
 

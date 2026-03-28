@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Eye, XCircle, ShoppingCart } from 'lucide-react'
@@ -10,12 +11,14 @@ import {
   cancelOrder,
 } from '@/services/orderService'
 import { getAllProducts } from '@/services/productService'
+import { getAllPeople, roundMoney } from '@/services/peopleService'
 import type {
   OrderWithItems,
   OrderType,
   OrderStatus,
   PaymentMethod,
   OrderPayment,
+  Person,
 } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { Button } from '@/components/ui/button'
@@ -90,6 +93,8 @@ function formatPaymentSummary(
 export function Orders() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   const [search, setSearch] = useState('')
@@ -127,6 +132,16 @@ export function Orders() {
     queryFn: () => getAllOrders(filters),
   })
 
+  useEffect(() => {
+    const st = location.state as { openOrderId?: string } | null
+    if (!st?.openOrderId || orders.length === 0) return
+    const o = orders.find((x) => x.id === st.openOrderId)
+    if (o) {
+      setDetailOrder(o)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, orders, location.pathname, navigate])
+
   const totalRevenue = useMemo(
     () =>
       orders
@@ -155,6 +170,7 @@ export function Orders() {
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
+    queryClient.invalidateQueries({ queryKey: ['people'] })
   }
 
   return (
@@ -526,12 +542,35 @@ function CreateOrderDialog({
   const [lines, setLines] = useState<OrderLine[]>([])
   const [productSearch, setProductSearch] = useState('')
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({})
+  const [personSearch, setPersonSearch] = useState('')
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
+  const [applyPersonDiscount, setApplyPersonDiscount] = useState(true)
+
+  const debouncedPersonSearch = useDebouncedValue(personSearch, DEBOUNCE_MS)
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: getAllProducts,
     enabled: open,
   })
+
+  const { data: customerPeople = [] } = useQuery({
+    queryKey: ['people', 'order-picker', debouncedPersonSearch],
+    queryFn: () =>
+      getAllPeople({
+        role: 'customer',
+        search: debouncedPersonSearch.trim() || undefined,
+      }),
+    enabled: open,
+  })
+
+  useEffect(() => {
+    if (!open) {
+      setPersonSearch('')
+      setSelectedPerson(null)
+      setApplyPersonDiscount(true)
+    }
+  }, [open])
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products.slice(0, 20)
@@ -601,6 +640,32 @@ function CreateOrderDialog({
     }, 0)
   }, [lines, orderType, products])
 
+  const orderTotal = useMemo(() => {
+    const sub = roundMoney(runningTotal)
+    if (
+      !selectedPerson ||
+      !applyPersonDiscount ||
+      selectedPerson.discount_rate <= 0
+    ) {
+      return sub
+    }
+    return roundMoney(sub * (1 - selectedPerson.discount_rate / 100))
+  }, [runningTotal, selectedPerson, applyPersonDiscount])
+
+  const creditExceeded = Boolean(
+    selectedPerson &&
+      selectedPerson.credit_limit != null &&
+      roundMoney(selectedPerson.balance + orderTotal) >
+        roundMoney(selectedPerson.credit_limit) + 0.001
+  )
+
+  const availableCredit =
+    selectedPerson && selectedPerson.credit_limit != null
+      ? roundMoney(
+          Math.max(0, selectedPerson.credit_limit - selectedPerson.balance)
+        )
+      : null
+
   const paymentTotal = useMemo(
     () =>
       (PAYMENT_METHODS as PaymentMethod[]).reduce(
@@ -639,11 +704,11 @@ function CreateOrderDialog({
     const hasPayment = (PAYMENT_METHODS as PaymentMethod[]).some(
       (m) => (paymentAmounts[m] || 0) > 0
     )
-    if (hasPayment && Math.abs(paymentTotal - runningTotal) > 0.01) {
+    if (hasPayment && Math.abs(paymentTotal - orderTotal) > 0.01) {
       setPaymentError(
         (t as (key: string, opts?: Record<string, number>) => string)(
           'orders.validationPaymentTotal',
-          { total: runningTotal }
+          { total: orderTotal }
         )
       )
       return false
@@ -671,6 +736,8 @@ function CreateOrderDialog({
           quantity: l.quantity,
           unit_price: getUnitPrice(l.product_id),
         })),
+        person_id: selectedPerson?.id,
+        apply_person_discount: applyPersonDiscount,
       })
       onSuccess()
       setLines([])
@@ -695,6 +762,78 @@ function CreateOrderDialog({
           <DialogTitle>{t('orders.createOrderTitle')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label className="mb-2 block">{t('orders.selectCustomer')}</Label>
+            <Input
+              placeholder={t('orders.searchPeople')}
+              value={personSearch}
+              onChange={(e) => setPersonSearch(e.target.value)}
+              className="mb-2"
+            />
+            {selectedPerson && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-2 mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{selectedPerson.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedPerson(null)}
+                  >
+                    {t('common.close')}
+                  </Button>
+                </div>
+                <p className="text-muted-foreground">
+                  {t('orders.personBalance')}:{' '}
+                  <span className="font-medium text-foreground tabular-nums">
+                    {formatCurrency(selectedPerson.balance)}
+                  </span>
+                </p>
+                {selectedPerson.credit_limit != null && (
+                  <p className="text-muted-foreground">
+                    {t('orders.availableCredit')}:{' '}
+                    <span className="font-medium text-foreground tabular-nums">
+                      {formatCurrency(availableCredit ?? 0)}
+                    </span>
+                  </p>
+                )}
+                {selectedPerson.discount_rate > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={applyPersonDiscount}
+                      onChange={(e) => setApplyPersonDiscount(e.target.checked)}
+                    />
+                    <span>
+                      {(t as (k: string, o: Record<string, number>) => string)(
+                        'orders.applyDiscountToggle',
+                        { pct: selectedPerson.discount_rate }
+                      )}
+                    </span>
+                  </label>
+                )}
+              </div>
+            )}
+            <div className="max-h-28 overflow-y-auto rounded border border-border divide-y">
+              {customerPeople
+                .filter((p) => !selectedPerson || p.id !== selectedPerson.id)
+                .slice(0, 12)
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="w-full px-2 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setSelectedPerson(p)
+                      setApplyPersonDiscount(p.discount_rate > 0)
+                    }}
+                  >
+                    {p.name}
+                    {p.phone ? ` — ${p.phone}` : ''}
+                  </button>
+                ))}
+            </div>
+          </div>
           <div>
             <Label className="mb-2 block">{t('orders.orderType')}</Label>
             <div className="flex gap-4">
@@ -722,9 +861,16 @@ function CreateOrderDialog({
           </div>
           <div>
             <Label className="mb-2 block">{t('orders.paymentBreakdown')}</Label>
-            <p className="text-sm text-muted-foreground mb-2">
-              {t('orders.runningTotal')}: {formatCurrency(runningTotal)}
-            </p>
+            <div className="text-sm text-muted-foreground mb-2 space-y-0.5">
+              <p>
+                {t('orders.subtotal')}: {formatCurrency(runningTotal)}
+              </p>
+              {Math.abs(orderTotal - roundMoney(runningTotal)) > 0.001 && (
+                <p>
+                  {t('orders.discountedTotal')}: {formatCurrency(orderTotal)}
+                </p>
+              )}
+            </div>
             <div className="space-y-2 rounded-lg border border-border p-3">
               {(PAYMENT_METHODS as PaymentMethod[]).map((method) => (
                 <div
@@ -765,9 +911,9 @@ function CreateOrderDialog({
                   {t('orders.paymentRemaining')}:{' '}
                 </span>
                 <span
-                  className={Math.abs(paymentTotal - runningTotal) > 0.01 ? 'text-destructive font-medium' : ''}
+                  className={Math.abs(paymentTotal - orderTotal) > 0.01 ? 'text-destructive font-medium' : ''}
                 >
-                  {formatCurrency(runningTotal - paymentTotal)}
+                  {formatCurrency(orderTotal - paymentTotal)}
                 </span>
               </p>
             )}
@@ -867,14 +1013,19 @@ function CreateOrderDialog({
               </p>
             )}
             <p className="mt-2 font-semibold">
-              {t('orders.runningTotal')}: {formatCurrency(runningTotal)}
+              {t('orders.runningTotal')}: {formatCurrency(orderTotal)}
             </p>
+            {creditExceeded && (
+              <p className="mt-2 text-sm text-destructive font-medium">
+                {t('orders.creditBlocked')}
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {t('common.cancel')}
             </Button>
-            <Button type="submit" disabled={lines.length === 0}>
+            <Button type="submit" disabled={lines.length === 0 || creditExceeded}>
               {t('common.submit')}
             </Button>
           </DialogFooter>

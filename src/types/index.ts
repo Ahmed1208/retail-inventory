@@ -52,6 +52,8 @@ export interface DashboardStats {
   lowStockCount: number
   todayMovements: number
   totalPurchasesToday: number
+  totalReceivables: number
+  totalPayables: number
 }
 
 export interface StockMovementWithProduct extends StockMovement {
@@ -69,6 +71,47 @@ export type OrderType = 'retail' | 'wholesale'
 export type OrderStatus = 'pending' | 'completed' | 'cancelled'
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
 
+export type PersonRole = 'customer' | 'supplier'
+export type BalanceTransactionType =
+  | 'order'
+  | 'purchase_order'
+  | 'payment_in'
+  | 'payment_out'
+  | 'adjustment'
+
+export interface Person {
+  id: string
+  name: string
+  phone: string | null
+  address: string | null
+  notes: string | null
+  roles: PersonRole[]
+  balance: number
+  discount_rate: number
+  credit_limit: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BalanceTransaction {
+  id: string
+  person_id: string
+  type: BalanceTransactionType
+  amount: number
+  reference_id: string | null
+  reference_number: string | null
+  note: string | null
+  created_at: string
+}
+
+export interface BalanceTransactionWithPerson extends BalanceTransaction {
+  person: Person
+}
+
+export interface PersonWithTransactions extends Person {
+  transactions: BalanceTransaction[]
+}
+
 export interface Order {
   id: string
   order_number: number
@@ -77,6 +120,7 @@ export interface Order {
   payment_method: PaymentMethod | null
   note: string | null
   total_amount: number
+  person_id: string | null
   created_at: string
   updated_at: string
 }
@@ -119,6 +163,7 @@ export interface PurchaseOrder {
   note: string | null
   total_amount: number
   status: PurchaseOrderStatus
+  person_id: string | null
   created_at: string
   updated_at: string
 }

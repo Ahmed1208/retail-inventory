@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getPeopleBalanceAggregates } from '@/services/peopleService'
 import type {
   Product,
   ProductWithRelations,
@@ -286,6 +287,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     { data: lowStockData, error: lowStockError },
     { count: todayMovements, error: movementsError },
     { count: totalPurchasesToday, error: purchasesError },
+    peopleBalances,
   ] = await Promise.all([
     supabase.from(PRODUCTS).select('*', { count: 'exact', head: true }),
     supabase.from(PRODUCTS).select('quantity, cost_price'),
@@ -298,6 +300,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from('purchase_orders')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', todayStartIso),
+    getPeopleBalanceAggregates(),
   ])
 
   if (countError) throw countError
@@ -323,5 +326,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     lowStockCount,
     todayMovements: todayMovements ?? 0,
     totalPurchasesToday: totalPurchasesToday ?? 0,
+    totalReceivables: peopleBalances.totalReceivables,
+    totalPayables: peopleBalances.totalPayables,
   }
 }

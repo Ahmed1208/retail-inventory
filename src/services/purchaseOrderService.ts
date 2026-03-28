@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import { getProductById } from '@/services/productService'
 import { updateProduct } from '@/services/productService'
+import { mapPersonRow, roundMoney } from '@/services/peopleService'
 import type {
   PurchaseOrder,
   PurchaseOrderWithItems,
@@ -30,6 +31,7 @@ function toPurchaseOrderWithItems(row: {
   note: string | null
   total_amount: number
   status: PurchaseOrderStatus
+  person_id: string | null
   created_at: string
   updated_at: string
   purchase_order_items?: Array<{
@@ -45,7 +47,11 @@ function toPurchaseOrderWithItems(row: {
     product: Product
   }>
 }): PurchaseOrderWithItems {
-  const { purchase_order_items, ...order } = row
+  const { purchase_order_items, ...orderRest } = row
+  const order = {
+    ...orderRest,
+    person_id: orderRest.person_id ?? null,
+  }
   const items: PurchaseOrderItemWithProduct[] = (purchase_order_items ?? []).map(
     (poi) => ({
       id: poi.id,
@@ -174,9 +180,61 @@ export async function getPurchaseOrderById(
   return order
 }
 
+export async function getPurchaseOrdersByPersonId(
+  personId: string
+): Promise<PurchaseOrderWithItems[]> {
+  const { data, error } = await supabase
+    .from(PURCHASE_ORDERS)
+    .select(
+      `
+      *,
+      purchase_order_items(
+        *,
+        product:products(*)
+      )
+    `
+    )
+    .eq('person_id', personId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+
+  let orders = (data ?? []).map(toPurchaseOrderWithItems)
+  const orderIds = orders.map((o) => o.id)
+  if (orderIds.length > 0) {
+    const { data: paymentsData } = await supabase
+      .from(PURCHASE_ORDER_PAYMENTS)
+      .select('id, purchase_order_id, payment_method, amount')
+      .in('purchase_order_id', orderIds)
+    if (paymentsData && paymentsData.length > 0) {
+      const byOrderId = new Map<string, PurchaseOrderPayment[]>()
+      for (const p of paymentsData as Array<{
+        id: string
+        purchase_order_id: string
+        payment_method: PaymentMethod
+        amount: number
+      }>) {
+        const list = byOrderId.get(p.purchase_order_id) ?? []
+        list.push({
+          id: p.id,
+          payment_method: p.payment_method,
+          amount: Number(p.amount),
+        })
+        byOrderId.set(p.purchase_order_id, list)
+      }
+      orders = orders.map((o) => ({
+        ...o,
+        payments: byOrderId.get(o.id),
+      }))
+    }
+  }
+  return orders
+}
+
 export async function createPurchaseOrder(data: {
   supplier_name?: string
   note?: string
+  person_id?: string
   /** Multiple payments with amounts; sum must equal order total */
   payments?: { payment_method: PaymentMethod; amount: number }[]
   items: {
@@ -223,6 +281,20 @@ export async function createPurchaseOrder(data: {
   if (maxError) throw maxError
   const order_number = (maxRow?.order_number ?? 0) + 1
 
+  if (data.person_id) {
+    const { data: prow, error: pe } = await supabase
+      .from('people')
+      .select('*')
+      .eq('id', data.person_id)
+      .maybeSingle()
+    if (pe) throw pe
+    if (!prow) throw new Error('Person not found')
+    const p = mapPersonRow(prow as Record<string, unknown>)
+    if (!p.roles.includes('supplier')) {
+      throw new Error('Selected person must have the supplier role')
+    }
+  }
+
   // 3. Insert purchase_order
   const orderPayload = {
     order_number,
@@ -230,6 +302,7 @@ export async function createPurchaseOrder(data: {
     note: data.note?.trim() || null,
     total_amount,
     status: 'received' as PurchaseOrderStatus,
+    person_id: data.person_id ?? null,
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -298,6 +371,38 @@ export async function createPurchaseOrder(data: {
     }
   }
 
+  if (data.person_id) {
+    const delta = roundMoney(-total_amount)
+    const { error: btErr } = await supabase
+      .from('balance_transactions')
+      .insert({
+        person_id: data.person_id,
+        type: 'purchase_order',
+        amount: delta,
+        reference_id: orderId,
+        reference_number: `PO-${order_number}`,
+      })
+    if (btErr) throw btErr
+
+    const { data: balRow, error: bErr } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', data.person_id)
+      .single()
+    if (bErr) throw bErr
+    const newBal = roundMoney(
+      Number((balRow as { balance: number }).balance) + delta
+    )
+    const { error: pbErr } = await supabase
+      .from('people')
+      .update({
+        balance: newBal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.person_id)
+    if (pbErr) throw pbErr
+  }
+
   // 7. Return created PurchaseOrderWithItems
   const created = await getPurchaseOrderById(orderId)
   if (!created) throw new Error('Failed to fetch created purchase order')
@@ -321,6 +426,38 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
     .eq('id', id)
 
   if (updateError) throw updateError
+
+  if (order.person_id) {
+    const reversal = roundMoney(order.total_amount)
+    const { error: btErr } = await supabase
+      .from('balance_transactions')
+      .insert({
+        person_id: order.person_id,
+        type: 'purchase_order',
+        amount: reversal,
+        reference_id: order.id,
+        reference_number: `PO-${order.order_number}`,
+      })
+    if (btErr) throw btErr
+
+    const { data: balRow, error: bErr } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', order.person_id)
+      .single()
+    if (bErr) throw bErr
+    const newBal = roundMoney(
+      Number((balRow as { balance: number }).balance) + reversal
+    )
+    const { error: pbErr } = await supabase
+      .from('people')
+      .update({
+        balance: newBal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.person_id)
+    if (pbErr) throw pbErr
+  }
 
   const note = `Cancelled Purchase Order #${order.order_number}`
 

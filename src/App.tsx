@@ -7,6 +7,7 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
 import { StockMovements } from '@/pages/StockMovements'
 import { Orders } from '@/pages/Orders'
+import { People } from '@/pages/People'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
 import { PurchaseOrders } from '@/pages/PurchaseOrders'
@@ -24,6 +25,7 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/movements" element={<StockMovements />} />
             <Route path="/orders" element={<Orders />} />
+            <Route path="/people" element={<People />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />
             <Route

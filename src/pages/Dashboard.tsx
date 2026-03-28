@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   TrendingUp,
   Truck,
+  Wallet,
+  Landmark,
 } from 'lucide-react'
 
 import {
@@ -244,6 +246,23 @@ export function Dashboard() {
           value={stats?.totalPurchasesToday ?? 0}
           icon={Truck}
           accent="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+          loading={statsLoading}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 max-w-2xl">
+        <StatCard
+          label={t('dashboard.totalReceivables')}
+          value={formatCurrencyDisplay(stats?.totalReceivables ?? 0)}
+          icon={Wallet}
+          accent="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+          loading={statsLoading}
+        />
+        <StatCard
+          label={t('dashboard.totalPayables')}
+          value={formatCurrencyDisplay(stats?.totalPayables ?? 0)}
+          icon={Landmark}
+          accent="bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400"
           loading={statsLoading}
         />
       </div>

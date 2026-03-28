@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Eye, XCircle, Truck, AlertTriangle } from 'lucide-react'
@@ -10,12 +11,14 @@ import {
   cancelPurchaseOrder,
 } from '@/services/purchaseOrderService'
 import { getAllProducts } from '@/services/productService'
+import { getAllPeople } from '@/services/peopleService'
 import type {
   PurchaseOrderWithItems,
   PurchaseOrderStatus,
   PaymentMethod,
   PurchaseOrderPayment,
   ProductWithRelations,
+  Person,
 } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
@@ -83,6 +86,8 @@ interface POLine {
 export function PurchaseOrders() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
+  const location = useLocation()
+  const navigate = useNavigate()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
 
   const [search, setSearch] = useState('')
@@ -118,6 +123,16 @@ export function PurchaseOrders() {
     queryFn: () => getAllPurchaseOrders(filters),
   })
 
+  useEffect(() => {
+    const st = location.state as { openPOId?: string } | null
+    if (!st?.openPOId || purchaseOrders.length === 0) return
+    const po = purchaseOrders.find((x) => x.id === st.openPOId)
+    if (po) {
+      setDetailPO(po)
+      navigate(location.pathname, { replace: true, state: {} })
+    }
+  }, [location.state, purchaseOrders, location.pathname, navigate])
+
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const formatDate = (iso: string) =>
@@ -130,6 +145,7 @@ export function PurchaseOrders() {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
+    queryClient.invalidateQueries({ queryKey: ['people'] })
   }
 
   return (
@@ -405,6 +421,8 @@ function CreatePurchaseOrderDialog({
 }) {
   const PAYMENT_METHODS: PaymentMethod[] = ['cash', 'card', 'transfer', 'other']
   const [supplierName, setSupplierName] = useState('')
+  const [supplierSearch, setSupplierSearch] = useState('')
+  const [selectedSupplier, setSelectedSupplier] = useState<Person | null>(null)
   const [note, setNote] = useState('')
   const [paymentSelected, setPaymentSelected] = useState<Record<PaymentMethod, boolean>>({
     cash: false,
@@ -423,11 +441,30 @@ function CreatePurchaseOrderDialog({
   const [productSearch, setProductSearch] = useState('')
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({})
 
+  const debouncedSupplierSearch = useDebouncedValue(supplierSearch, DEBOUNCE_MS)
+
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
     queryFn: getAllProducts,
     enabled: open,
   })
+
+  const { data: supplierPeople = [] } = useQuery({
+    queryKey: ['people', 'po-picker', debouncedSupplierSearch],
+    queryFn: () =>
+      getAllPeople({
+        role: 'supplier',
+        search: debouncedSupplierSearch.trim() || undefined,
+      }),
+    enabled: open,
+  })
+
+  useEffect(() => {
+    if (!open) {
+      setSupplierSearch('')
+      setSelectedSupplier(null)
+    }
+  }, [open])
 
   const filteredProducts = useMemo(() => {
     if (!productSearch.trim()) return products.slice(0, 20)
@@ -548,6 +585,7 @@ function CreatePurchaseOrderDialog({
     try {
       await createPurchaseOrder({
         supplier_name: supplierName.trim() || undefined,
+        person_id: selectedSupplier?.id,
         note: note.trim() || undefined,
         payments,
         items: lines.map((l) => ({
@@ -559,6 +597,8 @@ function CreatePurchaseOrderDialog({
       })
       onSuccess()
       setSupplierName('')
+      setSelectedSupplier(null)
+      setSupplierSearch('')
       setNote('')
       setPaymentSelected({ cash: false, card: false, transfer: false, other: false })
       setPaymentAmounts({ cash: 0, card: 0, transfer: 0, other: 0 })
@@ -581,6 +621,53 @@ function CreatePurchaseOrderDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
+            <Label className="mb-2 block">{t('purchaseOrders.selectSupplier')}</Label>
+            <Input
+              placeholder={t('orders.searchPeople')}
+              value={supplierSearch}
+              onChange={(e) => setSupplierSearch(e.target.value)}
+              className="mb-2"
+            />
+            {selectedSupplier && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm space-y-1 mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium">{selectedSupplier.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedSupplier(null)}
+                  >
+                    {t('common.close')}
+                  </Button>
+                </div>
+                <p className="text-muted-foreground">
+                  {t('purchaseOrders.supplierBalance')}:{' '}
+                  <span className="font-medium text-foreground tabular-nums">
+                    {formatCurrency(selectedSupplier.balance)}
+                  </span>
+                </p>
+              </div>
+            )}
+            <div className="max-h-24 overflow-y-auto rounded border border-border divide-y mb-3">
+              {supplierPeople
+                .filter((p) => !selectedSupplier || p.id !== selectedSupplier.id)
+                .slice(0, 12)
+                .map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="w-full px-2 py-1.5 text-left text-sm hover:bg-muted"
+                    onClick={() => {
+                      setSelectedSupplier(p)
+                      setSupplierName(p.name)
+                    }}
+                  >
+                    {p.name}
+                    {p.phone ? ` — ${p.phone}` : ''}
+                  </button>
+                ))}
+            </div>
             <Label>{t('purchaseOrders.supplierNameOptional')}</Label>
             <Input
               value={supplierName}
