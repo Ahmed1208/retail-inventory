@@ -88,3 +88,36 @@
     font-family: 'DM Sans', sans-serif;
   }
 }
+
+/* POS invoice: hidden on screen until print */
+@media screen {
+  body:not(.printing-invoice) .print-invoice-root {
+    display: none !important;
+  }
+}
+
+/* POS invoice print: hide app chrome when printing */
+body.printing-invoice * {
+  visibility: hidden !important;
+}
+body.printing-invoice .print-invoice-root,
+body.printing-invoice .print-invoice-root * {
+  visibility: visible !important;
+}
+body.printing-invoice .print-invoice-root {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  min-height: 100%;
+  background: #fff;
+  color: #000;
+  padding: 1rem;
+  font-size: 12pt;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+}

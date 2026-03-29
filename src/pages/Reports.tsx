@@ -55,10 +55,10 @@ export function Reports({ embedded = false }: ReportsProps) {
   })
 
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ['orders', 'completed', dateRange.from, dateRange.to],
+    queryKey: ['orders', 'status_flow_completed', dateRange.from, dateRange.to],
     queryFn: () =>
       getAllOrders({
-        status: 'completed',
+        status_flow: 'completed',
         from: dateRange.from,
         to: dateRange.to,
       }),

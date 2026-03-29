@@ -12,8 +12,46 @@ import type {
 const PRODUCTS = 'products'
 const STOCK_MOVEMENTS = 'stock_movements'
 
+/** Human-readable id when the user leaves the field empty on create. */
+export function generateProductCode(): string {
+  const part = crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase()
+  return `P-${part}`
+}
+
+export type ProductCreateInput = Omit<
+  Product,
+  'id' | 'created_at' | 'updated_at' | 'product_code'
+> & { product_code?: string | null }
+
+/**
+ * Supabase returns a PostgrestError object, not an Error instance — always
+ * rethrow as Error so callers can read `message` in catch blocks.
+ */
+function throwProductError(error: {
+  code?: string
+  message?: string
+  details?: string | null
+  hint?: string | null
+}): never {
+  const text = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+  if (error.code === '23505') {
+    const m = text.toLowerCase()
+    if (m.includes('product_code')) {
+      throw new Error('PRODUCT_CODE_TAKEN')
+    }
+    if (m.includes('products_name') || m.includes('name_lower')) {
+      throw new Error('PRODUCT_NAME_TAKEN')
+    }
+    throw new Error(text.trim() || 'Duplicate record')
+  }
+  throw new Error(text.trim() || error.code || 'Request failed')
+}
+
 function toProductWithRelations(row: {
   id: string
+  product_code?: string | null
   name: string
   brand_id: string | null
   category_id: string | null
@@ -29,9 +67,14 @@ function toProductWithRelations(row: {
   brand: unknown
   category: unknown
 }): ProductWithRelations {
-  const { brand, category, ...product } = row
+  const { brand, category, ...rest } = row
+  const product_code =
+    rest.product_code != null && String(rest.product_code).trim() !== ''
+      ? String(rest.product_code).trim()
+      : ''
   return {
-    ...product,
+    ...rest,
+    product_code,
     brand: (brand as ProductWithRelations['brand']) ?? null,
     category: (category as ProductWithRelations['category']) ?? null,
   }
@@ -74,15 +117,23 @@ export async function getProductById(
 }
 
 export async function createProduct(
-  data: Omit<Product, 'id' | 'created_at' | 'updated_at'>
+  data: ProductCreateInput
 ): Promise<Product> {
+  const { product_code: providedCode, ...row } = data
+  const code =
+    providedCode?.trim() ? providedCode.trim() : generateProductCode()
+  const payload = {
+    ...row,
+    name: row.name.trim(),
+    product_code: code,
+  }
   const { data: inserted, error } = await supabase
     .from(PRODUCTS)
-    .insert(data)
+    .insert(payload)
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwProductError(error)
   return inserted as Product
 }
 
@@ -90,7 +141,16 @@ export async function updateProduct(
   id: string,
   data: Partial<Omit<Product, 'id' | 'created_at'>>
 ): Promise<Product> {
-  const payload = { ...data, updated_at: new Date().toISOString() }
+  const payload: Record<string, unknown> = {
+    ...data,
+    updated_at: new Date().toISOString(),
+  }
+  if (typeof payload.name === 'string') {
+    payload.name = payload.name.trim()
+  }
+  if (typeof payload.product_code === 'string') {
+    payload.product_code = payload.product_code.trim()
+  }
   const { data: updated, error } = await supabase
     .from(PRODUCTS)
     .update(payload)
@@ -98,7 +158,7 @@ export async function updateProduct(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) throwProductError(error)
   return updated as Product
 }
 
@@ -247,8 +307,10 @@ export async function getStockMovements(
 
   if (filters?.search?.trim()) {
     const search = filters.search.trim().toLowerCase()
-    rows = rows.filter((m) =>
-      m.product.name.toLowerCase().includes(search)
+    rows = rows.filter(
+      (m) =>
+        m.product.name.toLowerCase().includes(search) ||
+        m.product.product_code.toLowerCase().includes(search)
     )
   }
 

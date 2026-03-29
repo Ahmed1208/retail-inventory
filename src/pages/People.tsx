@@ -939,7 +939,7 @@ function PersonProfileDialog({
   const running = useMemo(() => runningBalances(txs), [txs])
 
   const overview = useMemo(() => {
-    const activeOrders = orders.filter((o) => o.status !== 'cancelled')
+    const activeOrders = orders.filter((o) => o.status_flow !== 'cancelled')
     const activePo = pos.filter((o) => o.status !== 'cancelled')
     return {
       orderCount: activeOrders.length,
@@ -1186,7 +1186,12 @@ function PersonProfileDialog({
                   {orders.map((o) => (
                     <tr key={o.id} className="border-b border-border/50">
                       <td className="px-3 py-2">#{o.order_number}</td>
-                      <td className="px-3 py-2">{o.status}</td>
+                      <td className="px-3 py-2">
+                        {o.status_flow === 'draft' && t('orders.draft')}
+                        {o.status_flow === 'confirmed' && t('orders.confirmed')}
+                        {o.status_flow === 'completed' && t('orders.completed')}
+                        {o.status_flow === 'cancelled' && t('orders.statusCancelled')}
+                      </td>
                       <td className="px-3 py-2 text-end tabular-nums">
                         {formatCurrency(o.total_amount)}
                       </td>
@@ -1197,7 +1202,7 @@ function PersonProfileDialog({
                           variant="link"
                           className="h-auto p-0"
                           onClick={() =>
-                            navigate('/orders', { state: { openOrderId: o.id } })
+                            navigate(`/orders/${o.id}`)
                           }
                         >
                           {t('people.openOrder')}

@@ -67,20 +67,33 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 
-const productSchema = z.object({
-  name: z.string().min(2, 'products.validationNameMin'),
-  brand_id: z.string().nullable(),
-  category_id: z.string().nullable(),
-  customer_price: z.number().min(0, 'products.validationMinZero'),
-  business_price: z.number().min(0, 'products.validationMinZero'),
-  cost_price: z.number().min(0, 'products.validationMinZero').optional(),
-  low_stock_threshold: z.number().int().min(0, 'products.validationMinZero'),
-  unit: z.string().min(1, 'products.validationRequired'),
-  description: z.string().nullable(),
-})
+const productSchema = z
+  .object({
+    product_code: z.string().max(64, 'products.validationProductCodeMax'),
+    name: z.string().min(2, 'products.validationNameMin'),
+    brand_id: z.string().nullable(),
+    category_id: z.string().nullable(),
+    customer_price: z.number().min(0, 'products.validationMinZero'),
+    business_price: z.number().min(0, 'products.validationMinZero'),
+    cost_price: z.number().min(0, 'products.validationMinZero').optional(),
+    low_stock_threshold: z.number().int().min(0, 'products.validationMinZero'),
+    unit: z.string().min(1, 'products.validationRequired'),
+    description: z.string().nullable(),
+  })
+  .superRefine((data, ctx) => {
+    const c = data.product_code.trim()
+    if (c && !/^[\p{L}\p{N}._-]+$/u.test(c)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'products.validationProductCodeFormat',
+        path: ['product_code'],
+      })
+    }
+  })
 type ProductFormValues = z.infer<typeof productSchema>
 
 const defaultProductValues: ProductFormValues = {
+  product_code: '',
   name: '',
   brand_id: null,
   category_id: null,
@@ -135,9 +148,11 @@ export function Products() {
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      const q = debouncedSearch.toLowerCase()
       const matchSearch =
         !debouncedSearch ||
-        p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+        p.name.toLowerCase().includes(q) ||
+        p.product_code.toLowerCase().includes(q)
       const matchCategory = !categoryId || p.category?.id === categoryId
       const matchBrand = !brandId || p.brand?.id === brandId
       const matchLowStock = !lowStockOnly || p.quantity <= p.low_stock_threshold
@@ -149,6 +164,15 @@ export function Products() {
 
   const columns = useMemo<ColumnDef<ProductWithRelations>[]>(
     () => [
+      {
+        accessorKey: 'product_code',
+        header: t('products.productId'),
+        cell: ({ getValue }) => (
+          <span className="font-mono text-sm tabular-nums">
+            {getValue() as string}
+          </span>
+        ),
+      },
       {
         accessorKey: 'name',
         header: t('common.name'),
@@ -488,6 +512,7 @@ function ProductFormDialog({
   useEffect(() => {
     if (open && initialProduct) {
       form.reset({
+        product_code: initialProduct.product_code,
         name: initialProduct.name,
         brand_id: initialProduct.brand?.id ?? null,
         category_id: initialProduct.category?.id ?? null,
@@ -504,9 +529,14 @@ function ProductFormDialog({
   }, [open, initialProduct, mode, form])
 
   const onSubmit = async (values: ProductFormValues) => {
+    const trimmedCode = values.product_code.trim()
+    if (mode === 'edit' && !trimmedCode) {
+      toast.error(t('products.validationProductCodeRequired'))
+      return
+    }
     try {
-      const payload = {
-        name: values.name,
+      const base = {
+        name: values.name.trim(),
         brand_id: values.brand_id || null,
         category_id: values.category_id || null,
         customer_price: values.customer_price,
@@ -518,13 +548,36 @@ function ProductFormDialog({
         description: values.description || null,
       }
       if (mode === 'add') {
-        await createProduct(payload)
+        await createProduct({
+          ...base,
+          product_code: trimmedCode || undefined,
+        })
       } else if (initialProduct) {
-        await updateProduct(initialProduct.id, payload)
+        await updateProduct(initialProduct.id, {
+          ...base,
+          product_code: trimmedCode,
+        })
       }
       onSuccess()
-    } catch {
-      onError()
+    } catch (e) {
+      const msg =
+        e instanceof Error
+          ? e.message
+          : e &&
+              typeof e === 'object' &&
+              'message' in e &&
+              typeof (e as { message: unknown }).message === 'string'
+            ? (e as { message: string }).message
+            : ''
+      if (msg === 'PRODUCT_CODE_TAKEN') {
+        toast.error(t('products.validationDuplicateCode'))
+      } else if (msg === 'PRODUCT_NAME_TAKEN') {
+        toast.error(t('products.validationDuplicateName'))
+      } else if (msg) {
+        toast.error(msg)
+      } else {
+        onError()
+      }
     }
   }
 
@@ -539,6 +592,24 @@ function ProductFormDialog({
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div>
+            <Label>{t('products.productId')}</Label>
+            <Input
+              {...form.register('product_code')}
+              className="mt-1 font-mono"
+              autoComplete="off"
+            />
+            {mode === 'add' && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('products.productIdHint')}
+              </p>
+            )}
+            {form.formState.errors.product_code && (
+              <p className="text-sm text-destructive mt-1">
+                {t(form.formState.errors.product_code.message!)}
+              </p>
+            )}
+          </div>
           <div>
             <Label>{t('common.name')}</Label>
             <Input {...form.register('name')} className="mt-1" />

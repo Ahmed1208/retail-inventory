@@ -13,8 +13,14 @@ const INVENTORY_PATHS = [
   '/brands',
 ] as const
 
+const ORDERS_PREFIX = '/orders'
+
+function pathMatchesOrders(pathname: string): boolean {
+  return pathname === ORDERS_PREFIX || pathname.startsWith(`${ORDERS_PREFIX}/`)
+}
+
 const afterInventoryNav = [
-  { to: '/orders', icon: ShoppingCart, key: 'nav.orders' },
+  { to: ORDERS_PREFIX, icon: ShoppingCart, key: 'nav.orders' },
   { to: '/people', icon: Users, key: 'nav.people' },
 ] as const
 
@@ -73,7 +79,20 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
         </NavLink>
 
         {afterInventoryNav.map(({ to, icon: Icon, key }) => (
-          <NavLink key={to} to={to} onClick={onNavigate} className={linkClass}>
+          <NavLink
+            key={to}
+            to={to}
+            end={false}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              linkClass({
+                isActive:
+                  to === ORDERS_PREFIX
+                    ? isActive || pathMatchesOrders(pathname)
+                    : isActive,
+              })
+            }
+          >
             <Icon className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t(key)}</span>
           </NavLink>

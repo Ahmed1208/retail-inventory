@@ -7,6 +7,9 @@ import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
 import { StockMovements } from '@/pages/StockMovements'
 import { Orders } from '@/pages/Orders'
+import { OrdersHome } from '@/pages/OrdersHome'
+import { NewOrder } from '@/pages/NewOrder'
+import { OrderDetail } from '@/pages/OrderDetail'
 import { People } from '@/pages/People'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
@@ -24,7 +27,10 @@ function App() {
             <Route path="/inventory" element={<InventoryHub />} />
             <Route path="/products" element={<Products />} />
             <Route path="/movements" element={<StockMovements />} />
-            <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/list" element={<Orders />} />
+            <Route path="/orders/new" element={<NewOrder />} />
+            <Route path="/orders/:id" element={<OrderDetail />} />
+            <Route path="/orders" element={<OrdersHome />} />
             <Route path="/people" element={<People />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />

@@ -22,7 +22,6 @@ const pathToTitleKey: Record<string, string> = {
   '/inventory': 'nav.inventory',
   '/products': 'products.title',
   '/movements': 'stockMovements.title',
-  '/orders': 'orders.title',
   '/people': 'people.title',
   '/categories': 'categories.title',
   '/brands': 'brands.title',
@@ -47,7 +46,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     pathname === '/' && searchParams.get('tab') === 'reports'
   const pageTitle = dashboardReportsTab
     ? 'reports.title'
-    : (pathToTitleKey[pathname] ?? 'dashboard.title')
+    : pathname === '/orders/new'
+      ? 'orders.newOrder'
+      : pathname.startsWith('/orders')
+        ? 'orders.title'
+        : (pathToTitleKey[pathname] ?? 'dashboard.title')
   const lowStockHref = '/products?lowStock=1'
 
   return (

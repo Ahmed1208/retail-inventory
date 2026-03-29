@@ -2,6 +2,8 @@
 
 export interface Product {
   id: string
+  /** Unique business / POS id (set manually or auto-generated). */
+  product_code: string
   name: string
   brand_id: string | null
   category_id: string | null
@@ -69,6 +71,7 @@ export interface StockMovementWithProductDetails extends StockMovement {
 
 export type OrderType = 'retail' | 'wholesale'
 export type OrderStatus = 'pending' | 'completed' | 'cancelled'
+export type OrderStatusFlow = 'draft' | 'confirmed' | 'completed' | 'cancelled'
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
 
 export type PersonRole = 'customer' | 'supplier'
@@ -117,10 +120,17 @@ export interface Order {
   order_number: number
   type: OrderType
   status: OrderStatus
+  status_flow: OrderStatusFlow
   payment_method: PaymentMethod | null
   note: string | null
   total_amount: number
   person_id: string | null
+  paid_amount: number
+  remaining_amount: number
+  discount_amount: number
+  discount_rate: number
+  subtotal: number
+  allow_remaining_on_account: boolean
   created_at: string
   updated_at: string
 }
@@ -132,6 +142,7 @@ export interface OrderItem {
   quantity: number
   unit_price: number
   total_price: number
+  line_discount_rate: number
   created_at: string
 }
 
@@ -146,10 +157,23 @@ export interface OrderPayment {
   amount: number
 }
 
+export interface PaymentInstallment {
+  id: string
+  order_id: string
+  method: PaymentMethod
+  amount: number
+  note: string | null
+  created_at: string
+}
+
 export interface OrderWithItems extends Order {
   items: OrderItemWithProduct[]
   /** When present, order was paid with multiple methods; otherwise use payment_method */
   payments?: OrderPayment[]
+}
+
+export interface OrderWithItemsAndPayments extends OrderWithItems {
+  payment_installments: PaymentInstallment[]
 }
 
 // ============ Purchase Order types ============
