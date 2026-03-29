@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AppLayout } from '@/components/layout/AppLayout'
+import { FeatureControlProvider } from '@/context/FeatureControlContext'
 import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
 import { StockMovements } from '@/pages/StockMovements'
@@ -20,6 +21,7 @@ import { NotFound } from '@/pages/NotFound'
 function App() {
   return (
     <ErrorBoundary>
+      <FeatureControlProvider>
       <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
         <AppLayout>
           <Routes>
@@ -38,11 +40,16 @@ function App() {
               path="/reports"
               element={<Navigate to="/?tab=reports" replace />}
             />
+            <Route
+              path="/control"
+              element={<Navigate to="/?tab=control" replace />}
+            />
             <Route path="/purchase-orders" element={<PurchaseOrders />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
       </Suspense>
+      </FeatureControlProvider>
     </ErrorBoundary>
   )
 }

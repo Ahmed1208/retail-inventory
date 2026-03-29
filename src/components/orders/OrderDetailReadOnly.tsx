@@ -19,6 +19,10 @@ export function OrderDetailReadOnly({
   lang,
   fc,
   people,
+  canPrint = true,
+  canCancel = true,
+  canAddPayment = true,
+  canEditNote = true,
   onPrint,
   onCancel,
   onAddPayment,
@@ -29,6 +33,10 @@ export function OrderDetailReadOnly({
   lang: 'en' | 'ar'
   fc: (n: number) => string
   people: Person[]
+  canPrint?: boolean
+  canCancel?: boolean
+  canAddPayment?: boolean
+  canEditNote?: boolean
   onPrint: () => void
   onCancel: () => void
   onAddPayment: () => void
@@ -50,9 +58,9 @@ export function OrderDetailReadOnly({
       ? Math.min(100, (order.paid_amount / order.total_amount) * 100)
       : 0
 
-  const canCancel =
+  const statusAllowsCancel =
     order.status_flow !== 'cancelled' && order.status_flow !== 'completed'
-  const canAddPay =
+  const statusAllowsAddPay =
     order.remaining_amount > 0.01 &&
     order.status_flow !== 'draft' &&
     order.status_flow !== 'cancelled' &&
@@ -95,11 +103,13 @@ export function OrderDetailReadOnly({
           </span>
         </div>
         <div className="ms-auto flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={onPrint}>
-            <Printer className="me-2 h-4 w-4" />
-            {t('orders.printInvoice')}
-          </Button>
-          {canCancel && (
+          {canPrint && (
+            <Button type="button" variant="outline" onClick={onPrint}>
+              <Printer className="me-2 h-4 w-4" />
+              {t('orders.printInvoice')}
+            </Button>
+          )}
+          {canCancel && statusAllowsCancel && (
             <Button type="button" variant="destructive" onClick={onCancel}>
               {t('orders.cancelOrder')}
             </Button>
@@ -178,7 +188,7 @@ export function OrderDetailReadOnly({
             style={{ width: `${paidRatio}%` }}
           />
         </div>
-        {canAddPay && (
+        {canAddPayment && statusAllowsAddPay && (
           <Button
             type="button"
             className="mt-3"
@@ -228,12 +238,15 @@ export function OrderDetailReadOnly({
             value={localNote}
             onChange={(e) => setLocalNote(e.target.value)}
             onBlur={() => {
-              if (localNote !== (order.note ?? '')) {
+              if (
+                canEditNote &&
+                localNote !== (order.note ?? '')
+              ) {
                 noteMut.mutate({ id: order.id, text: localNote })
               }
             }}
             rows={4}
-            disabled={noteMut.isPending}
+            disabled={noteMut.isPending || !canEditNote}
           />
         </div>
       </div>

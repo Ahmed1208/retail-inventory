@@ -66,6 +66,7 @@ import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const productSchema = z
   .object({
@@ -121,6 +122,11 @@ export function Products() {
   const [deleteProductState, setDeleteProductState] =
     useState<ProductWithRelations | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
+
+  const canAddProduct = useFeatureEnabled('products.addProduct')
+  const canEditProduct = useFeatureEnabled('products.editProduct')
+  const canDeleteProduct = useFeatureEnabled('products.deleteProduct')
+  const canStockAdjust = useFeatureEnabled('products.stockAdjust')
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -230,44 +236,54 @@ export function Products() {
         accessorKey: 'unit',
         header: t('products.unit'),
       },
-      {
-        id: 'actions',
-        header: t('common.actions'),
-        cell: ({ row }) => {
-          const p = row.original
-          return (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditProduct(p)}
-                aria-label={t('common.edit')}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setStockProduct(p)}
-                aria-label={t('products.stockAdjust')}
-              >
-                <ArrowLeftRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDeleteProductState(p)}
-                aria-label={t('common.delete')}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          )
-        },
-      },
+      ...(canEditProduct || canStockAdjust || canDeleteProduct
+        ? [
+            {
+              id: 'actions',
+              header: t('common.actions'),
+              cell: ({ row }: { row: { original: ProductWithRelations } }) => {
+                const p = row.original
+                return (
+                  <div className="flex items-center gap-1">
+                    {canEditProduct && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditProduct(p)}
+                        aria-label={t('common.edit')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canStockAdjust && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setStockProduct(p)}
+                        aria-label={t('products.stockAdjust')}
+                      >
+                        <ArrowLeftRight className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteProduct && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteProductState(p)}
+                        aria-label={t('common.delete')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )
+              },
+            } satisfies ColumnDef<ProductWithRelations>,
+          ]
+        : []),
     ],
-    [t]
+    [t, canEditProduct, canStockAdjust, canDeleteProduct]
   )
 
   const table = useReactTable({
@@ -329,16 +345,23 @@ export function Products() {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={() => setAddOpen(true)}>
-          {t('products.addProduct')}
-        </Button>
+        {canAddProduct && (
+          <Button onClick={() => setAddOpen(true)}>
+            {t('products.addProduct')}
+          </Button>
+        )}
       </div>
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {productsLoading ? (
           <div className="p-4">
-            <LoadingSkeleton rows={8} columns={9} />
+            <LoadingSkeleton
+              rows={8}
+              columns={
+                canEditProduct || canStockAdjust || canDeleteProduct ? 9 : 8
+              }
+            />
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">

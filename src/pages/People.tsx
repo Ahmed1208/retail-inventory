@@ -71,6 +71,7 @@ import {
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const DEBOUNCE_MS = 300
 
@@ -153,6 +154,12 @@ export function People() {
   const [paymentPerson, setPaymentPerson] = useState<Person | null>(null)
   const [profilePerson, setProfilePerson] = useState<Person | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
+
+  const canViewProfile = useFeatureEnabled('people.viewProfile')
+  const canEditPerson = useFeatureEnabled('people.editPerson')
+  const canDeletePerson = useFeatureEnabled('people.deletePerson')
+  const canRecordPayment = useFeatureEnabled('people.recordPayment')
+  const canAddPerson = useFeatureEnabled('people.addPerson')
 
   useEffect(() => {
     document.title = 'People | StockPilot'
@@ -268,14 +275,16 @@ export function People() {
             <SelectItem value="has">{t('people.filterDiscountHas')}</SelectItem>
           </SelectContent>
         </Select>
-        <Button
-          onClick={() => {
-            setEditing(null)
-            setFormOpen(true)
-          }}
-        >
-          {t('people.addPerson')}
-        </Button>
+        {canAddPerson && (
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setFormOpen(true)
+            }}
+          >
+            {t('people.addPerson')}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -366,42 +375,50 @@ export function People() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('people.viewProfile')}
-                          onClick={() => setProfilePerson(p)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('common.edit')}
-                          onClick={() => {
-                            setEditing(p)
-                            setFormOpen(true)
-                          }}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('people.recordPayment')}
-                          onClick={() => setPaymentPerson(p)}
-                        >
-                          <Wallet className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={t('common.delete')}
-                          className="text-destructive"
-                          onClick={() => setDeleteTarget(p)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canViewProfile && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('people.viewProfile')}
+                            onClick={() => setProfilePerson(p)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canEditPerson && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('common.edit')}
+                            onClick={() => {
+                              setEditing(p)
+                              setFormOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canRecordPayment && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('people.recordPayment')}
+                            onClick={() => setPaymentPerson(p)}
+                          >
+                            <Wallet className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canDeletePerson && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={t('common.delete')}
+                            className="text-destructive"
+                            onClick={() => setDeleteTarget(p)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -908,6 +925,8 @@ function PersonProfileDialog({
     'overview' | 'history' | 'orders' | 'pos'
   >('overview')
   const [txType, setTxType] = useState<BalanceTransactionType | 'all'>('all')
+  const canEditPerson = useFeatureEnabled('people.editPerson')
+  const canRecordPaymentFc = useFeatureEnabled('people.recordPayment')
 
   useEffect(() => {
     if (person) setTab('overview')
@@ -1004,12 +1023,20 @@ function PersonProfileDialog({
               </p>
               <p className="text-sm text-muted-foreground">{explanation}</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => onEdit(person)}>
-                {t('people.editPerson')}
-              </Button>
-              <Button onClick={() => onPay(person)}>{t('people.recordPayment')}</Button>
-            </div>
+            {(canEditPerson || canRecordPaymentFc) && (
+              <div className="flex flex-wrap gap-2">
+                {canEditPerson && (
+                  <Button variant="outline" onClick={() => onEdit(person)}>
+                    {t('people.editPerson')}
+                  </Button>
+                )}
+                {canRecordPaymentFc && (
+                  <Button onClick={() => onPay(person)}>
+                    {t('people.recordPayment')}
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-border pb-2">

@@ -44,6 +44,7 @@ import {
   type LineRow,
   type TFn,
 } from '@/components/orders/ordersShared'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 /** # · ID · name · stock · qty · price+reset · % · total · (actions) */
 const POS_TABLE_GRID =
@@ -68,6 +69,8 @@ export function PosOrderForm({
   const navigate = useNavigate()
   const qc = useQueryClient()
   const fc = useCallback((n: number) => formatCurrency(n, lang), [lang])
+  const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
+  const canCheckout = useFeatureEnabled('orders.posCheckout')
 
   const [browserOpen, setBrowserOpen] = useState(false)
   const [browserTargetLineKey, setBrowserTargetLineKey] = useState<
@@ -743,21 +746,23 @@ export function PosOrderForm({
         <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100 sm:text-xs">
           {t('orders.draft')}
         </span>
-        <div className="ms-auto">
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-8 text-xs"
-            disabled={!hasValidLines || saveMut.isPending}
-            onClick={() => saveMut.mutate()}
-          >
-            {saveMut.isPending && (
-              <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
-            )}
-            {t('orders.saveDraft')}
-          </Button>
-        </div>
+        {canSaveDraft && (
+          <div className="ms-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={!hasValidLines || saveMut.isPending}
+              onClick={() => saveMut.mutate()}
+            >
+              {saveMut.isPending && (
+                <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              {t('orders.saveDraft')}
+            </Button>
+          </div>
+        )}
       </header>
 
       <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-1.5 border-b bg-background px-2 py-1.5">
@@ -927,16 +932,18 @@ export function PosOrderForm({
               {t('orders.remaining')}: {fc(remainingPreview)}
             </span>
           </div>
-          <Button
-            type="button"
-            className="h-9 shrink-0"
-            disabled={
-              !hasValidLines || !stockOk || confirmMut.isPending
-            }
-            onClick={() => setCheckoutOpen(true)}
-          >
-            {t('orders.checkout')}
-          </Button>
+          {canCheckout && (
+            <Button
+              type="button"
+              className="h-9 shrink-0"
+              disabled={
+                !hasValidLines || !stockOk || confirmMut.isPending
+              }
+              onClick={() => setCheckoutOpen(true)}
+            >
+              {t('orders.checkout')}
+            </Button>
+          )}
         </div>
       </footer>
     </div>

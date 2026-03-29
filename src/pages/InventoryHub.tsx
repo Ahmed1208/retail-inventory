@@ -10,17 +10,39 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const sections = [
-  { to: '/products', icon: Package, key: 'nav.products' },
-  { to: '/purchase-orders', icon: Truck, key: 'nav.purchaseOrders' },
-  { to: '/movements', icon: ArrowLeftRight, key: 'nav.stockMovements' },
-  { to: '/categories', icon: Tag, key: 'nav.categories' },
-  { to: '/brands', icon: Layers, key: 'nav.brands' },
+  { to: '/products', icon: Package, key: 'nav.products', feature: 'inventory.hubProducts' },
+  {
+    to: '/purchase-orders',
+    icon: Truck,
+    key: 'nav.purchaseOrders',
+    feature: 'inventory.hubPurchaseOrders',
+  },
+  { to: '/movements', icon: ArrowLeftRight, key: 'nav.stockMovements', feature: 'inventory.hubMovements' },
+  { to: '/categories', icon: Tag, key: 'nav.categories', feature: 'inventory.hubCategories' },
+  { to: '/brands', icon: Layers, key: 'nav.brands', feature: 'inventory.hubBrands' },
 ] as const
+
+type HubSection = (typeof sections)[number]
+type HubFeatureId = HubSection['feature']
 
 export function InventoryHub() {
   const { t } = useTranslation()
+  const hubProducts = useFeatureEnabled('inventory.hubProducts')
+  const hubPo = useFeatureEnabled('inventory.hubPurchaseOrders')
+  const hubMovements = useFeatureEnabled('inventory.hubMovements')
+  const hubCategories = useFeatureEnabled('inventory.hubCategories')
+  const hubBrands = useFeatureEnabled('inventory.hubBrands')
+  const hubFlags: Record<HubFeatureId, boolean> = {
+    'inventory.hubProducts': hubProducts,
+    'inventory.hubPurchaseOrders': hubPo,
+    'inventory.hubMovements': hubMovements,
+    'inventory.hubCategories': hubCategories,
+    'inventory.hubBrands': hubBrands,
+  }
+  const visibleSections = sections.filter((s) => hubFlags[s.feature])
 
   useEffect(() => {
     document.title = `${t('nav.inventory')} | StockPilot`
@@ -40,24 +62,30 @@ export function InventoryHub() {
         </p>
       </div>
 
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {sections.map(({ to, icon: Icon, key }) => (
-          <li key={to}>
-            <Link
-              to={to}
-              className={cn(
-                'flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-sm',
-                'transition-colors hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-              )}
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <Icon className="h-6 w-6" aria-hidden />
-              </span>
-              <span className="text-base font-medium">{t(key)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {visibleSections.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {t('control.disabled.inventoryHubAllOff')}
+        </p>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleSections.map(({ to, icon: Icon, key }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                className={cn(
+                  'flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-sm',
+                  'transition-colors hover:bg-muted/50 hover:border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                )}
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon className="h-6 w-6" aria-hidden />
+                </span>
+                <span className="text-base font-medium">{t(key)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

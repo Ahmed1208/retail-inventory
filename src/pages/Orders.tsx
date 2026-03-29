@@ -17,6 +17,7 @@ import {
   statusBadgeClass,
   statusFlowLabel,
 } from '@/components/orders/ordersShared'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 type StatusTab = 'all' | OrderStatusFlow
 
@@ -25,6 +26,7 @@ export function Orders() {
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
   const fc = (n: number) => formatCurrency(n, lang)
+  const hubList = useFeatureEnabled('orders.hubList')
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
@@ -70,6 +72,26 @@ export function Orders() {
     }
     return c
   }, [ordersRaw])
+
+  if (!hubList) {
+    return (
+      <div
+        className={cn('flex min-h-0 flex-1 flex-col p-6', isRTL && 'rtl')}
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <Link
+          to="/orders"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-2 w-fit')}
+        >
+          <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+          {t('orders.backToOrders')}
+        </Link>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {t('control.disabled.ordersList')}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div

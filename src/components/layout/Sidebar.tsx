@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { LayoutDashboard, ShoppingCart, Users, Warehouse } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const INVENTORY_PATHS = [
   '/inventory',
@@ -49,6 +50,9 @@ interface SidebarProps {
 export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
+  const showInventoryNav = useFeatureEnabled('sidebar.inventory')
+  const showOrdersNav = useFeatureEnabled('sidebar.orders')
+  const showPeopleNav = useFeatureEnabled('sidebar.people')
 
   const content = (
     <>
@@ -64,39 +68,45 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
           <span>{t('nav.dashboard')}</span>
         </NavLink>
 
-        <NavLink
-          to="/inventory"
-          end
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            linkClass({
-              isActive: isActive || pathMatchesInventory(pathname),
-            })
-          }
-        >
-          <Warehouse className="h-5 w-5 shrink-0" aria-hidden />
-          <span>{t('nav.inventory')}</span>
-        </NavLink>
-
-        {afterInventoryNav.map(({ to, icon: Icon, key }) => (
+        {showInventoryNav && (
           <NavLink
-            key={to}
-            to={to}
-            end={false}
+            to="/inventory"
+            end
             onClick={onNavigate}
             className={({ isActive }) =>
               linkClass({
-                isActive:
-                  to === ORDERS_PREFIX
-                    ? isActive || pathMatchesOrders(pathname)
-                    : isActive,
+                isActive: isActive || pathMatchesInventory(pathname),
               })
             }
           >
-            <Icon className="h-5 w-5 shrink-0" aria-hidden />
-            <span>{t(key)}</span>
+            <Warehouse className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.inventory')}</span>
           </NavLink>
-        ))}
+        )}
+
+        {afterInventoryNav.map(({ to, icon: Icon, key }) => {
+          if (to === ORDERS_PREFIX && !showOrdersNav) return null
+          if (to === '/people' && !showPeopleNav) return null
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={false}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                linkClass({
+                  isActive:
+                    to === ORDERS_PREFIX
+                      ? isActive || pathMatchesOrders(pathname)
+                      : isActive,
+                })
+              }
+            >
+              <Icon className="h-5 w-5 shrink-0" aria-hidden />
+              <span>{t(key)}</span>
+            </NavLink>
+          )
+        })}
       </nav>
 
       <div className="border-t border-white/10 p-3">

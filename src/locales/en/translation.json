@@ -11,7 +11,8 @@
     "categories": "Categories",
     "brands": "Brands",
     "stockMovements": "Stock Movements",
-    "reports": "Reports"
+    "reports": "Reports",
+    "control": "Control"
   },
   "common": {
     "search": "Search",
@@ -53,7 +54,203 @@
     "emptyLowStock": "No low stock items. All products are well stocked.",
     "totalPurchasesToday": "Purchase Orders Today",
     "totalReceivables": "Total Receivables",
-    "totalPayables": "Total Payables"
+    "totalPayables": "Total Payables",
+    "controlTab": "Control"
+  },
+  "control": {
+    "title": "Control",
+    "pageTitle": "Control | StockPilot",
+    "intro": "Turn features on or off for this browser. Each item describes what it affects in the app.",
+    "securityNote": "These toggles only hide or show UI. They do not block API access. Use database policies for real enforcement.",
+    "resetDefaults": "Reset all to defaults",
+    "disabled": {
+      "newOrder": "Creating new orders is turned off in Control settings.",
+      "editDraft": "Editing draft orders is turned off in Control settings.",
+      "ordersList": "The order list is turned off in Control settings.",
+      "noOrderShortcuts": "All order hub shortcuts are turned off in Control settings.",
+      "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings."
+    },
+    "area": {
+      "sidebar": "Navigation",
+      "inventoryHub": "Inventory hub",
+      "people": "People",
+      "products": "Products",
+      "categories": "Categories",
+      "brands": "Brands",
+      "purchaseOrders": "Purchase orders",
+      "orders": "Sales orders",
+      "reports": "Reports"
+    },
+    "sidebar": {
+      "groupNav": "Sidebar links",
+      "inventory": {
+        "title": "Inventory menu",
+        "desc": "Shows the Inventory item in the sidebar (hub and sub-routes)."
+      },
+      "orders": {
+        "title": "Orders menu",
+        "desc": "Shows the Orders item in the sidebar."
+      },
+      "people": {
+        "title": "People menu",
+        "desc": "Shows the People item in the sidebar."
+      }
+    },
+    "inventoryHub": {
+      "groupLinks": "Hub shortcuts",
+      "products": {
+        "title": "Products card",
+        "desc": "Link from the inventory hub to the products list."
+      },
+      "po": {
+        "title": "Purchase orders card",
+        "desc": "Link from the inventory hub to purchase orders."
+      },
+      "movements": {
+        "title": "Stock movements card",
+        "desc": "Link from the inventory hub to stock movements."
+      },
+      "categories": {
+        "title": "Categories card",
+        "desc": "Link from the inventory hub to categories."
+      },
+      "brands": {
+        "title": "Brands card",
+        "desc": "Link from the inventory hub to brands."
+      }
+    },
+    "people": {
+      "groupList": "List and profile",
+      "groupCreate": "Create",
+      "viewProfile": {
+        "title": "View profile",
+        "desc": "Shows the eye icon and allows opening the person profile dialog with balance and history."
+      },
+      "editPerson": {
+        "title": "Edit person",
+        "desc": "Allows editing customer or supplier details from the list and from the profile dialog."
+      },
+      "deletePerson": {
+        "title": "Delete person",
+        "desc": "Shows the delete action when allowed by business rules."
+      },
+      "recordPayment": {
+        "title": "Record payment",
+        "desc": "Allows recording balance payments from the list and profile."
+      },
+      "addPerson": {
+        "title": "Add person",
+        "desc": "Shows the button to create a new customer or supplier."
+      }
+    },
+    "products": {
+      "group": "Product list",
+      "add": {
+        "title": "Add product",
+        "desc": "Shows the Add product button on the products page."
+      },
+      "edit": {
+        "title": "Edit product",
+        "desc": "Shows the edit (pencil) action for each product row."
+      },
+      "delete": {
+        "title": "Delete product",
+        "desc": "Shows the delete action for each product row."
+      },
+      "stockAdjust": {
+        "title": "Stock adjustment",
+        "desc": "Shows the stock adjust action to change quantity manually."
+      }
+    },
+    "categories": {
+      "group": "Categories",
+      "add": {
+        "title": "Add category",
+        "desc": "Shows the add category button."
+      },
+      "edit": {
+        "title": "Edit category",
+        "desc": "Shows inline edit for a category name."
+      },
+      "delete": {
+        "title": "Delete category",
+        "desc": "Shows the delete action for a category."
+      }
+    },
+    "brands": {
+      "group": "Brands",
+      "add": {
+        "title": "Add brand",
+        "desc": "Shows the add brand button."
+      },
+      "edit": {
+        "title": "Edit brand",
+        "desc": "Shows inline edit for a brand name."
+      },
+      "delete": {
+        "title": "Delete brand",
+        "desc": "Shows the delete action for a brand."
+      }
+    },
+    "purchaseOrders": {
+      "group": "Purchase orders",
+      "create": {
+        "title": "Create purchase order",
+        "desc": "Shows the new purchase order button and create dialog."
+      },
+      "cancel": {
+        "title": "Cancel purchase order",
+        "desc": "Shows the cancel action on received purchase orders."
+      }
+    },
+    "orders": {
+      "groupHub": "Orders hub",
+      "hubList": {
+        "title": "All orders card",
+        "desc": "Shows the shortcut to the orders list on the orders home page."
+      },
+      "hubNew": {
+        "title": "New order card",
+        "desc": "Shows the shortcut to create a new order and enables the new-order page."
+      },
+      "groupPos": "POS (draft / new)",
+      "editDraft": {
+        "title": "Edit draft orders",
+        "desc": "Allows opening the POS editor for draft orders from the order detail page."
+      },
+      "saveDraft": {
+        "title": "Save draft",
+        "desc": "Shows the Save draft button in the POS header."
+      },
+      "checkout": {
+        "title": "Checkout",
+        "desc": "Shows the Checkout button and checkout flow (payments and confirm)."
+      },
+      "groupConfirmed": "Confirmed / active orders",
+      "print": {
+        "title": "Print invoice",
+        "desc": "Shows print invoice on the order detail page."
+      },
+      "cancel": {
+        "title": "Cancel order",
+        "desc": "Shows cancel order on the order detail page when status allows."
+      },
+      "addPayment": {
+        "title": "Add payment",
+        "desc": "Shows add payment when the order has a remaining balance."
+      },
+      "editNote": {
+        "title": "Edit order note",
+        "desc": "Allows editing the order note field on the detail page."
+      }
+    },
+    "reports": {
+      "group": "Reports tab",
+      "export": {
+        "title": "Export CSV",
+        "desc": "Shows export to CSV on dashboard reports (e.g. inventory value)."
+      }
+    }
   },
   "products": {
     "title": "Products",

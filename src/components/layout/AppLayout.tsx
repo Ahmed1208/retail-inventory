@@ -44,8 +44,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const lowStockCount = lowStockProducts.length
   const dashboardReportsTab =
     pathname === '/' && searchParams.get('tab') === 'reports'
+  const dashboardControlTab =
+    pathname === '/' && searchParams.get('tab') === 'control'
   const pageTitle = dashboardReportsTab
     ? 'reports.title'
+    : dashboardControlTab
+      ? 'control.title'
     : pathname === '/orders/new'
       ? 'orders.newOrder'
       : pathname.startsWith('/orders')

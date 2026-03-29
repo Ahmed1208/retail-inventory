@@ -49,6 +49,7 @@ import {
   PAYMENT_METHODS,
   paymentLabel,
 } from '@/components/orders/ordersShared'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -66,6 +67,12 @@ export function OrderDetail() {
   const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
+
+  const canEditDraftPos = useFeatureEnabled('orders.editDraftPos')
+  const canPrintInvoice = useFeatureEnabled('orders.printInvoice')
+  const canCancelOrder = useFeatureEnabled('orders.cancelOrder')
+  const canAddPaymentFc = useFeatureEnabled('orders.addPayment')
+  const canEditNote = useFeatureEnabled('orders.editNote')
 
   const { data: people = [] } = useQuery({
     queryKey: ['people'],
@@ -206,12 +213,18 @@ export function OrderDetail() {
       </div>
 
       {order.status_flow === 'draft' ? (
-        <PosOrderForm
-          key={order.id}
-          draftOrderId={order.id}
-          initialDraft={order}
-          isLoadingDraft={false}
-        />
+        canEditDraftPos ? (
+          <PosOrderForm
+            key={order.id}
+            draftOrderId={order.id}
+            initialDraft={order}
+            isLoadingDraft={false}
+          />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+            {t('control.disabled.editDraft')}
+          </div>
+        )
       ) : (
         <OrderDetailReadOnly
           order={order}
@@ -219,6 +232,10 @@ export function OrderDetail() {
           lang={lang}
           fc={fc}
           people={people}
+          canPrint={canPrintInvoice}
+          canCancel={canCancelOrder}
+          canAddPayment={canAddPaymentFc}
+          canEditNote={canEditNote}
           onPrint={() => handlePrint(order)}
           onCancel={() => setCancelOpen(true)}
           onAddPayment={() => setPayOpen(true)}

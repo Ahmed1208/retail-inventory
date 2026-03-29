@@ -33,6 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 export function Brands() {
   const { t, i18n } = useTranslation()
@@ -46,6 +47,17 @@ export function Brands() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
   const [deleteBrandState, setDeleteBrandState] = useState<Brand | null>(null)
+
+  const canAddBrand = useFeatureEnabled('brands.addBrand')
+  const canEditBrand = useFeatureEnabled('brands.editBrand')
+  const canDeleteBrand = useFeatureEnabled('brands.deleteBrand')
+
+  useEffect(() => {
+    if (!canEditBrand) {
+      setEditingId(null)
+      setEditingName('')
+    }
+  }, [canEditBrand])
 
   useEffect(() => {
     document.title = 'Brands | StockPilot'
@@ -163,7 +175,9 @@ export function Brands() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <Button onClick={() => setAddOpen(true)}>{t('brands.addBrand')}</Button>
+        {canAddBrand && (
+          <Button onClick={() => setAddOpen(true)}>{t('brands.addBrand')}</Button>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -202,7 +216,7 @@ export function Brands() {
                     className="border-b border-border/50 hover:bg-muted/30"
                   >
                     <td className="px-4 py-3">
-                      {editingId === brand.id ? (
+                      {editingId === brand.id && canEditBrand ? (
                         <Input
                           value={editingName}
                           onChange={(e) => setEditingName(e.target.value)}
@@ -228,7 +242,7 @@ export function Brands() {
                       {formatDate(brand.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      {editingId === brand.id ? (
+                      {editingId === brand.id && canEditBrand ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -236,29 +250,35 @@ export function Brands() {
                         >
                           {t('common.save')}
                         </Button>
-                      ) : (
+                      ) : canEditBrand || canDeleteBrand ? (
                         <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingId(brand.id)
-                              setEditingName(brand.name)
-                            }}
-                            aria-label={t('common.edit')}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteBrandState(brand)}
-                            aria-label={t('common.delete')}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEditBrand && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingId(brand.id)
+                                setEditingName(brand.name)
+                              }}
+                              aria-label={t('common.edit')}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDeleteBrand && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteBrandState(brand)}
+                              aria-label={t('common.delete')}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>

@@ -46,6 +46,7 @@ import {
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const DEBOUNCE_MS = 300
 
@@ -98,6 +99,9 @@ export function PurchaseOrders() {
   const [detailPO, setDetailPO] = useState<PurchaseOrderWithItems | null>(null)
   const [cancelPOState, setCancelPOState] =
     useState<PurchaseOrderWithItems | null>(null)
+
+  const canCreatePO = useFeatureEnabled('purchaseOrders.create')
+  const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
 
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
 
@@ -199,9 +203,11 @@ export function PurchaseOrders() {
           className="w-[140px]"
           aria-label={t('purchaseOrders.dateTo')}
         />
-        <Button onClick={() => setCreateOpen(true)}>
-          {t('purchaseOrders.newPurchaseOrder')}
-        </Button>
+        {canCreatePO && (
+          <Button onClick={() => setCreateOpen(true)}>
+            {t('purchaseOrders.newPurchaseOrder')}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -284,7 +290,7 @@ export function PurchaseOrders() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {po.status === 'received' && (
+                        {po.status === 'received' && canCancelPO && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -328,6 +334,7 @@ export function PurchaseOrders() {
           t={t}
           formatCurrency={formatCurrencyDisplay}
           formatDate={formatDate}
+          canCancel={canCancelPO}
           onCancelClick={() => {
             setDetailPO(null)
             setCancelPOState(detailPO)
@@ -899,6 +906,7 @@ function PODetailDialog({
   t,
   formatCurrency,
   formatDate,
+  canCancel,
   onCancelClick,
 }: {
   po: PurchaseOrderWithItems
@@ -907,6 +915,7 @@ function PODetailDialog({
   t: (k: string) => string
   formatCurrency: (n: number) => string
   formatDate: (iso: string) => string
+  canCancel: boolean
   onCancelClick: () => void
 }) {
   return (
@@ -992,7 +1001,7 @@ function PODetailDialog({
           <p className="text-sm font-semibold">
             {t('purchaseOrders.totalAmount')}: {formatCurrency(po.total_amount)}
           </p>
-          {po.status === 'received' && (
+          {po.status === 'received' && canCancel && (
             <Button variant="destructive" onClick={onCancelClick}>
               {t('purchaseOrders.cancelPurchaseOrder')}
             </Button>

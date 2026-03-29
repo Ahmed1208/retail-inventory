@@ -20,6 +20,7 @@ import {
 import type { StockMovementType } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { ControlPanel } from '@/components/control/ControlPanel'
 import { Reports } from '@/pages/Reports'
 
 const REFETCH_INTERVAL_MS = 60_000
@@ -113,24 +114,34 @@ export function Dashboard() {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
   const activeTab =
-    searchParams.get('tab') === 'reports' ? 'reports' : 'main'
+    tabParam === 'reports'
+      ? 'reports'
+      : tabParam === 'control'
+        ? 'control'
+        : 'main'
   const mainTabId = useId()
   const reportsTabId = useId()
+  const controlTabId = useId()
 
   useEffect(() => {
     document.title =
-      activeTab === 'reports' ? 'Reports | StockPilot' : 'Dashboard | StockPilot'
+      activeTab === 'reports'
+        ? 'Reports | StockPilot'
+        : activeTab === 'control'
+          ? t('control.pageTitle')
+          : 'Dashboard | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [activeTab])
+  }, [activeTab, t])
 
-  const setTab = (tab: 'main' | 'reports') => {
-    if (tab === 'reports') {
-      setSearchParams({ tab: 'reports' }, { replace: true })
-    } else {
+  const setTab = (tab: 'main' | 'reports' | 'control') => {
+    if (tab === 'main') {
       setSearchParams({}, { replace: true })
+    } else {
+      setSearchParams({ tab }, { replace: true })
     }
   }
 
@@ -193,6 +204,17 @@ export function Dashboard() {
           onClick={() => setTab('reports')}
         >
           {t('nav.reports')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id={controlTabId}
+          aria-selected={activeTab === 'control'}
+          aria-controls="dashboard-control-panel"
+          className={tabBtnClass(activeTab === 'control')}
+          onClick={() => setTab('control')}
+        >
+          {t('dashboard.controlTab')}
         </button>
       </div>
 
@@ -399,7 +421,7 @@ export function Dashboard() {
         </div>
       </div>
         </section>
-      ) : (
+      ) : activeTab === 'reports' ? (
         <section
           id="dashboard-reports-panel"
           role="tabpanel"
@@ -408,6 +430,8 @@ export function Dashboard() {
         >
           <Reports embedded />
         </section>
+      ) : (
+        <ControlPanel tabLabelledBy={controlTabId} />
       )}
     </div>
   )
