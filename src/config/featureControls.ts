@@ -34,6 +34,7 @@ export const FEATURE_CONTROL_IDS = [
   'brands.editBrand',
   'brands.deleteBrand',
   // Purchase orders
+  'purchaseOrders.hubList',
   'purchaseOrders.create',
   'purchaseOrders.cancel',
   // Orders / POS
@@ -276,6 +277,17 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
   {
     titleKey: 'control.area.purchaseOrders',
     groups: [
+      {
+        titleKey: 'control.purchaseOrders.groupHub',
+        items: [
+          {
+            id: 'purchaseOrders.hubList',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.hubList.title',
+            descriptionKey: 'control.purchaseOrders.hubList.desc',
+          },
+        ],
+      },
       {
         titleKey: 'control.purchaseOrders.group',
         items: [

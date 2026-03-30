@@ -235,7 +235,9 @@ export async function createPurchaseOrder(data: {
   supplier_name?: string
   note?: string
   person_id?: string
-  /** Multiple payments with amounts; sum must equal order total */
+  /** When true, unpaid remainder stays on the supplier balance (payables). */
+  allow_remaining_on_account?: boolean
+  /** Payments made now; remainder may stay on account if allowed. */
   payments?: { payment_method: PaymentMethod; amount: number }[]
   items: {
     product_id: string
@@ -262,12 +264,31 @@ export async function createPurchaseOrder(data: {
     0
   )
 
-  const payments = (data.payments ?? []).filter((p) => p.amount > 0)
-  const paymentsSum = payments.reduce((s, p) => s + p.amount, 0)
-  if (payments.length > 0 && Math.abs(paymentsSum - total_amount) > 0.01) {
-    throw new Error(
-      `Payment total (${paymentsSum}) must equal order total (${total_amount})`
-    )
+  const payments = (data.payments ?? [])
+    .map((p) => ({
+      payment_method: p.payment_method,
+      amount: roundMoney(p.amount),
+    }))
+    .filter((p) => p.amount > 0.001)
+  const paymentsSum = roundMoney(
+    payments.reduce((s, p) => s + p.amount, 0)
+  )
+  if (paymentsSum > roundMoney(total_amount) + 0.01) {
+    throw new Error('Payment total cannot exceed the purchase order total')
+  }
+  const remaining = roundMoney(total_amount - paymentsSum)
+  const allowRem = Boolean(data.allow_remaining_on_account)
+  if (remaining > 0.01) {
+    if (!allowRem) {
+      throw new Error(
+        'Pay the full amount or enable adding the remainder to the supplier balance'
+      )
+    }
+    if (!data.person_id) {
+      throw new Error(
+        'Select a supplier to carry a remaining balance on account'
+      )
+    }
   }
 
   // Get next order_number
@@ -372,31 +393,42 @@ export async function createPurchaseOrder(data: {
   }
 
   if (data.person_id) {
-    const delta = roundMoney(-total_amount)
-    const { error: btErr } = await supabase
-      .from('balance_transactions')
-      .insert({
-        person_id: data.person_id,
-        type: 'purchase_order',
-        amount: delta,
-        reference_id: orderId,
-        reference_number: `PO-${order_number}`,
-      })
-    if (btErr) throw btErr
-
-    const { data: balRow, error: bErr } = await supabase
+    const { data: balRow0, error: b0e } = await supabase
       .from('people')
       .select('balance')
       .eq('id', data.person_id)
       .single()
-    if (bErr) throw bErr
-    const newBal = roundMoney(
-      Number((balRow as { balance: number }).balance) + delta
-    )
+    if (b0e) throw b0e
+    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+
+    const liability = roundMoney(-total_amount)
+    const { error: bt1 } = await supabase.from('balance_transactions').insert({
+      person_id: data.person_id,
+      type: 'purchase_order',
+      amount: liability,
+      reference_id: orderId,
+      reference_number: `PO-${order_number}`,
+    })
+    if (bt1) throw bt1
+    bal = roundMoney(bal + liability)
+
+    if (paymentsSum > 0.01) {
+      const { error: bt2 } = await supabase.from('balance_transactions').insert({
+        person_id: data.person_id,
+        type: 'payment_out',
+        amount: roundMoney(paymentsSum),
+        reference_id: orderId,
+        reference_number: `PO-${order_number}`,
+        note: 'Payment at purchase order',
+      })
+      if (bt2) throw bt2
+      bal = roundMoney(bal + paymentsSum)
+    }
+
     const { error: pbErr } = await supabase
       .from('people')
       .update({
-        balance: newBal,
+        balance: bal,
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.person_id)
@@ -428,6 +460,32 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
   if (updateError) throw updateError
 
   if (order.person_id) {
+    const { data: balRow0, error: b0e } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', order.person_id)
+      .single()
+    if (b0e) throw b0e
+    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+
+    const paidAtPo = roundMoney(
+      (order.payments ?? []).reduce((s, p) => s + p.amount, 0)
+    )
+    if (paidAtPo > 0.01) {
+      const { error: btPayRev } = await supabase
+        .from('balance_transactions')
+        .insert({
+          person_id: order.person_id,
+          type: 'payment_out',
+          amount: roundMoney(-paidAtPo),
+          reference_id: order.id,
+          reference_number: `PO-${order.order_number}`,
+          note: 'Cancelled purchase order (reverse payment)',
+        })
+      if (btPayRev) throw btPayRev
+      bal = roundMoney(bal - paidAtPo)
+    }
+
     const reversal = roundMoney(order.total_amount)
     const { error: btErr } = await supabase
       .from('balance_transactions')
@@ -439,20 +497,12 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
         reference_number: `PO-${order.order_number}`,
       })
     if (btErr) throw btErr
+    bal = roundMoney(bal + reversal)
 
-    const { data: balRow, error: bErr } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (bErr) throw bErr
-    const newBal = roundMoney(
-      Number((balRow as { balance: number }).balance) + reversal
-    )
     const { error: pbErr } = await supabase
       .from('people')
       .update({
-        balance: newBal,
+        balance: bal,
         updated_at: new Date().toISOString(),
       })
       .eq('id', order.person_id)

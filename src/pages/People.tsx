@@ -1276,11 +1276,7 @@ function PersonProfileDialog({
                           type="button"
                           variant="link"
                           className="h-auto p-0"
-                          onClick={() =>
-                            navigate('/purchase-orders', {
-                              state: { openPOId: po.id },
-                            })
-                          }
+                          onClick={() => navigate(`/purchase-orders/${po.id}`)}
                         >
                           {t('people.openPO')}
                         </Button>

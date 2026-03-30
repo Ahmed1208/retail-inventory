@@ -54,6 +54,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       ? 'orders.newOrder'
       : pathname.startsWith('/orders')
         ? 'orders.title'
+    : pathname === '/purchase-orders/new'
+      ? 'purchaseOrders.newPurchaseOrder'
+      : pathname.startsWith('/purchase-orders')
+        ? 'purchaseOrders.title'
         : (pathToTitleKey[pathname] ?? 'dashboard.title')
   const lowStockHref = '/products?lowStock=1'
 

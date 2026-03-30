@@ -14,7 +14,10 @@ import { OrderDetail } from '@/pages/OrderDetail'
 import { People } from '@/pages/People'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
-import { PurchaseOrders } from '@/pages/PurchaseOrders'
+import { PurchaseOrdersHome } from '@/pages/PurchaseOrdersHome'
+import { PurchaseOrdersList } from '@/pages/PurchaseOrdersList'
+import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
+import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { NotFound } from '@/pages/NotFound'
 
@@ -44,7 +47,10 @@ function App() {
               path="/control"
               element={<Navigate to="/?tab=control" replace />}
             />
-            <Route path="/purchase-orders" element={<PurchaseOrders />} />
+            <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
+            <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />
+            <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
+            <Route path="/purchase-orders" element={<PurchaseOrdersHome />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>

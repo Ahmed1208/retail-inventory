@@ -26,7 +26,10 @@ type Props = {
   onOpenChange: (open: boolean) => void
   products: ProductWithRelations[]
   categories: Category[]
-  orderType: OrderType
+  /** Used when purpose is \"sale\" (POS) to show retail vs wholesale list price. */
+  orderType?: OrderType
+  /** \"sale\" = customer/business price; \"purchase\" = cost price (PO). */
+  purpose?: 'sale' | 'purchase'
   lang: 'en' | 'ar'
   isRTL: boolean
   onPick: (product: ProductWithRelations) => void
@@ -37,7 +40,8 @@ export function ProductBrowserModal({
   onOpenChange,
   products,
   categories,
-  orderType,
+  orderType = 'retail',
+  purpose = 'sale',
   lang,
   isRTL,
   onPick,
@@ -130,7 +134,11 @@ export function ProductBrowserModal({
   }, [open, filtered.length, highlight, pickAt, onOpenChange])
 
   const price = (p: ProductWithRelations) =>
-    orderType === 'retail' ? p.customer_price : p.business_price
+    purpose === 'purchase'
+      ? p.cost_price
+      : orderType === 'retail'
+        ? p.customer_price
+        : p.business_price
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -143,7 +151,11 @@ export function ProductBrowserModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="shrink-0 border-b px-4 py-3 text-start sm:text-start">
-          <DialogTitle className="text-lg">{t('orders.productBrowser')}</DialogTitle>
+          <DialogTitle className="text-lg">
+            {purpose === 'purchase'
+              ? t('purchaseOrders.productBrowser')
+              : t('orders.productBrowser')}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex shrink-0 flex-col gap-2 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center">
@@ -186,7 +198,9 @@ export function ProductBrowserModal({
         </div>
 
         <p className="shrink-0 px-4 py-2 text-xs text-muted-foreground">
-          {t('orders.pressF1')}
+          {purpose === 'purchase'
+            ? t('purchaseOrders.pressF1Products')
+            : t('orders.pressF1')}
         </p>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
@@ -215,9 +229,11 @@ export function ProductBrowserModal({
                       {t('orders.availableStock')}: {p.quantity}
                     </span>
                     <span className="tabular-nums">
-                      {orderType === 'retail'
-                        ? t('products.customerPrice')
-                        : t('products.businessPrice')}
+                      {purpose === 'purchase'
+                        ? t('products.costPrice')
+                        : orderType === 'retail'
+                          ? t('products.customerPrice')
+                          : t('products.businessPrice')}
                       : {formatCurrency(price(p), lang)}
                     </span>
                   </div>

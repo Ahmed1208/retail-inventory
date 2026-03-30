@@ -68,7 +68,10 @@
       "editDraft": "Editing draft orders is turned off in Control settings.",
       "ordersList": "The order list is turned off in Control settings.",
       "noOrderShortcuts": "All order hub shortcuts are turned off in Control settings.",
-      "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings."
+      "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings.",
+      "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
+      "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
+      "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings."
     },
     "area": {
       "sidebar": "Navigation",
@@ -193,14 +196,19 @@
       }
     },
     "purchaseOrders": {
+      "groupHub": "Purchase orders hub",
+      "hubList": {
+        "title": "All purchase orders card",
+        "desc": "Shows the shortcut to the purchase orders list on the purchase orders home page."
+      },
       "group": "Purchase orders",
       "create": {
         "title": "Create purchase order",
-        "desc": "Shows the new purchase order button and create dialog."
+        "desc": "Shows the new purchase order shortcut and enables the full-page create flow (supplier picker, product browser, lines, payments)."
       },
       "cancel": {
         "title": "Cancel purchase order",
-        "desc": "Shows the cancel action on received purchase orders."
+        "desc": "Shows the cancel action on received purchase orders (detail page)."
       }
     },
     "orders": {
@@ -480,6 +488,25 @@
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
+    "subtitle": "Receive stock from suppliers and track payables.",
+    "allPurchaseOrders": "All purchase orders",
+    "allPurchaseOrdersSubtitle": "Search, filter, and open any PO.",
+    "newPurchaseOrderSubtitle": "Full-screen flow: supplier, products, costs, and payments.",
+    "backToPurchaseOrders": "Back to purchase orders",
+    "backToList": "Back to list",
+    "supplierBrowser": "Choose supplier",
+    "searchSuppliers": "Search suppliers by name or phone...",
+    "pressF1Supplier": "Press F1 while the supplier field is focused to open this list. Arrow keys and Enter to select.",
+    "pressF1Products": "Press F1 (or Add products) to browse catalog by category and brand. Shows cost price.",
+    "noLinkedSupplier": "No linked supplier",
+    "noLinkedSupplierHint": "Enter a name manually below, or pick a supplier from your directory.",
+    "productBrowser": "Add product to purchase",
+    "productAlreadyInPo": "This product is already on the order.",
+    "addProductsHint": "Use Add products or press F1 to pick items from the catalog.",
+    "createSubmit": "Create purchase order",
+    "checkoutTitle": "Purchase order checkout",
+    "confirmCreatePo": "Confirm purchase order",
+    "addToBalanceHint": "Select a supplier to carry the remainder on their account (payables).",
     "searchPlaceholder": "Search by order number...",
     "filterStatusAll": "All",
     "filterStatusReceived": "Received",
