@@ -1,6 +1,6 @@
 import { useEffect, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   Package,
@@ -20,7 +20,6 @@ import {
 import type { StockMovementType } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
-import { ControlPanel } from '@/components/control/ControlPanel'
 import { Reports } from '@/pages/Reports'
 
 const REFETCH_INTERVAL_MS = 60_000
@@ -115,29 +114,19 @@ export function Dashboard() {
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const activeTab =
-    tabParam === 'reports'
-      ? 'reports'
-      : tabParam === 'control'
-        ? 'control'
-        : 'main'
+  const activeTab = tabParam === 'reports' ? 'reports' : 'main'
   const mainTabId = useId()
   const reportsTabId = useId()
-  const controlTabId = useId()
 
   useEffect(() => {
     document.title =
-      activeTab === 'reports'
-        ? 'Reports | StockPilot'
-        : activeTab === 'control'
-          ? t('control.pageTitle')
-          : 'Dashboard | StockPilot'
+      activeTab === 'reports' ? 'Reports | StockPilot' : 'Dashboard | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [activeTab, t])
+  }, [activeTab])
 
-  const setTab = (tab: 'main' | 'reports' | 'control') => {
+  const setTab = (tab: 'main' | 'reports') => {
     if (tab === 'main') {
       setSearchParams({}, { replace: true })
     } else {
@@ -176,6 +165,10 @@ export function Dashboard() {
         : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
     )
 
+  if (tabParam === 'control') {
+    return <Navigate to="/control" replace />
+  }
+
   return (
     <div className="space-y-6">
       <div
@@ -204,17 +197,6 @@ export function Dashboard() {
           onClick={() => setTab('reports')}
         >
           {t('nav.reports')}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          id={controlTabId}
-          aria-selected={activeTab === 'control'}
-          aria-controls="dashboard-control-panel"
-          className={tabBtnClass(activeTab === 'control')}
-          onClick={() => setTab('control')}
-        >
-          {t('dashboard.controlTab')}
         </button>
       </div>
 
@@ -421,7 +403,7 @@ export function Dashboard() {
         </div>
       </div>
         </section>
-      ) : activeTab === 'reports' ? (
+      ) : (
         <section
           id="dashboard-reports-panel"
           role="tabpanel"
@@ -430,8 +412,6 @@ export function Dashboard() {
         >
           <Reports embedded />
         </section>
-      ) : (
-        <ControlPanel tabLabelledBy={controlTabId} />
       )}
     </div>
   )

@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { FEATURE_CONTROL_REGISTRY } from '@/config/featureControls'
@@ -5,20 +6,24 @@ import { useFeatureControlContext } from '@/context/FeatureControlContext'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-export function ControlPanel({ tabLabelledBy }: { tabLabelledBy?: string }) {
+export function ControlPanel() {
   const { t } = useTranslation()
   const { state, setEnabled, resetToDefaults } = useFeatureControlContext()
+  const headingId = useId()
 
   return (
     <section
-      id="dashboard-control-panel"
-      role="tabpanel"
-      aria-labelledby={tabLabelledBy}
+      id="control-panel"
+      role="region"
+      aria-labelledby={headingId}
       className="space-y-6 rounded-xl border border-border bg-card/40 p-4 md:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">
+          <h2
+            id={headingId}
+            className="text-lg font-semibold text-foreground"
+          >
             {t('control.title')}
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">

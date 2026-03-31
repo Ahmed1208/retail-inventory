@@ -1,6 +1,12 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutDashboard, ShoppingCart, Users, Warehouse } from 'lucide-react'
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  SlidersHorizontal,
+  Users,
+  Warehouse,
+} from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -66,6 +72,11 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
         <NavLink to="/" end onClick={onNavigate} className={linkClass}>
           <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
           <span>{t('nav.dashboard')}</span>
+        </NavLink>
+
+        <NavLink to="/control" end onClick={onNavigate} className={linkClass}>
+          <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden />
+          <span>{t('nav.control')}</span>
         </NavLink>
 
         {showInventoryNav && (
