@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
+  Banknote,
   LayoutDashboard,
   ShoppingCart,
   SlidersHorizontal,
@@ -21,9 +22,16 @@ const INVENTORY_PATHS = [
 ] as const
 
 const ORDERS_PREFIX = '/orders'
+const PAYMENTS_PREFIX = '/payments'
 
 function pathMatchesOrders(pathname: string): boolean {
   return pathname === ORDERS_PREFIX || pathname.startsWith(`${ORDERS_PREFIX}/`)
+}
+
+function pathMatchesPayments(pathname: string): boolean {
+  return (
+    pathname === PAYMENTS_PREFIX || pathname.startsWith(`${PAYMENTS_PREFIX}/`)
+  )
 }
 
 const afterInventoryNav = [
@@ -59,6 +67,7 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
+  const showPaymentsNav = useFeatureEnabled('sidebar.payments')
 
   const content = (
     <>
@@ -118,6 +127,22 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
             </NavLink>
           )
         })}
+
+        {showPaymentsNav && (
+          <NavLink
+            to={PAYMENTS_PREFIX}
+            end={false}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              linkClass({
+                isActive: isActive || pathMatchesPayments(pathname),
+              })
+            }
+          >
+            <Banknote className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.payments')}</span>
+          </NavLink>
+        )}
       </nav>
 
       <div className="border-t border-white/10 p-3">

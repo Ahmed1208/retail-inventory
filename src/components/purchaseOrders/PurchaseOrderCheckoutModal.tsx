@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { cn } from '@/lib/utils'
+import { roundMoney } from '@/services/peopleService'
 
 type Props = {
   open: boolean
@@ -23,7 +24,7 @@ type Props = {
   formatCurrency: (n: number) => string
   total: number
   paidPreview: number
-  remainingPreview: number
+  supplierName: string | null
   payUse: Record<PaymentMethod, boolean>
   setPayUse: React.Dispatch<
     React.SetStateAction<Record<PaymentMethod, boolean>>
@@ -49,7 +50,7 @@ export function PurchaseOrderCheckoutModal({
   formatCurrency,
   total,
   paidPreview,
-  remainingPreview,
+  supplierName,
   payUse,
   setPayUse,
   payAmounts,
@@ -64,6 +65,18 @@ export function PurchaseOrderCheckoutModal({
   onConfirm,
 }: Props) {
   const { t } = useTranslation()
+
+  const overExcess =
+    paidPreview > total + 0.01 ? roundMoney(paidPreview - total) : 0
+  const remainingDisplay = roundMoney(Math.max(0, total - paidPreview))
+  const showOverWarning = overExcess > 0.01 && Boolean(supplierPersonId)
+  const showOverError = overExcess > 0.01 && !supplierPersonId
+  const confirmLabel = showOverWarning
+    ? (t as (k: string, o: { amount: string }) => string)(
+        'payments.confirmAndAddToWallet',
+        { amount: formatCurrency(overExcess) }
+      )
+    : t('purchaseOrders.confirmCreatePo')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -91,13 +104,36 @@ export function PurchaseOrderCheckoutModal({
             <div
               className={cn(
                 'flex justify-between',
-                remainingPreview > 0.01 && 'font-medium text-destructive'
+                remainingDisplay > 0.01 && 'font-medium text-destructive'
               )}
             >
               <span>{t('orders.remaining')}</span>
-              <span>{formatCurrency(remainingPreview)}</span>
+              <span>{formatCurrency(remainingDisplay)}</span>
             </div>
           </div>
+
+          {showOverWarning && (
+            <div
+              className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"
+              role="status"
+            >
+              <span className="me-1" aria-hidden>
+                ⚠️
+              </span>
+              {t('payments.overpaymentWarning')} ({formatCurrency(overExcess)}
+              ). {formatCurrency(overExcess)}{' '}
+              {t('payments.overpaymentWillBeAddedToWallet')} ({supplierName}
+              ).
+            </div>
+          )}
+          {showOverError && (
+            <div
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              role="alert"
+            >
+              {t('payments.selectPersonForOverpayment')}
+            </div>
+          )}
 
           <div>
             <p className="mb-2 text-sm font-medium">
@@ -173,7 +209,7 @@ export function PurchaseOrderCheckoutModal({
             {confirming && (
               <Loader2 className="me-2 h-4 w-4 animate-spin" />
             )}
-            {t('purchaseOrders.confirmCreatePo')}
+            {confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

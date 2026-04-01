@@ -72,7 +72,7 @@ export interface StockMovementWithProductDetails extends StockMovement {
 export type OrderType = 'retail' | 'wholesale'
 export type OrderStatus = 'pending' | 'completed' | 'cancelled'
 export type OrderStatusFlow = 'draft' | 'confirmed' | 'completed' | 'cancelled'
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
+export type PaymentMethod = 'cash' | 'visa' | 'cheque' | 'instapay'
 
 export type PersonRole = 'customer' | 'supplier'
 export type BalanceTransactionType =
@@ -81,6 +81,9 @@ export type BalanceTransactionType =
   | 'payment_in'
   | 'payment_out'
   | 'adjustment'
+  | 'wallet'
+
+export type WalletDirection = 'in' | 'out'
 
 export interface Person {
   id: string
@@ -98,12 +101,19 @@ export interface Person {
 
 export interface BalanceTransaction {
   id: string
-  person_id: string
+  /** Null for walk-in sales: ledger row only, no linked person balance. */
+  person_id: string | null
   type: BalanceTransactionType
   amount: number
   reference_id: string | null
   reference_number: string | null
   note: string | null
+  /** Set for payment_in / payment_out rows when recorded with a method (split lines). */
+  payment_method: PaymentMethod | null
+  /** Same UUID on all lines of one split payment; null for single-line or legacy rows. */
+  payment_group_id: string | null
+  /** Set when type is `wallet` (overpayment credit). */
+  wallet_direction: WalletDirection | null
   created_at: string
 }
 
@@ -186,6 +196,8 @@ export interface PurchaseOrder {
   supplier_name: string | null
   note: string | null
   total_amount: number
+  paid_amount: number
+  remaining_amount: number
   status: PurchaseOrderStatus
   person_id: string | null
   created_at: string

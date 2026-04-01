@@ -1,6 +1,20 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
-import { mapPersonRow, roundMoney } from '@/services/peopleService'
+import {
+  insertBalanceTransactionRow,
+  mapPersonRow,
+  roundMoney,
+  supabaseErrorMessage,
+} from '@/services/peopleService'
+import {
+  insertOrderPaymentInstallments,
+  insertOrderPaymentsRows,
+} from '@/services/paymentInstallmentInserts'
+import {
+  createOrderPayment,
+  OVERPAYMENT_REQUIRES_PERSON,
+} from '@/services/paymentService'
+import { normalizePaymentMethod } from '@/utils/paymentMethod'
 import type {
   Order,
   OrderWithItemsAndPayments,
@@ -12,6 +26,7 @@ import type {
   PaymentMethod,
   PaymentInstallment,
   Product,
+  WalletDirection,
 } from '@/types'
 
 const ORDERS = 'orders'
@@ -83,7 +98,7 @@ function mapOrderFields(row: OrderRow): Order {
     type: row.type as OrderType,
     status: row.status as OrderStatus,
     status_flow: (row.status_flow as OrderStatusFlow) ?? 'confirmed',
-    payment_method: (row.payment_method as PaymentMethod | null) ?? null,
+    payment_method: normalizePaymentMethod(row.payment_method),
     note: (row.note as string | null) ?? null,
     total_amount: Number(row.total_amount ?? 0),
     person_id: (row.person_id as string | null) ?? null,
@@ -119,7 +134,7 @@ function mapInstallmentsFromJoin(
   return raw.map((p) => ({
     id: p.id,
     order_id: p.order_id,
-    method: p.method as PaymentMethod,
+    method: normalizePaymentMethod(p.method) ?? 'cash',
     amount: Number(p.amount),
     note: p.note,
     created_at: p.created_at,
@@ -142,7 +157,7 @@ async function loadLegacyPaymentsAsInstallments(
   }>).map((p) => ({
     id: p.id,
     order_id: orderId,
-    method: p.payment_method,
+    method: normalizePaymentMethod(p.payment_method) ?? 'cash',
     amount: Number(p.amount),
     note: null,
     created_at: p.created_at,
@@ -328,13 +343,15 @@ export async function createOrder(data: {
   const total_amount = roundMoney(subtotal - discount_amount)
 
   const payments = (data.payments ?? []).filter((p) => p.amount > 0)
-  const paid_amount = roundMoney(
+  const paidSum = roundMoney(
     payments.reduce((s, p) => s + p.amount, 0)
   )
-  if (paid_amount > total_amount + 0.01) {
-    throw new Error('Paid amount cannot exceed order total')
+  if (paidSum > total_amount + 0.01 && !data.person_id) {
+    throw new Error(OVERPAYMENT_REQUIRES_PERSON)
   }
-
+  const paid_amount = roundMoney(
+    paidSum > total_amount ? total_amount : paidSum
+  )
   const remaining_amount = roundMoney(total_amount - paid_amount)
 
   const { data: maxOrder, error: maxError } = await supabase
@@ -392,30 +409,33 @@ export async function createOrder(data: {
   if (itemsError) throw itemsError
 
   if (payments.length > 0) {
-    const inst = payments.map((p) => ({
-      order_id: orderId,
-      method: p.payment_method,
-      amount: p.amount,
-      note: null as string | null,
-    }))
-    const { error: piErr } = await supabase
-      .from(PAYMENT_INSTALLMENTS)
-      .insert(inst)
-    if (piErr) throw piErr
-
-    const { error: opErr } = await supabase.from(ORDER_PAYMENTS).insert(
+    await insertOrderPaymentInstallments(
       payments.map((p) => ({
         order_id: orderId,
-        payment_method: p.payment_method,
+        method: p.payment_method,
         amount: p.amount,
+        note: null as string | null,
       }))
     )
-    if (opErr) {
-      const msg = opErr.message ?? ''
+
+    try {
+      await insertOrderPaymentsRows(
+        payments.map((p) => ({
+          order_id: orderId,
+          payment_method: p.payment_method,
+          amount: p.amount,
+        }))
+      )
+    } catch (opErr: unknown) {
+      const msg = supabaseErrorMessage(opErr).toLowerCase()
+      const code =
+        typeof opErr === 'object' && opErr !== null && 'code' in opErr
+          ? String((opErr as { code: unknown }).code)
+          : ''
       if (
         !msg.includes('does not exist') &&
         !msg.includes('relation') &&
-        opErr.code !== '42P01'
+        code !== '42P01'
       ) {
         throw opErr
       }
@@ -425,6 +445,176 @@ export async function createOrder(data: {
   const created = await getOrderById(orderId)
   if (!created) throw new Error('Failed to fetch created order')
   return created
+}
+
+/**
+ * Writes `balance_transactions` for a confirmed order. When `personId` is null (walk-in),
+ * rows are still recorded for the transaction log but `people.balance` is not updated.
+ */
+async function insertConfirmOrderLedgerLines(
+  order: OrderWithItemsAndPayments,
+  personId: string | null
+): Promise<void> {
+  const total = roundMoney(order.total_amount)
+  const paid = roundMoney(order.paid_amount)
+
+  await insertBalanceTransactionRow({
+    person_id: personId,
+    type: 'order',
+    amount: total,
+    reference_id: order.id,
+    reference_number: String(order.order_number),
+    payment_method: null,
+    payment_group_id: null,
+    wallet_direction: null,
+  })
+
+  let bal: number | null = null
+  if (personId) {
+    const { data: b0, error: b0e } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', personId)
+      .single()
+    if (b0e) throw b0e
+    bal = roundMoney(Number((b0 as { balance: number }).balance) + total)
+  }
+
+  if (paid > 0.01) {
+    const payingInsts = [...(order.payment_installments ?? [])]
+      .filter((inst) => roundMoney(inst.amount) > 0.01)
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() -
+          new Date(b.created_at).getTime()
+      )
+
+    let remainingToOrder = total
+
+    if (payingInsts.length > 0) {
+      const paymentGroupId =
+        payingInsts.length > 1 ? crypto.randomUUID() : null
+      for (const inst of payingInsts) {
+        const a = roundMoney(inst.amount)
+        const toward = roundMoney(Math.min(a, remainingToOrder))
+        const walletPart = roundMoney(a - toward)
+
+        if (toward > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: personId,
+            type: 'payment_in',
+            amount: roundMoney(-toward),
+            reference_id: order.id,
+            reference_number: String(order.order_number),
+            note: inst.note?.trim() || 'Order payment',
+            payment_method: inst.method,
+            payment_group_id: paymentGroupId,
+            wallet_direction: null,
+          })
+          if (bal !== null) bal = roundMoney(bal - toward)
+          remainingToOrder = roundMoney(remainingToOrder - toward)
+        }
+
+        if (walletPart > 0.01) {
+          if (!personId) {
+            throw new Error(OVERPAYMENT_REQUIRES_PERSON)
+          }
+          const note = `Overpayment from Order #${order.order_number} — EGP ${walletPart} added to wallet`
+          await insertBalanceTransactionRow({
+            person_id: personId,
+            type: 'wallet',
+            amount: roundMoney(-walletPart),
+            reference_id: order.id,
+            reference_number: String(order.order_number),
+            note,
+            payment_method: null,
+            payment_group_id: paymentGroupId,
+            wallet_direction: 'out' as WalletDirection,
+          })
+          bal = roundMoney(bal! - walletPart)
+        }
+      }
+    } else {
+      const toward = roundMoney(Math.min(paid, total))
+      const walletPart = roundMoney(paid - toward)
+      if (toward > 0.01) {
+        await insertBalanceTransactionRow({
+          person_id: personId,
+          type: 'payment_in',
+          amount: roundMoney(-toward),
+          reference_id: order.id,
+          reference_number: String(order.order_number),
+          note: 'Payment at confirmation',
+          payment_method: null,
+          payment_group_id: null,
+          wallet_direction: null,
+        })
+        if (bal !== null) bal = roundMoney(bal - toward)
+      }
+      if (walletPart > 0.01) {
+        if (!personId) {
+          throw new Error(OVERPAYMENT_REQUIRES_PERSON)
+        }
+        const note = `Overpayment from Order #${order.order_number} — EGP ${walletPart} added to wallet`
+        await insertBalanceTransactionRow({
+          person_id: personId,
+          type: 'wallet',
+          amount: roundMoney(-walletPart),
+          reference_id: order.id,
+          reference_number: String(order.order_number),
+          note,
+          payment_method: null,
+          payment_group_id: null,
+          wallet_direction: 'out' as WalletDirection,
+        })
+        bal = roundMoney(bal! - walletPart)
+      }
+    }
+  }
+
+  if (personId && bal !== null) {
+    const { error: pb } = await supabase
+      .from('people')
+      .update({
+        balance: bal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', personId)
+    if (pb) throw pb
+  }
+}
+
+/** Reverse walk-in ledger rows when a confirmed/completed order is cancelled. */
+async function applyWalkInCancelLedger(order: OrderWithItemsAndPayments) {
+  if (order.person_id) return
+  const total = roundMoney(order.total_amount)
+  const paid = roundMoney(order.paid_amount)
+  if (total > 0.01) {
+    await insertBalanceTransactionRow({
+      person_id: null,
+      type: 'adjustment',
+      amount: roundMoney(-total),
+      reference_id: order.id,
+      reference_number: String(order.order_number),
+      note: `Cancelled walk-in order #${order.order_number} (reverse sale)`,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: null,
+    })
+  }
+  if (paid > 0.01) {
+    await insertBalanceTransactionRow({
+      person_id: null,
+      type: 'adjustment',
+      amount: paid,
+      reference_id: order.id,
+      reference_number: String(order.order_number),
+      note: `Cancelled walk-in order #${order.order_number} (reverse payment)`,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: null,
+    })
+  }
 }
 
 export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayments> {
@@ -510,50 +700,7 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
 
   if (upErr) throw upErr
 
-  if (order.person_id) {
-    const total = roundMoney(order.total_amount)
-    const paid = roundMoney(order.paid_amount)
-
-    const { error: bt1 } = await supabase.from('balance_transactions').insert({
-      person_id: order.person_id,
-      type: 'order',
-      amount: total,
-      reference_id: order.id,
-      reference_number: String(order.order_number),
-    })
-    if (bt1) throw bt1
-
-    let bal = 0
-    const { data: b0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (b0e) throw b0e
-    bal = roundMoney(Number((b0 as { balance: number }).balance) + total)
-
-    if (paid > 0.01) {
-      const { error: bt2 } = await supabase.from('balance_transactions').insert({
-        person_id: order.person_id,
-        type: 'payment_in',
-        amount: roundMoney(-paid),
-        reference_id: order.id,
-        reference_number: String(order.order_number),
-        note: 'Payment at confirmation',
-      })
-      if (bt2) throw bt2
-      bal = roundMoney(bal - paid)
-    }
-
-    const { error: pb } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.person_id)
-    if (pb) throw pb
-  }
+  await insertConfirmOrderLedgerLines(order, order.person_id)
 
   const updated = await getOrderById(id)
   if (!updated) throw new Error('Order not found after confirm')
@@ -599,15 +746,17 @@ async function applyPersonCancelReversal(order: OrderWithItemsAndPayments) {
   if (Math.abs(net) < 0.01 && order.paid_amount < 0.01) return
 
   if (Math.abs(net) > 0.01) {
-    const { error: bt } = await supabase.from('balance_transactions').insert({
+    await insertBalanceTransactionRow({
       person_id: order.person_id,
       type: 'adjustment',
       amount: roundMoney(-net),
       reference_id: order.id,
       reference_number: String(order.order_number),
       note: `Cancelled order #${order.order_number}`,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: null,
     })
-    if (bt) throw bt
   }
 
   const { data: b0, error: b0e } = await supabase
@@ -645,6 +794,7 @@ export async function cancelOrder(id: string): Promise<void> {
       await adjustStock(item.product_id, 'in', item.quantity, note)
     }
     await applyPersonCancelReversal(order)
+    await applyWalkInCancelLedger(order)
   }
 
   const { error: updateError } = await supabase
@@ -677,84 +827,18 @@ export async function addPaymentInstallment(data: {
     throw new Error('Cannot add payment to this order')
   }
 
-  if (amt > order.remaining_amount + 0.01) {
-    throw new Error('Amount exceeds remaining balance')
-  }
-
-  const { error: insErr } = await supabase.from(PAYMENT_INSTALLMENTS).insert({
-    order_id: data.order_id,
+  await createOrderPayment({
+    order,
     method: data.method,
     amount: amt,
-    note: data.note?.trim() || null,
+    note: data.note,
   })
-  if (insErr) throw insErr
-
-  const { error: opErr } = await supabase.from(ORDER_PAYMENTS).insert({
-    order_id: data.order_id,
-    payment_method: data.method,
-    amount: amt,
-  })
-  if (opErr) {
-    const msg = opErr.message ?? ''
-    if (
-      !msg.includes('does not exist') &&
-      !msg.includes('relation') &&
-      opErr.code !== '42P01'
-    ) {
-      throw opErr
-    }
-  }
-
-  const newPaid = roundMoney(order.paid_amount + amt)
-  const newRem = roundMoney(order.remaining_amount - amt)
-
-  const { error: upErr } = await supabase
-    .from(ORDERS)
-    .update({
-      paid_amount: newPaid,
-      remaining_amount: newRem,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', data.order_id)
-
-  if (upErr) throw upErr
-
-  if (order.person_id) {
-    const { error: bt } = await supabase.from('balance_transactions').insert({
-      person_id: order.person_id,
-      type: 'payment_in',
-      amount: roundMoney(-amt),
-      reference_id: order.id,
-      reference_number: String(order.order_number),
-      note: data.note?.trim() || 'Order payment',
-    })
-    if (bt) throw bt
-
-    const { data: b0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (b0e) throw b0e
-    const newBal = roundMoney(
-      Number((b0 as { balance: number }).balance) - amt
-    )
-    const { error: pb } = await supabase
-      .from('people')
-      .update({
-        balance: newBal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.person_id)
-    if (pb) throw pb
-  }
-
-  if (newRem <= 0.01) {
-    return completeOrder(data.order_id)
-  }
 
   const refreshed = await getOrderById(data.order_id)
   if (!refreshed) throw new Error('Order not found')
+  if (refreshed.remaining_amount <= 0.01) {
+    return completeOrder(data.order_id)
+  }
   return refreshed
 }
 
@@ -872,17 +956,20 @@ export async function syncDraftOrderPayments(
   }
 
   const list = (payments ?? []).filter((p) => p.amount > 0)
-  const paid_amount = roundMoney(list.reduce((s, p) => s + p.amount, 0))
-  if (paid_amount > order.total_amount + 0.01) {
-    throw new Error('Paid amount cannot exceed order total')
+  const paidSum = roundMoney(list.reduce((s, p) => s + p.amount, 0))
+  if (paidSum > order.total_amount + 0.01 && !order.person_id) {
+    throw new Error(OVERPAYMENT_REQUIRES_PERSON)
   }
+  const paid_amount = roundMoney(
+    paidSum > order.total_amount ? order.total_amount : paidSum
+  )
   const remaining_amount = roundMoney(order.total_amount - paid_amount)
 
   await supabase.from(PAYMENT_INSTALLMENTS).delete().eq('order_id', orderId)
   await supabase.from(ORDER_PAYMENTS).delete().eq('order_id', orderId)
 
   if (list.length > 0) {
-    const { error: piErr } = await supabase.from(PAYMENT_INSTALLMENTS).insert(
+    await insertOrderPaymentInstallments(
       list.map((p) => ({
         order_id: orderId,
         method: p.payment_method,
@@ -890,21 +977,25 @@ export async function syncDraftOrderPayments(
         note: null as string | null,
       }))
     )
-    if (piErr) throw piErr
 
-    const { error: opErr } = await supabase.from(ORDER_PAYMENTS).insert(
-      list.map((p) => ({
-        order_id: orderId,
-        payment_method: p.payment_method,
-        amount: p.amount,
-      }))
-    )
-    if (opErr) {
-      const msg = opErr.message ?? ''
+    try {
+      await insertOrderPaymentsRows(
+        list.map((p) => ({
+          order_id: orderId,
+          payment_method: p.payment_method,
+          amount: p.amount,
+        }))
+      )
+    } catch (opErr: unknown) {
+      const msg = supabaseErrorMessage(opErr).toLowerCase()
+      const code =
+        typeof opErr === 'object' && opErr !== null && 'code' in opErr
+          ? String((opErr as { code: unknown }).code)
+          : ''
       if (
         !msg.includes('does not exist') &&
         !msg.includes('relation') &&
-        opErr.code !== '42P01'
+        code !== '42P01'
       ) {
         throw opErr
       }

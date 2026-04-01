@@ -43,9 +43,9 @@ export function unitPriceDiffersFromList(line: LineRow): boolean {
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
   'cash',
-  'card',
-  'transfer',
-  'other',
+  'visa',
+  'cheque',
+  'instapay',
 ]
 
 export function paymentLabel(
@@ -54,9 +54,9 @@ export function paymentLabel(
 ): string {
   const map: Record<PaymentMethod, string> = {
     cash: 'orders.paymentCash',
-    card: 'orders.paymentCard',
-    transfer: 'orders.paymentTransfer',
-    other: 'orders.paymentOther',
+    visa: 'orders.paymentVisa',
+    cheque: 'orders.paymentCheque',
+    instapay: 'orders.paymentInstapay',
   }
   return t(map[method])
 }

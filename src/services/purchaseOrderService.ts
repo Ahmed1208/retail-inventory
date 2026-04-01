@@ -2,7 +2,14 @@ import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import { getProductById } from '@/services/productService'
 import { updateProduct } from '@/services/productService'
-import { mapPersonRow, roundMoney } from '@/services/peopleService'
+import {
+  insertBalanceTransactionRow,
+  mapPersonRow,
+  roundMoney,
+  supabaseErrorMessage,
+} from '@/services/peopleService'
+import { insertPurchaseOrderPaymentsRows } from '@/services/paymentInstallmentInserts'
+import { createPurchaseOrderPayment } from '@/services/paymentService'
 import type {
   PurchaseOrder,
   PurchaseOrderWithItems,
@@ -11,6 +18,7 @@ import type {
   PurchaseOrderStatus,
   PaymentMethod,
   Product,
+  WalletDirection,
 } from '@/types'
 
 const PURCHASE_ORDERS = 'purchase_orders'
@@ -30,6 +38,8 @@ function toPurchaseOrderWithItems(row: {
   supplier_name: string | null
   note: string | null
   total_amount: number
+  paid_amount?: number
+  remaining_amount?: number
   status: PurchaseOrderStatus
   person_id: string | null
   created_at: string
@@ -48,9 +58,17 @@ function toPurchaseOrderWithItems(row: {
   }>
 }): PurchaseOrderWithItems {
   const { purchase_order_items, ...orderRest } = row
+  const total = roundMoney(Number(orderRest.total_amount))
+  const paid = roundMoney(Number(orderRest.paid_amount ?? 0))
+  const remaining_amount =
+    orderRest.remaining_amount != null
+      ? roundMoney(Number(orderRest.remaining_amount))
+      : roundMoney(total - paid)
   const order = {
     ...orderRest,
     person_id: orderRest.person_id ?? null,
+    paid_amount: paid,
+    remaining_amount,
   }
   const items: PurchaseOrderItemWithProduct[] = (purchase_order_items ?? []).map(
     (poi) => ({
@@ -67,6 +85,26 @@ function toPurchaseOrderWithItems(row: {
     })
   )
   return { ...order, items }
+}
+
+/** When `purchase_order_payments` exist, derive paid/remaining (works without DB columns). */
+function applyPaidRemainingFromPayments(
+  o: PurchaseOrderWithItems
+): PurchaseOrderWithItems {
+  const pays = o.payments
+  if (!pays?.length) return o
+  const total = roundMoney(o.total_amount)
+  const sum = roundMoney(pays.reduce((s, p) => s + p.amount, 0))
+  let paid_amount: number
+  let remaining_amount: number
+  if (sum > total + 0.01) {
+    paid_amount = total
+    remaining_amount = 0
+  } else {
+    paid_amount = roundMoney(sum)
+    remaining_amount = roundMoney(total - paid_amount)
+  }
+  return { ...o, paid_amount, remaining_amount }
 }
 
 export async function getAllPurchaseOrders(
@@ -138,7 +176,7 @@ export async function getAllPurchaseOrders(
     }
   }
 
-  return orders
+  return orders.map(applyPaidRemainingFromPayments)
 }
 
 export async function getPurchaseOrderById(
@@ -177,7 +215,7 @@ export async function getPurchaseOrderById(
       amount: Number(p.amount),
     }))
   }
-  return order
+  return applyPaidRemainingFromPayments(order)
 }
 
 export async function getPurchaseOrdersByPersonId(
@@ -228,7 +266,7 @@ export async function getPurchaseOrdersByPersonId(
       }))
     }
   }
-  return orders
+  return orders.map(applyPaidRemainingFromPayments)
 }
 
 export async function createPurchaseOrder(data: {
@@ -248,6 +286,25 @@ export async function createPurchaseOrder(data: {
 }): Promise<PurchaseOrderWithItems> {
   if (!data.items.length) {
     throw new Error('At least one product is required')
+  }
+
+  if (!data.person_id?.trim()) {
+    throw new Error(
+      'Select a supplier from your directory. Walk-in and unlinked suppliers are not allowed for purchase orders.'
+    )
+  }
+
+  const supplierId = data.person_id.trim()
+  const { data: prow, error: peSup } = await supabase
+    .from('people')
+    .select('*')
+    .eq('id', supplierId)
+    .maybeSingle()
+  if (peSup) throw peSup
+  if (!prow) throw new Error('Supplier not found')
+  const supplierPerson = mapPersonRow(prow as Record<string, unknown>)
+  if (!supplierPerson.roles.includes('supplier')) {
+    throw new Error('Selected person must have the supplier role')
   }
 
   // 1. For each item, fetch current product cost_price as previous_cost_price
@@ -270,23 +327,19 @@ export async function createPurchaseOrder(data: {
       amount: roundMoney(p.amount),
     }))
     .filter((p) => p.amount > 0.001)
+  const total = roundMoney(total_amount)
   const paymentsSum = roundMoney(
     payments.reduce((s, p) => s + p.amount, 0)
   )
-  if (paymentsSum > roundMoney(total_amount) + 0.01) {
-    throw new Error('Payment total cannot exceed the purchase order total')
-  }
-  const remaining = roundMoney(total_amount - paymentsSum)
+  const paid_amount = roundMoney(
+    paymentsSum > total ? total : paymentsSum
+  )
+  const remaining_amount = roundMoney(total - paid_amount)
   const allowRem = Boolean(data.allow_remaining_on_account)
-  if (remaining > 0.01) {
+  if (remaining_amount > 0.01) {
     if (!allowRem) {
       throw new Error(
         'Pay the full amount or enable adding the remainder to the supplier balance'
-      )
-    }
-    if (!data.person_id) {
-      throw new Error(
-        'Select a supplier to carry a remaining balance on account'
       )
     }
   }
@@ -302,28 +355,15 @@ export async function createPurchaseOrder(data: {
   if (maxError) throw maxError
   const order_number = (maxRow?.order_number ?? 0) + 1
 
-  if (data.person_id) {
-    const { data: prow, error: pe } = await supabase
-      .from('people')
-      .select('*')
-      .eq('id', data.person_id)
-      .maybeSingle()
-    if (pe) throw pe
-    if (!prow) throw new Error('Person not found')
-    const p = mapPersonRow(prow as Record<string, unknown>)
-    if (!p.roles.includes('supplier')) {
-      throw new Error('Selected person must have the supplier role')
-    }
-  }
-
-  // 3. Insert purchase_order
+  // 3. Insert purchase_order (omit paid_amount/remaining_amount so DBs without migration 009 still work;
+  //    paid/remaining are derived from purchase_order_payments in applyPaidRemainingFromPayments.)
   const orderPayload = {
     order_number,
     supplier_name: data.supplier_name?.trim() || null,
     note: data.note?.trim() || null,
-    total_amount,
+    total_amount: total,
     status: 'received' as PurchaseOrderStatus,
-    person_id: data.person_id ?? null,
+    person_id: supplierId,
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -336,21 +376,25 @@ export async function createPurchaseOrder(data: {
   const orderId = (insertedOrder as PurchaseOrder).id
 
   if (payments.length > 0) {
-    const paymentsPayload = payments.map((p) => ({
-      purchase_order_id: orderId,
-      payment_method: p.payment_method,
-      amount: p.amount,
-    }))
-    const { error: paymentsError } = await supabase
-      .from(PURCHASE_ORDER_PAYMENTS)
-      .insert(paymentsPayload)
-    if (paymentsError) {
-      const msg = paymentsError.message ?? ''
+    try {
+      await insertPurchaseOrderPaymentsRows(
+        payments.map((p) => ({
+          purchase_order_id: orderId,
+          payment_method: p.payment_method,
+          amount: p.amount,
+        }))
+      )
+    } catch (e: unknown) {
+      const msg = supabaseErrorMessage(e).toLowerCase()
+      const code =
+        typeof e === 'object' && e !== null && 'code' in e
+          ? String((e as { code: unknown }).code)
+          : ''
       const tableMissing =
         msg.includes('does not exist') ||
         msg.includes('relation') ||
-        paymentsError.code === '42P01'
-      if (!tableMissing) throw paymentsError
+        code === '42P01'
+      if (!tableMissing) throw e
     }
   }
 
@@ -392,48 +436,13 @@ export async function createPurchaseOrder(data: {
     }
   }
 
-  if (data.person_id) {
-    const { data: balRow0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', data.person_id)
-      .single()
-    if (b0e) throw b0e
-    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
-
-    const liability = roundMoney(-total_amount)
-    const { error: bt1 } = await supabase.from('balance_transactions').insert({
-      person_id: data.person_id,
-      type: 'purchase_order',
-      amount: liability,
-      reference_id: orderId,
-      reference_number: `PO-${order_number}`,
-    })
-    if (bt1) throw bt1
-    bal = roundMoney(bal + liability)
-
-    if (paymentsSum > 0.01) {
-      const { error: bt2 } = await supabase.from('balance_transactions').insert({
-        person_id: data.person_id,
-        type: 'payment_out',
-        amount: roundMoney(paymentsSum),
-        reference_id: orderId,
-        reference_number: `PO-${order_number}`,
-        note: 'Payment at purchase order',
-      })
-      if (bt2) throw bt2
-      bal = roundMoney(bal + paymentsSum)
-    }
-
-    const { error: pbErr } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.person_id)
-    if (pbErr) throw pbErr
-  }
+  await createPurchaseOrderPayment({
+    personId: supplierId,
+    purchaseOrderId: orderId,
+    orderNumber: order_number,
+    totalAmount: total,
+    payments,
+  })
 
   // 7. Return created PurchaseOrderWithItems
   const created = await getPurchaseOrderById(orderId)
@@ -471,32 +480,51 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
     const paidAtPo = roundMoney(
       (order.payments ?? []).reduce((s, p) => s + p.amount, 0)
     )
-    if (paidAtPo > 0.01) {
-      const { error: btPayRev } = await supabase
-        .from('balance_transactions')
-        .insert({
-          person_id: order.person_id,
-          type: 'payment_out',
-          amount: roundMoney(-paidAtPo),
-          reference_id: order.id,
-          reference_number: `PO-${order.order_number}`,
-          note: 'Cancelled purchase order (reverse payment)',
-        })
-      if (btPayRev) throw btPayRev
-      bal = roundMoney(bal - paidAtPo)
-    }
+    const poTotal = roundMoney(order.total_amount)
+    const towardPaid = roundMoney(Math.min(paidAtPo, poTotal))
+    const walletOver = roundMoney(paidAtPo - towardPaid)
 
-    const reversal = roundMoney(order.total_amount)
-    const { error: btErr } = await supabase
-      .from('balance_transactions')
-      .insert({
+    if (towardPaid > 0.01) {
+      await insertBalanceTransactionRow({
         person_id: order.person_id,
-        type: 'purchase_order',
-        amount: reversal,
+        type: 'payment_out',
+        amount: roundMoney(-towardPaid),
         reference_id: order.id,
         reference_number: `PO-${order.order_number}`,
+        note: 'Cancelled purchase order (reverse payment)',
+        payment_method: null,
+        payment_group_id: null,
+        wallet_direction: null,
       })
-    if (btErr) throw btErr
+      bal = roundMoney(bal - towardPaid)
+    }
+
+    if (walletOver > 0.01) {
+      await insertBalanceTransactionRow({
+        person_id: order.person_id,
+        type: 'wallet',
+        amount: roundMoney(-walletOver),
+        reference_id: order.id,
+        reference_number: `PO-${order.order_number}`,
+        note: 'Cancelled purchase order (reverse wallet credit)',
+        payment_method: null,
+        payment_group_id: null,
+        wallet_direction: 'in' as WalletDirection,
+      })
+      bal = roundMoney(bal - walletOver)
+    }
+
+    const reversal = poTotal
+    await insertBalanceTransactionRow({
+      person_id: order.person_id,
+      type: 'purchase_order',
+      amount: reversal,
+      reference_id: order.id,
+      reference_number: `PO-${order.order_number}`,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: null,
+    })
     bal = roundMoney(bal + reversal)
 
     const { error: pbErr } = await supabase

@@ -10,7 +10,6 @@ import {
   Eye,
   Pencil,
   Trash2,
-  Wallet,
   Users,
 } from 'lucide-react'
 
@@ -19,7 +18,6 @@ import {
   createPerson,
   updatePerson,
   deletePerson,
-  recordPayment,
   getPersonTransactions,
   countCustomerOrdersForPerson,
   countSupplierPOsForPerson,
@@ -103,9 +101,10 @@ const personFormSchema = z
 type PersonFormValues = z.infer<typeof personFormSchema>
 
 function balanceClass(b: number) {
-  if (b > 0.005) return 'text-green-600 dark:text-green-400'
-  if (b < -0.005) return 'text-red-600 dark:text-red-400'
-  return 'text-muted-foreground'
+  if (Math.abs(b) <= 0.005) {
+    return 'text-green-600 dark:text-green-400'
+  }
+  return 'text-red-600 dark:text-red-400'
 }
 
 function txTypeLabel(
@@ -118,6 +117,7 @@ function txTypeLabel(
     payment_in: 'people.txPaymentIn',
     payment_out: 'people.txPaymentOut',
     adjustment: 'people.txAdjustment',
+    wallet: 'people.txWallet',
   }
   return t(m[type])
 }
@@ -151,14 +151,12 @@ export function People() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Person | null>(null)
-  const [paymentPerson, setPaymentPerson] = useState<Person | null>(null)
   const [profilePerson, setProfilePerson] = useState<Person | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
 
   const canViewProfile = useFeatureEnabled('people.viewProfile')
   const canEditPerson = useFeatureEnabled('people.editPerson')
   const canDeletePerson = useFeatureEnabled('people.deletePerson')
-  const canRecordPayment = useFeatureEnabled('people.recordPayment')
   const canAddPerson = useFeatureEnabled('people.addPerson')
 
   useEffect(() => {
@@ -352,13 +350,36 @@ export function People() {
                         )}
                       </div>
                     </td>
-                    <td
-                      className={cn(
-                        'px-4 py-3 text-end tabular-nums font-medium',
-                        balanceClass(p.balance)
-                      )}
-                    >
-                      {formatCurrencyDisplay(p.balance)}
+                    <td className="px-4 py-3 text-end">
+                      <div
+                        className={cn(
+                          'tabular-nums font-medium',
+                          balanceClass(p.balance)
+                        )}
+                      >
+                        {formatCurrencyDisplay(Math.abs(p.balance))}
+                      </div>
+                      <div className="mt-0.5 max-w-[220px] text-[10px] leading-snug text-muted-foreground ms-auto">
+                        {p.balance > 0.005
+                          ? (t as (k: string, o: Record<string, string>) => string)(
+                              'people.balanceExplanationPositive',
+                              {
+                                name: p.name,
+                                amount: formatCurrencyDisplay(p.balance),
+                              }
+                            )
+                          : p.balance < -0.005
+                            ? (t as (k: string, o: Record<string, string>) => string)(
+                                'people.balanceExplanationNegative',
+                                {
+                                  name: p.name,
+                                  amount: formatCurrencyDisplay(
+                                    Math.abs(p.balance)
+                                  ),
+                                }
+                              )
+                            : t('people.balanceExplanationZero')}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-end text-muted-foreground tabular-nums">
                       {p.discount_rate > 0
@@ -396,16 +417,6 @@ export function People() {
                             }}
                           >
                             <Pencil className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canRecordPayment && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={t('people.recordPayment')}
-                            onClick={() => setPaymentPerson(p)}
-                          >
-                            <Wallet className="h-4 w-4" />
                           </Button>
                         )}
                         {canDeletePerson && (
@@ -449,19 +460,6 @@ export function People() {
         onError={(m) => toast.error(m || t('people.toastError'))}
       />
 
-      <RecordPaymentDialog
-        person={paymentPerson}
-        onOpenChange={(o) => !o && setPaymentPerson(null)}
-        t={t}
-        formatCurrency={formatCurrencyDisplay}
-        onSaved={() => {
-          invalidate()
-          toast.success(t('people.toastPayment'))
-          setPaymentPerson(null)
-        }}
-        onError={(m) => toast.error(m || t('people.toastError'))}
-      />
-
       <PersonProfileDialog
         person={profilePerson}
         onOpenChange={(o) => !o && setProfilePerson(null)}
@@ -472,10 +470,6 @@ export function People() {
           setProfilePerson(null)
           setEditing(p)
           setFormOpen(true)
-        }}
-        onPay={(p) => {
-          setProfilePerson(null)
-          setPaymentPerson(p)
         }}
         navigate={navigate}
       />
@@ -751,157 +745,6 @@ function PersonFormDialog({
   )
 }
 
-function RecordPaymentDialog({
-  person,
-  onOpenChange,
-  t,
-  formatCurrency,
-  onSaved,
-  onError,
-}: {
-  person: Person | null
-  onOpenChange: (o: boolean) => void
-  t: (k: string, opts?: Record<string, string | number>) => string
-  formatCurrency: (n: number) => string
-  onSaved: () => void
-  onError: (m?: string) => void
-}) {
-  const [type, setType] = useState<'payment_in' | 'payment_out'>('payment_in')
-  const [amount, setAmount] = useState('')
-  const [note, setNote] = useState('')
-
-  useEffect(() => {
-    if (person) {
-      if (person.balance > 0.005) setType('payment_in')
-      else if (person.balance < -0.005) setType('payment_out')
-      else setType('payment_in')
-      setAmount('')
-      setNote('')
-    }
-  }, [person])
-
-  const amtNum = parseFloat(amount)
-  const validAmt = Number.isFinite(amtNum) && amtNum >= 0.01
-  const delta =
-    person && validAmt
-      ? type === 'payment_in'
-        ? roundMoney(-amtNum)
-        : roundMoney(amtNum)
-      : 0
-  const preview =
-    person && validAmt ? roundMoney(person.balance + delta) : person?.balance ?? 0
-
-  const explanation = person
-    ? person.balance > 0.005
-      ? (t as (k: string, o: Record<string, string>) => string)(
-          'people.balanceExplanationPositive',
-          { name: person.name, amount: formatCurrency(person.balance) }
-        )
-      : person.balance < -0.005
-        ? (t as (k: string, o: Record<string, string>) => string)(
-            'people.balanceExplanationNegative',
-            { name: person.name, amount: formatCurrency(-person.balance) }
-          )
-        : t('people.balanceExplanationZero')
-    : ''
-
-  const submit = async () => {
-    if (!person || !validAmt) return
-    try {
-      await recordPayment({
-        person_id: person.id,
-        type,
-        amount: amtNum,
-        note: note.trim() || undefined,
-      })
-      onSaved()
-    } catch (e) {
-      onError(e instanceof Error ? e.message : undefined)
-    }
-  }
-
-  return (
-    <Dialog open={!!person} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('people.recordPayment')}</DialogTitle>
-        </DialogHeader>
-        {person && (
-          <div className="space-y-4">
-            <div>
-              <p className="text-lg font-semibold">{person.name}</p>
-              <p className={cn('text-2xl font-bold tabular-nums', balanceClass(person.balance))}>
-                {formatCurrency(person.balance)}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">{explanation}</p>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('people.recordPayment')}</Label>
-              <div className="flex flex-col gap-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="pt"
-                    checked={type === 'payment_in'}
-                    onChange={() => setType('payment_in')}
-                  />
-                  {t('people.receivedPayment')}
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="pt"
-                    checked={type === 'payment_out'}
-                    onChange={() => setType('payment_out')}
-                  />
-                  {t('people.madePayment')}
-                </label>
-              </div>
-            </div>
-            <div>
-              <Label>{t('people.paymentAmount')}</Label>
-              <Input
-                type="number"
-                min={0.01}
-                step={0.01}
-                className="mt-1"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>{t('people.paymentNote')}</Label>
-              <Input
-                className="mt-1"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
-            {validAmt && (
-              <p className="text-sm">
-                <span className="text-muted-foreground">
-                  {t('people.paymentPreview')}:{' '}
-                </span>
-                <span className={cn('font-semibold tabular-nums', balanceClass(preview))}>
-                  {formatCurrency(preview)}
-                </span>
-              </p>
-            )}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                {t('common.cancel')}
-              </Button>
-              <Button onClick={submit} disabled={!validAmt}>
-                {t('people.savePayment')}
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 function PersonProfileDialog({
   person,
   onOpenChange,
@@ -909,7 +752,6 @@ function PersonProfileDialog({
   formatCurrency,
   formatDate,
   onEdit,
-  onPay,
   navigate,
 }: {
   person: Person | null
@@ -918,7 +760,6 @@ function PersonProfileDialog({
   formatCurrency: (n: number) => string
   formatDate: (iso: string) => string
   onEdit: (p: Person) => void
-  onPay: (p: Person) => void
   navigate: ReturnType<typeof useNavigate>
 }) {
   const [tab, setTab] = useState<
@@ -926,7 +767,6 @@ function PersonProfileDialog({
   >('overview')
   const [txType, setTxType] = useState<BalanceTransactionType | 'all'>('all')
   const canEditPerson = useFeatureEnabled('people.editPerson')
-  const canRecordPaymentFc = useFeatureEnabled('people.recordPayment')
 
   useEffect(() => {
     if (person) setTab('overview')
@@ -1019,22 +859,15 @@ function PersonProfileDialog({
                 {person.address ?? '—'}
               </p>
               <p className={cn('text-3xl font-bold tabular-nums mt-2', balanceClass(person.balance))}>
-                {formatCurrency(person.balance)}
+                {formatCurrency(Math.abs(person.balance))}
               </p>
               <p className="text-sm text-muted-foreground">{explanation}</p>
             </div>
-            {(canEditPerson || canRecordPaymentFc) && (
+            {canEditPerson && (
               <div className="flex flex-wrap gap-2">
-                {canEditPerson && (
-                  <Button variant="outline" onClick={() => onEdit(person)}>
-                    {t('people.editPerson')}
-                  </Button>
-                )}
-                {canRecordPaymentFc && (
-                  <Button onClick={() => onPay(person)}>
-                    {t('people.recordPayment')}
-                  </Button>
-                )}
+                <Button variant="outline" onClick={() => onEdit(person)}>
+                  {t('people.editPerson')}
+                </Button>
               </div>
             )}
           </div>
@@ -1130,6 +963,7 @@ function PersonProfileDialog({
                   <SelectItem value="payment_in">{t('people.txPaymentIn')}</SelectItem>
                   <SelectItem value="payment_out">{t('people.txPaymentOut')}</SelectItem>
                   <SelectItem value="adjustment">{t('people.txAdjustment')}</SelectItem>
+                  <SelectItem value="wallet">{t('people.txWallet')}</SelectItem>
                 </SelectContent>
               </Select>
               <div className="overflow-x-auto rounded-lg border border-border">

@@ -12,7 +12,8 @@
     "brands": "Brands",
     "stockMovements": "Stock Movements",
     "reports": "Reports",
-    "control": "Control"
+    "control": "Control",
+    "payments": "Payments"
   },
   "common": {
     "search": "Search",
@@ -82,7 +83,8 @@
       "brands": "Brands",
       "purchaseOrders": "Purchase orders",
       "orders": "Sales orders",
-      "reports": "Reports"
+      "reports": "Reports",
+      "paymentsApp": "Payments"
     },
     "sidebar": {
       "groupNav": "Sidebar links",
@@ -97,6 +99,17 @@
       "people": {
         "title": "People menu",
         "desc": "Shows the People item in the sidebar."
+      },
+      "payments": {
+        "title": "Payments menu",
+        "desc": "Shows the Payments item in the sidebar (hub, history, and new payment)."
+      }
+    },
+    "paymentsApp": {
+      "group": "Payments",
+      "list": {
+        "title": "Transaction log",
+        "desc": "Opens the full balance ledger: orders, purchase orders, payments, wallet, and adjustments."
       }
     },
     "inventoryHub": {
@@ -139,7 +152,7 @@
       },
       "recordPayment": {
         "title": "Record payment",
-        "desc": "Allows recording balance payments from the list and profile."
+        "desc": "Allows recording balance payments from Payments → New payment (choose person)."
       },
       "addPerson": {
         "title": "Add person",
@@ -447,9 +460,9 @@
     "createOrderTitle": "Create Order",
     "orderType": "Order Type",
     "paymentCash": "Cash",
-    "paymentCard": "Card",
-    "paymentTransfer": "Transfer",
-    "paymentOther": "Other",
+    "paymentVisa": "Visa",
+    "paymentCheque": "Cheque",
+    "paymentInstapay": "Instapay",
     "paymentNone": "None",
     "paymentAmount": "Amount",
     "paymentBreakdown": "Payment breakdown",
@@ -542,6 +555,7 @@
     "updateDefaultCostPrice": "Yes, update default cost price for this product",
     "runningTotal": "Total",
     "validationAtLeastOne": "Add at least one product",
+    "validationSupplierRequired": "Select a supplier from your directory before checkout.",
     "validationQuantityMin": "Quantity must be at least 1",
     "validationCostPriceMin": "Cost price must be 0 or greater",
     "toastCreated": "Purchase order created successfully",
@@ -555,7 +569,7 @@
     "cancelConfirmTitle": "Cancel Purchase Order",
     "cancelConfirmMessage": "Cancel purchase order #{{number}}? Stock will be deducted for all items.",
     "emptyOrders": "No purchase orders match your filters.",
-    "selectSupplier": "Supplier (optional)",
+    "selectSupplier": "Supplier",
     "supplierBalance": "Supplier balance"
   },
   "people": {
@@ -615,7 +629,8 @@
     "paymentPreview": "Balance after payment",
     "balanceExplanationPositive": "{{name}} owes you {{amount}}",
     "balanceExplanationNegative": "You owe {{name}} {{amount}}",
-    "balanceExplanationZero": "No outstanding balance",
+    "balanceExplanationZero": "Settled",
+    "txWallet": "Wallet",
     "profileOverview": "Overview",
     "profileOrders": "Orders",
     "profilePurchaseOrders": "Purchase Orders",
@@ -646,6 +661,52 @@
     "emptyTxHistory": "No transactions in this view.",
     "emptyOrdersForPerson": "No orders linked yet.",
     "emptyPOsForPerson": "No purchase orders linked yet."
+  },
+  "payments": {
+    "hubIntro": "Record balance payments or open the full transaction log (every ledger movement).",
+    "hubDisabled": "Payments hub shortcuts are turned off in Control settings.",
+    "allPayments": "Transaction log",
+    "allPaymentsDesc": "Full history of balance movements: sales orders, purchase orders, payments, wallet credits, and adjustments.",
+    "newPayment": "New payment",
+    "newPaymentDesc": "Choose a person and record received or made payment.",
+    "newPaymentHint": "Select who this payment applies to, then enter amount and type.",
+    "personForPayment": "Person",
+    "choosePerson": "Choose person…",
+    "selectPersonBrowser": "Select person",
+    "searchPeople": "Search by name, phone, or ID",
+    "pressF1Person": "Press F1 to open the person browser.",
+    "listIntro": "Complete ledger for the selected period—every operation that touched a person’s balance. Filter by type or person, or search.",
+    "filterFrom": "From date & time",
+    "filterTo": "To date & time",
+    "filterType": "Transaction type",
+    "filterPerson": "Person",
+    "filterPersonAll": "All people",
+    "typePaymentsBoth": "Payments in, out, and wallet",
+    "typeAllTransactions": "All transaction types",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Name, phone, walk-in, note, reference, type…",
+    "walkInCustomer": "Walk-in",
+    "emptyList": "No transactions match your filters.",
+    "resultCount": "{{count}} row(s) shown",
+    "backToHub": "Back to Payments",
+    "filterPaymentMethod": "Payment method",
+    "methodFilterAll": "All methods",
+    "methodUnspecified": "Not set",
+    "methodColumn": "Method",
+    "methodDetailsColumn": "Payment method",
+    "logDetailsColumn": "Other details",
+    "listDocumentTotal": "Document total",
+    "listDocumentTotalHint": "Sale total for an order, or purchase order liability total.",
+    "listBalanceImpact": "Balance impact",
+    "listBalanceImpactHint": "Default view: remaining receivable or payable on this row after tender in the columns. Full ledger: signed amount of each ledger line.",
+    "splitHint": "Enable each method you use and enter the amount (e.g. cash + card).",
+    "totalTendered": "Total tendered",
+    "overpaymentWarning": "You are paying more than the total amount",
+    "overpaymentWillBeAddedToWallet": "will be added to wallet as credit",
+    "confirmAndAddToWallet": "Confirm & add {{amount}} to wallet",
+    "selectPersonForOverpayment": "Select a person to apply overpayment to their wallet",
+    "showFullLedger": "Show full ledger",
+    "showFullLedgerHelp": "Include every balance line. When off, checkout payments that are already summarized on order and purchase order rows are hidden."
   },
   "reports": {
     "title": "Reports",

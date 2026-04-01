@@ -4,9 +4,12 @@ import { cn } from '@/lib/utils'
 export function paymentLabelPO(key: string, t: (k: string) => string): string {
   const map: Record<string, string> = {
     cash: 'orders.paymentCash',
-    card: 'orders.paymentCard',
-    transfer: 'orders.paymentTransfer',
-    other: 'orders.paymentOther',
+    visa: 'orders.paymentVisa',
+    cheque: 'orders.paymentCheque',
+    instapay: 'orders.paymentInstapay',
+    card: 'orders.paymentVisa',
+    transfer: 'orders.paymentInstapay',
+    other: 'orders.paymentCheque',
   }
   return t(map[key] ?? 'orders.paymentNone')
 }

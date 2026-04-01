@@ -12,7 +12,8 @@
     "brands": "العلامات التجارية",
     "stockMovements": "حركات المخزون",
     "reports": "التقارير",
-    "control": "التحكم"
+    "control": "التحكم",
+    "payments": "المدفوعات"
   },
   "common": {
     "search": "بحث",
@@ -82,7 +83,8 @@
       "brands": "العلامات التجارية",
       "purchaseOrders": "أوامر الشراء",
       "orders": "طلبات المبيعات",
-      "reports": "التقارير"
+      "reports": "التقارير",
+      "paymentsApp": "المدفوعات"
     },
     "sidebar": {
       "groupNav": "روابط الشريط الجانبي",
@@ -97,6 +99,17 @@
       "people": {
         "title": "قائمة الأشخاص",
         "desc": "إظهار عنصر الأشخاص في الشريط الجانبي."
+      },
+      "payments": {
+        "title": "قائمة المدفوعات",
+        "desc": "إظهار عنصر المدفوعات في الشريط الجانبي (المركز والسجل ودفعة جديدة)."
+      }
+    },
+    "paymentsApp": {
+      "group": "المدفوعات",
+      "list": {
+        "title": "سجل المعاملات",
+        "desc": "فتح السجل الكامل لحركات الرصيد: طلبات، أوامر شراء، مدفوعات، محفظة، وتسويات."
       }
     },
     "inventoryHub": {
@@ -139,7 +152,7 @@
       },
       "recordPayment": {
         "title": "تسجيل دفعة",
-        "desc": "السماح بتسجيل دفعات الرصيد من القائمة والملف."
+        "desc": "السماح بتسجيل دفعات الرصيد من المدفوعات → دفعة جديدة (اختيار الشخص)."
       },
       "addPerson": {
         "title": "إضافة شخص",
@@ -447,9 +460,9 @@
     "createOrderTitle": "إنشاء طلب",
     "orderType": "نوع الطلب",
     "paymentCash": "نقدي",
-    "paymentCard": "بطاقة",
-    "paymentTransfer": "تحويل",
-    "paymentOther": "أخرى",
+    "paymentVisa": "فيزا",
+    "paymentCheque": "شيك",
+    "paymentInstapay": "إنستاباي",
     "paymentNone": "بدون",
     "paymentAmount": "المبلغ",
     "paymentBreakdown": "تفصيل الدفع",
@@ -542,6 +555,7 @@
     "updateDefaultCostPrice": "نعم، تحديث سعر التكلفة الافتراضي لهذا المنتج",
     "runningTotal": "المجموع",
     "validationAtLeastOne": "أضف منتجاً واحداً على الأقل",
+    "validationSupplierRequired": "اختر مورداً من الدليل قبل إتمام الشراء.",
     "validationQuantityMin": "الكمية يجب أن تكون 1 على الأقل",
     "validationCostPriceMin": "سعر التكلفة يجب أن يكون 0 أو أكثر",
     "toastCreated": "تم إنشاء أمر الشراء بنجاح",
@@ -555,7 +569,7 @@
     "cancelConfirmTitle": "إلغاء أمر الشراء",
     "cancelConfirmMessage": "إلغاء أمر الشراء #{{number}}؟ سيتم خصم المخزون لجميع الأصناف.",
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
-    "selectSupplier": "مورد (اختياري)",
+    "selectSupplier": "مورد",
     "supplierBalance": "رصيد المورد"
   },
   "people": {
@@ -615,7 +629,8 @@
     "paymentPreview": "الرصيد بعد الدفعة",
     "balanceExplanationPositive": "{{name}} مدين لك بـ {{amount}}",
     "balanceExplanationNegative": "أنت مدين لـ {{name}} بـ {{amount}}",
-    "balanceExplanationZero": "لا يوجد رصيد مستحق",
+    "balanceExplanationZero": "مسوّى",
+    "txWallet": "محفظة",
     "profileOverview": "نظرة عامة",
     "profileOrders": "الطلبات",
     "profilePurchaseOrders": "أوامر الشراء",
@@ -646,6 +661,52 @@
     "emptyTxHistory": "لا توجد حركات في هذا العرض.",
     "emptyOrdersForPerson": "لا توجد طلبات مرتبطة بعد.",
     "emptyPOsForPerson": "لا توجد أوامر شراء مرتبطة بعد."
+  },
+  "payments": {
+    "hubIntro": "سجّل مدفوعات الأرصدة أو افتح سجل المعاملات الكامل (كل حركات الدفتر).",
+    "hubDisabled": "اختصارات مركز المدفوعات معطّلة من إعدادات التحكم.",
+    "allPayments": "سجل المعاملات",
+    "allPaymentsDesc": "السجل الكامل لحركات الرصيد: مبيعات، أوامر شراء، مدفوعات، محفظة، وتسويات.",
+    "newPayment": "دفعة جديدة",
+    "newPaymentDesc": "اختر شخصاً وسجّل دفعة واردة أو صادرة.",
+    "newPaymentHint": "حدد الشخص ثم أدخل المبلغ ونوع الدفعة.",
+    "personForPayment": "الشخص",
+    "choosePerson": "اختر شخصاً…",
+    "selectPersonBrowser": "اختيار شخص",
+    "searchPeople": "بحث بالاسم أو الهاتف أو المعرف",
+    "pressF1Person": "اضغط F1 لفتح نافذة اختيار الشخص.",
+    "listIntro": "دفتر الأستاذ الكامل للفترة المحددة—كل العمليات التي غيّرت رصيد شخص. صفِّ بالنوع أو الشخص أو ابحث.",
+    "filterFrom": "من تاريخ ووقت",
+    "filterTo": "إلى تاريخ ووقت",
+    "filterType": "نوع الحركة",
+    "filterPerson": "الشخص",
+    "filterPersonAll": "كل الأشخاص",
+    "typePaymentsBoth": "دفعات واردة وصادرة ومحفظة",
+    "typeAllTransactions": "كل أنواع الحركات",
+    "searchLabel": "بحث",
+    "searchPlaceholder": "اسم، هاتف، عميل مباشر، ملاحظة، مرجع، نوع…",
+    "walkInCustomer": "عميل مباشر",
+    "emptyList": "لا توجد حركات تطابق التصفية.",
+    "resultCount": "عرض {{count}} صفاً",
+    "backToHub": "العودة إلى المدفوعات",
+    "filterPaymentMethod": "طريقة الدفع",
+    "methodFilterAll": "كل الطرق",
+    "methodUnspecified": "غير محدد",
+    "methodColumn": "الطريقة",
+    "methodDetailsColumn": "طريقة الدفع",
+    "logDetailsColumn": "تفاصيل أخرى",
+    "listDocumentTotal": "إجمالي المستند",
+    "listDocumentTotalHint": "إجمالي البيع للطلب، أو إجمالي التزام أمر الشراء.",
+    "listBalanceImpact": "أثر الرصيد",
+    "listBalanceImpactHint": "العرض الافتراضي: المتبقي من الذمم أو الديون على هذا الصف بعد طرق الدفع في الأعمدة. الدفتر الكامل: المبلغ الموقّع لكل سطر في الدفتر.",
+    "splitHint": "فعّل كل طريقة تستخدمها وأدخل المبلغ (مثلاً نقداً + بطاقة).",
+    "totalTendered": "إجمالي المدفوع",
+    "overpaymentWarning": "أنت تدفع أكثر من المبلغ الإجمالي",
+    "overpaymentWillBeAddedToWallet": "سيتم إضافته للمحفظة كرصيد",
+    "confirmAndAddToWallet": "تأكيد وإضافة {{amount}} للمحفظة",
+    "selectPersonForOverpayment": "اختر شخصاً لتطبيق الدفع الزائد على محفظته",
+    "showFullLedger": "عرض الدفتر الكامل",
+    "showFullLedgerHelp": "إظهار كل أسطر الأرصدة. عند الإيقاف، تُخفى دفعات تأكيد الطلب/أمر الشراء الظاهرة أيضاً في صف الطلب أو أمر الشراء."
   },
   "reports": {
     "title": "التقارير",

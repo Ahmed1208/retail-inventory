@@ -57,15 +57,15 @@ export function PurchaseOrderForm() {
   const [note, setNote] = useState('')
   const [payUse, setPayUse] = useState<Record<PaymentMethod, boolean>>({
     cash: false,
-    card: false,
-    transfer: false,
-    other: false,
+    visa: false,
+    cheque: false,
+    instapay: false,
   })
   const [payAmounts, setPayAmounts] = useState<Record<PaymentMethod, string>>({
     cash: '',
-    card: '',
-    transfer: '',
-    other: '',
+    visa: '',
+    cheque: '',
+    instapay: '',
   })
   const [allowRemaining, setAllowRemaining] = useState(false)
   const [lines, setLines] = useState<POLineRow[]>(() => [emptyPOLine()])
@@ -118,12 +118,9 @@ export function PurchaseOrderForm() {
 
   const canConfirm = useMemo(() => {
     if (!hasValidLines) return false
+    if (!supplierPersonId) return false
     if (remainingPreview > 0.01) {
-      if (allowRemaining) {
-        if (!supplierPersonId) return false
-      } else {
-        return false
-      }
+      if (!allowRemaining) return false
     }
     return true
   }, [hasValidLines, remainingPreview, allowRemaining, supplierPersonId])
@@ -498,6 +495,10 @@ export function PurchaseOrderForm() {
       toast.error(t('purchaseOrders.validationAtLeastOne'))
       return
     }
+    if (!selectedSupplier) {
+      toast.error(t('purchaseOrders.validationSupplierRequired'))
+      return
+    }
     if (!validateLines()) return
     setCheckoutOpen(true)
   }
@@ -576,7 +577,7 @@ export function PurchaseOrderForm() {
         formatCurrency={fc}
         total={runningTotal}
         paidPreview={paidPreview}
-        remainingPreview={remainingPreview}
+        supplierName={selectedSupplier?.name ?? null}
         payUse={payUse}
         setPayUse={setPayUse}
         payAmounts={payAmounts}

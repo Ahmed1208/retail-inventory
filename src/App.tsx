@@ -20,6 +20,9 @@ import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { Control } from '@/pages/Control'
+import { PaymentsHub } from '@/pages/PaymentsHub'
+import { PaymentsList } from '@/pages/PaymentsList'
+import { NewPayment } from '@/pages/NewPayment'
 import { NotFound } from '@/pages/NotFound'
 
 function App() {
@@ -38,6 +41,9 @@ function App() {
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/orders" element={<OrdersHome />} />
             <Route path="/people" element={<People />} />
+            <Route path="/payments/list" element={<PaymentsList />} />
+            <Route path="/payments/new" element={<NewPayment />} />
+            <Route path="/payments" element={<PaymentsHub />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />
             <Route

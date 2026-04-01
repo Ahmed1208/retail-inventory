@@ -14,6 +14,8 @@ export const FEATURE_CONTROL_IDS = [
   'sidebar.inventory',
   'sidebar.orders',
   'sidebar.people',
+  'sidebar.payments',
+  'payments.list',
   // Inventory hub cards
   'inventory.hubProducts',
   'inventory.hubPurchaseOrders',
@@ -94,6 +96,28 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.sidebar.people.title',
             descriptionKey: 'control.sidebar.people.desc',
+          },
+          {
+            id: 'sidebar.payments',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.payments.title',
+            descriptionKey: 'control.sidebar.payments.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    titleKey: 'control.area.paymentsApp',
+    groups: [
+      {
+        titleKey: 'control.paymentsApp.group',
+        items: [
+          {
+            id: 'payments.list',
+            defaultEnabled: true,
+            titleKey: 'control.payments.list.title',
+            descriptionKey: 'control.payments.list.desc',
           },
         ],
       },

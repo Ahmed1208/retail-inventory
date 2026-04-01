@@ -88,15 +88,15 @@ export function PosOrderForm({
   const [lines, setLines] = useState<LineRow[]>(() => [emptyLine()])
   const [payUse, setPayUse] = useState<Record<PaymentMethod, boolean>>({
     cash: false,
-    card: false,
-    transfer: false,
-    other: false,
+    visa: false,
+    cheque: false,
+    instapay: false,
   })
   const [payAmounts, setPayAmounts] = useState<Record<PaymentMethod, string>>({
     cash: '',
-    card: '',
-    transfer: '',
-    other: '',
+    visa: '',
+    cheque: '',
+    instapay: '',
   })
 
   const [focusCellPos, setFocusCellPos] = useState({ row: 0, col: 0 })
@@ -157,15 +157,15 @@ export function PosOrderForm({
       )
       const use: Record<PaymentMethod, boolean> = {
         cash: false,
-        card: false,
-        transfer: false,
-        other: false,
+        visa: false,
+        cheque: false,
+        instapay: false,
       }
       const amts: Record<PaymentMethod, string> = {
         cash: '',
-        card: '',
-        transfer: '',
-        other: '',
+        visa: '',
+        cheque: '',
+        instapay: '',
       }
       for (const p of o.payment_installments) {
         use[p.method] = true
@@ -251,6 +251,11 @@ export function PosOrderForm({
 
   const remainingPreview = roundMoney(preview.total - paidPreview)
 
+  const overpaymentExcess = useMemo(() => {
+    if (paidPreview <= preview.total + 0.01) return 0
+    return roundMoney(paidPreview - preview.total)
+  }, [paidPreview, preview.total])
+
   const buildPaymentsPayload = useCallback(() => {
     const out: { payment_method: PaymentMethod; amount: number }[] = []
     for (const m of PAYMENT_METHODS) {
@@ -271,6 +276,7 @@ export function PosOrderForm({
   )
   const canConfirm = useMemo(() => {
     if (!hasValidLines || !stockOk) return false
+    if (overpaymentExcess > 0.01 && !personId) return false
     if (remainingPreview > 0.01) {
       if (allowRemaining) {
         if (!personId) return false
@@ -279,7 +285,14 @@ export function PosOrderForm({
       }
     }
     return true
-  }, [hasValidLines, stockOk, remainingPreview, allowRemaining, personId])
+  }, [
+    hasValidLines,
+    stockOk,
+    remainingPreview,
+    allowRemaining,
+    personId,
+    overpaymentExcess,
+  ])
 
   const duplicateProductIds = useMemo(() => {
     const m = new Map<string, number>()
@@ -708,7 +721,7 @@ export function PosOrderForm({
         preview={preview}
         discountRate={discountRate}
         paidPreview={paidPreview}
-        remainingPreview={remainingPreview}
+        personName={selectedPerson?.name ?? null}
         payUse={payUse}
         setPayUse={setPayUse}
         payAmounts={payAmounts}
