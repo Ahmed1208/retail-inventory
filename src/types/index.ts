@@ -190,7 +190,7 @@ export interface OrderWithItemsAndPayments extends OrderWithItems {
 
 // ============ Purchase Order types ============
 
-export type PurchaseOrderStatus = 'received' | 'cancelled'
+export type PurchaseOrderStatus = 'draft' | 'received' | 'cancelled'
 
 export interface PurchaseOrder {
   id: string

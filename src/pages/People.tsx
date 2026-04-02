@@ -998,6 +998,7 @@ function PersonProfileDialog({
                                 type: row.type,
                                 reference_id: row.reference_id,
                                 reference_number: row.reference_number,
+                                note: row.note,
                                 ledger_operation_route_id:
                                   row.type === 'payment_in' ||
                                   row.type === 'payment_out'

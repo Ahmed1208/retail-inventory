@@ -31,7 +31,9 @@ import { Button } from '@/components/ui/button'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
+import { isRetainedFromCancelledDocumentNote } from '@/utils/ledgerLinks'
 
 type MethodFilterState = 'all' | 'unspecified' | PaymentMethod
 
@@ -289,6 +291,19 @@ export function PaymentsList() {
       .join(' · ')
   }
 
+  const renderLogDetailsCell = (row: PaymentGroupedListItem) => {
+    if (
+      row.note &&
+      isRetainedFromCancelledDocumentNote(row.note) &&
+      (row.type === 'payment_in' ||
+        row.type === 'payment_out' ||
+        row.type === 'wallet')
+    ) {
+      return <NoteWithDocLinks note={row.note} />
+    }
+    return <span>{formatResidualDetails(row)}</span>
+  }
+
   const formatMethodCell = (amount: number) =>
     Math.abs(amount) < MONEY_EPS ? t('people.emDash') : fc(amount)
   const formatDateTime = (iso: string) =>
@@ -442,7 +457,7 @@ export function PaymentsList() {
           </td>
         ))}
         <td className="px-3 py-2 text-muted-foreground max-w-[min(100%,14rem)] whitespace-normal">
-          {formatResidualDetails(row)}
+          {renderLogDetailsCell(row)}
         </td>
         <td className="px-3 py-2 text-muted-foreground">
           <LedgerReferenceLink row={row} />

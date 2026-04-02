@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,11 +7,15 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 
 import {
   cancelPurchaseOrder,
+  confirmPurchaseOrder,
   type CancelPurchaseOrderSettlement,
   getPurchaseOrderById,
 } from '@/services/purchaseOrderService'
-import { getLedgerPaymentOperationRouteIdForPo } from '@/services/peopleService'
-import type { PurchaseOrderPayment } from '@/types'
+import {
+  getLedgerPaymentOperationRouteIdForPo,
+  roundMoney,
+} from '@/services/peopleService'
+import type { PaymentMethod, PurchaseOrderPayment } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import {
@@ -30,6 +34,9 @@ import {
   POStatusBadge,
   paymentLabelPO,
 } from '@/components/purchaseOrders/purchaseOrderShared'
+import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { PAYMENT_METHODS } from '@/components/orders/ordersShared'
+import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
 
 export function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -40,7 +47,25 @@ export function PurchaseOrderDetail() {
   const fc = (n: number) => formatCurrency(n, lang)
 
   const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
+  const canCreatePo = useFeatureEnabled('purchaseOrders.create')
   const canListPayments = useFeatureEnabled('payments.list')
+
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [payUse, setPayUse] = useState<Record<PaymentMethod, boolean>>({
+    cash: false,
+    visa: false,
+    cheque: false,
+    instapay: false,
+  })
+  const [payAmounts, setPayAmounts] = useState<Record<PaymentMethod, string>>({
+    cash: '',
+    visa: '',
+    cheque: '',
+    instapay: '',
+  })
+  const [allowRemaining, setAllowRemaining] = useState(false)
+  const [confirmNote, setConfirmNote] = useState('')
 
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelSettlement, setCancelSettlement] =
@@ -72,6 +97,29 @@ export function PurchaseOrderDetail() {
     })
 
   useEffect(() => {
+    if (po) setConfirmNote(po.note ?? '')
+  }, [po?.id, po?.note])
+
+  const paidPreview = useMemo(() => {
+    let s = 0
+    for (const m of PAYMENT_METHODS) {
+      if (!payUse[m]) continue
+      const v = parseFloat(payAmounts[m]) || 0
+      if (v > 0) s += v
+    }
+    return roundMoney(s)
+  }, [payUse, payAmounts])
+
+  const canConfirmDraft = useMemo(() => {
+    if (!po || po.status !== 'draft') return false
+    if (!po.person_id) return false
+    const total = roundMoney(po.total_amount)
+    const rem = roundMoney(total - paidPreview)
+    if (rem > 0.01 && !allowRemaining) return false
+    return true
+  }, [po, paidPreview, allowRemaining])
+
+  useEffect(() => {
     if (po) {
       document.title = `${(t as (key: string, opts?: Record<string, number>) => string)('purchaseOrders.detailTitle', { number: po.order_number })} | StockPilot`
     } else {
@@ -89,6 +137,54 @@ export function PurchaseOrderDetail() {
     qc.invalidateQueries({ queryKey: ['people'] })
     qc.invalidateQueries({ queryKey: ['dashboardStats'] })
     qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
+  }
+
+  const openConfirmDraft = () => {
+    if (!po || po.status !== 'draft') return
+    setPayUse({
+      cash: false,
+      visa: false,
+      cheque: false,
+      instapay: false,
+    })
+    setPayAmounts({
+      cash: '',
+      visa: '',
+      cheque: '',
+      instapay: '',
+    })
+    setAllowRemaining(false)
+    setConfirmNote(po.note ?? '')
+    setConfirmOpen(true)
+  }
+
+  const buildPaymentsFromState = () => {
+    const out: { payment_method: PaymentMethod; amount: number }[] = []
+    for (const m of PAYMENT_METHODS) {
+      if (!payUse[m]) continue
+      const v = roundMoney(parseFloat(payAmounts[m]) || 0)
+      if (v > 0.001) out.push({ payment_method: m, amount: v })
+    }
+    return out
+  }
+
+  const handleConfirmDraftSubmit = async () => {
+    if (!po || po.status !== 'draft' || !canConfirmDraft) return
+    setConfirming(true)
+    try {
+      await confirmPurchaseOrder(po.id, {
+        payments: buildPaymentsFromState(),
+        allow_remaining_on_account: allowRemaining,
+        note: confirmNote,
+      })
+      invalidatePO()
+      setConfirmOpen(false)
+      toast.success(t('purchaseOrders.toastCreated'))
+    } catch {
+      toast.error(t('purchaseOrders.toastError'))
+    } finally {
+      setConfirming(false)
+    }
   }
 
   if (!id) return null
@@ -120,12 +216,11 @@ export function PurchaseOrderDetail() {
   }
 
   const canCancel =
-    canCancelPO &&
-    po.status === 'received'
+    canCancelPO && (po.status === 'received' || po.status === 'draft')
 
   const paidAtPo = (po.payments ?? []).reduce((s, p) => s + p.amount, 0)
   const showCancelSettlementChoice =
-    !!po.person_id && paidAtPo > 0.01
+    po.status === 'received' && !!po.person_id && paidAtPo > 0.01
 
   return (
     <div
@@ -162,8 +257,13 @@ export function PurchaseOrderDetail() {
             </p>
           </div>
           <POStatusBadge status={po.status} t={t} />
-          {canCancel && (
-            <div className="ms-auto">
+          <div className="ms-auto flex flex-wrap gap-2">
+            {po.status === 'draft' && canCreatePo && (
+              <Button type="button" onClick={openConfirmDraft}>
+                {t('purchaseOrders.confirmReceiveDraft')}
+              </Button>
+            )}
+            {canCancel && (
               <Button
                 type="button"
                 variant="destructive"
@@ -174,8 +274,8 @@ export function PurchaseOrderDetail() {
               >
                 {t('purchaseOrders.cancelPurchaseOrder')}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </header>
 
         <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
@@ -231,7 +331,7 @@ export function PurchaseOrderDetail() {
               <span className="text-muted-foreground">
                 {t('purchaseOrders.note')}:
               </span>{' '}
-              {po.note}
+              <NoteWithDocLinks note={po.note} />
             </p>
           )}
         </div>
@@ -296,6 +396,28 @@ export function PurchaseOrderDetail() {
         </p>
       </div>
 
+      <PurchaseOrderCheckoutModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        isRTL={isRTL}
+        formatCurrency={fc}
+        total={po.total_amount}
+        paidPreview={paidPreview}
+        supplierName={po.supplier_name ?? null}
+        payUse={payUse}
+        setPayUse={setPayUse}
+        payAmounts={payAmounts}
+        setPayAmounts={setPayAmounts}
+        allowRemaining={allowRemaining}
+        setAllowRemaining={setAllowRemaining}
+        supplierPersonId={po.person_id}
+        note={confirmNote}
+        setNote={setConfirmNote}
+        canConfirm={canConfirmDraft}
+        confirming={confirming}
+        onConfirm={handleConfirmDraftSubmit}
+      />
+
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
           <AlertDialogHeader>
@@ -307,9 +429,14 @@ export function PurchaseOrderDetail() {
                 <p>
                   {(
                     t as (key: string, opts?: Record<string, number>) => string
-                  )('purchaseOrders.cancelConfirmMessage', {
-                    number: po.order_number,
-                  })}
+                  )(
+                    po.status === 'draft'
+                      ? 'purchaseOrders.cancelConfirmMessageDraft'
+                      : 'purchaseOrders.cancelConfirmMessage',
+                    {
+                      number: po.order_number,
+                    }
+                  )}
                 </p>
                 {showCancelSettlementChoice && (
                   <fieldset className="space-y-3 rounded-md border border-border p-3">

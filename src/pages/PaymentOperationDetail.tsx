@@ -32,6 +32,7 @@ import type { PaymentMethod } from '@/types'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { ledgerPaymentRelatedDocumentHref } from '@/utils/ledgerLinks'
+import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 
 function isPaymentMethod(m: unknown): m is PaymentMethod {
   return typeof m === 'string' && PAYMENT_METHODS.includes(m as PaymentMethod)
@@ -339,21 +340,44 @@ export function PaymentOperationDetail() {
 
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <Label htmlFor="op-note">{t('payments.operationNote')}</Label>
-          <Textarea
-            id="op-note"
-            value={noteDraft}
-            onChange={(e) => setNoteDraft(e.target.value)}
-            readOnly={noteLocked}
-            disabled={noteMut.isPending || op.reversed}
-            rows={3}
-            placeholder={t('payments.operationNotePlaceholder')}
-            className="resize-y min-h-[4rem]"
-          />
+          {noteLocked || op.reversed ? (
+            <div
+              id="op-note"
+              className="min-h-[4rem] rounded-md border border-input bg-muted/30 px-3 py-2"
+            >
+              <NoteWithDocLinks note={noteDraft} />
+            </div>
+          ) : (
+            <Textarea
+              id="op-note"
+              value={noteDraft}
+              onChange={(e) => setNoteDraft(e.target.value)}
+              readOnly={false}
+              disabled={noteMut.isPending}
+              rows={3}
+              placeholder={t('payments.operationNotePlaceholder')}
+              className="resize-y min-h-[4rem]"
+            />
+          )}
+          {!noteLocked && !op.reversed && (
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                {t('payments.notePreview')}
+              </p>
+              <div className="rounded-md border border-border/60 bg-muted/15 px-2 py-1.5">
+                <NoteWithDocLinks note={noteDraft} />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t('payments.operationNoteLinkHint')}
+              </p>
+            </div>
+          )}
           {!noteLocked ? (
             <Button
               type="button"
               disabled={
                 noteMut.isPending ||
+                op.reversed ||
                 noteDraft.trim() === (op.note ?? '').trim()
               }
               onClick={() => noteMut.mutate(noteDraft)}

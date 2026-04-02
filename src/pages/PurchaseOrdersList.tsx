@@ -126,6 +126,7 @@ export function PurchaseOrdersList() {
           {(
             [
               ['all', 'purchaseOrders.filterStatusAll'],
+              ['draft', 'purchaseOrders.filterStatusDraft'],
               ['received', 'purchaseOrders.filterStatusReceived'],
               ['cancelled', 'purchaseOrders.filterStatusCancelled'],
             ] as const

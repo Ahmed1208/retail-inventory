@@ -503,6 +503,47 @@ export function PurchaseOrderForm() {
     setCheckoutOpen(true)
   }
 
+  const handleSaveDraft = async () => {
+    if (!hasValidLines) {
+      toast.error(t('purchaseOrders.validationAtLeastOne'))
+      return
+    }
+    if (!selectedSupplier) {
+      toast.error(t('purchaseOrders.validationSupplierRequired'))
+      return
+    }
+    if (!validateLines()) return
+    setSubmitting(true)
+    try {
+      const items = lines.filter((l) => l.product_id)
+      const created = await createPurchaseOrder({
+        supplier_name: selectedSupplier?.name,
+        person_id: selectedSupplier?.id,
+        note: note.trim() || undefined,
+        asDraft: true,
+        items: items.map((l) => ({
+          product_id: l.product_id,
+          quantity: l.qty,
+          cost_price: l.costPrice,
+          update_default_cost_price: l.updateDefaultCostPrice,
+        })),
+      })
+      invalidatePO()
+      toast.success(t('purchaseOrders.toastDraftSaved'))
+      navigate(`/purchase-orders/${created.id}`)
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof (err as { message?: string })?.message === 'string'
+            ? (err as { message: string }).message
+            : undefined
+      toast.error(message || t('purchaseOrders.toastError'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleConfirmCreate = async () => {
     if (!canConfirm) return
     setSubmitting(true)
@@ -742,14 +783,25 @@ export function PurchaseOrderForm() {
             <p className="text-sm font-semibold tabular-nums">
               {t('purchaseOrders.runningTotal')}: {fc(runningTotal)}
             </p>
-            <Button
-              type="button"
-              disabled={!hasValidLines || submitting}
-              className="min-w-[140px]"
-              onClick={openCheckout}
-            >
-              {t('purchaseOrders.createSubmit')}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!hasValidLines || !supplierPersonId || submitting}
+                className="min-w-[120px]"
+                onClick={handleSaveDraft}
+              >
+                {t('purchaseOrders.saveDraft')}
+              </Button>
+              <Button
+                type="button"
+                disabled={!hasValidLines || submitting}
+                className="min-w-[140px]"
+                onClick={openCheckout}
+              >
+                {t('purchaseOrders.createSubmit')}
+              </Button>
+            </div>
           </div>
         </footer>
       </div>

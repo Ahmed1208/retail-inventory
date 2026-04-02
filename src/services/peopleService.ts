@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isRetainedFromCancelledDocumentNote } from '@/utils/ledgerLinks'
 import { normalizePaymentMethod } from '@/utils/paymentMethod'
 import type {
   BalanceTransaction,
@@ -377,6 +378,37 @@ export async function deletePerson(id: string): Promise<void> {
   if (dErr) throw dErr
 }
 
+/** Same numbering as Record payment (`PI-*` / `PY-*`); use for ledger rows that should match that UX. */
+export async function getNextStandaloneLedgerRef(
+  type: 'payment_in' | 'payment_out'
+): Promise<string> {
+  const { data: refRaw, error: refErr } = await supabase.rpc(
+    'next_standalone_ledger_ref',
+    { p_type: type }
+  )
+  if (refErr) {
+    const msg = supabaseErrorMessage(refErr).toLowerCase()
+    const rpcMissing =
+      msg.includes('schema cache') ||
+      msg.includes('could not find the function') ||
+      msg.includes('pgrst202') ||
+      msg.includes('42883') ||
+      (msg.includes('function') && msg.includes('does not exist'))
+    if (!rpcMissing) throw refErr
+    const prefix = type === 'payment_in' ? 'PI' : 'PY'
+    const suffix = crypto
+      .randomUUID()
+      .replace(/-/g, '')
+      .slice(0, 10)
+      .toUpperCase()
+    return `${prefix}-${suffix}`
+  }
+  const refNumber =
+    typeof refRaw === 'string' ? refRaw : String(refRaw ?? '')
+  if (!refNumber) throw new Error('Failed to allocate payment reference')
+  return refNumber
+}
+
 export async function recordPayment(data: {
   person_id: string
   type: 'payment_in' | 'payment_out'
@@ -401,32 +433,7 @@ export async function recordPayment(data: {
   const noteBase = data.note?.trim() || null
   const paymentGroupId = lines.length > 1 ? crypto.randomUUID() : null
 
-  let refNumber: string
-  const { data: refRaw, error: refErr } = await supabase.rpc(
-    'next_standalone_ledger_ref',
-    { p_type: data.type }
-  )
-  if (refErr) {
-    const msg = supabaseErrorMessage(refErr).toLowerCase()
-    const rpcMissing =
-      msg.includes('schema cache') ||
-      msg.includes('could not find the function') ||
-      msg.includes('pgrst202') ||
-      msg.includes('42883') ||
-      (msg.includes('function') && msg.includes('does not exist'))
-    if (!rpcMissing) throw refErr
-    const prefix = data.type === 'payment_in' ? 'PI' : 'PY'
-    const suffix = crypto
-      .randomUUID()
-      .replace(/-/g, '')
-      .slice(0, 10)
-      .toUpperCase()
-    refNumber = `${prefix}-${suffix}`
-  } else {
-    refNumber =
-      typeof refRaw === 'string' ? refRaw : String(refRaw ?? '')
-    if (!refNumber) throw new Error('Failed to allocate payment reference')
-  }
+  const refNumber = await getNextStandaloneLedgerRef(data.type)
 
   let running = person.balance
   const rows: {
@@ -828,6 +835,7 @@ function nestCheckoutPaymentsUnderDocuments(
     if (g.type === 'payment_in' && g.reference_id) {
       const anchor = orderAnchor.get(g.reference_id)
       if (
+        !isRetainedFromCancelledDocumentNote(g.note) &&
         orderRefHasParent.has(g.reference_id) &&
         anchor &&
         anchor.personId === g.person_id &&
@@ -847,6 +855,7 @@ function nestCheckoutPaymentsUnderDocuments(
     if (g.type === 'payment_out' && g.reference_id) {
       const anchor = poAnchor.get(g.reference_id)
       if (
+        !isRetainedFromCancelledDocumentNote(g.note) &&
         poRefHasParent.has(g.reference_id) &&
         anchor &&
         anchor.personId === g.person_id &&
@@ -1075,7 +1084,11 @@ async function attachPurchaseOrderStatusToGroups(
   const statusById = new Map<string, PurchaseOrderStatus>()
   for (const r of data ?? []) {
     const row = r as { id: string; status: string }
-    if (row.status === 'received' || row.status === 'cancelled') {
+    if (
+      row.status === 'draft' ||
+      row.status === 'received' ||
+      row.status === 'cancelled'
+    ) {
       statusById.set(String(row.id), row.status)
     }
   }
@@ -1214,10 +1227,10 @@ export async function listBalanceTransactionsWithPeople(filters: {
 
   let groups = groupPaymentLedgerRows(mapRows(data))
   groups = await enrichOrderPoPaymentLines(groups, !fullLedger)
-  groups = nestCheckoutPaymentsUnderDocuments(groups, fullLedger)
-  groups = filterReversalMirrorAdjustments(groups, fullLedger)
   groups = await attachPurchaseOrderStatusToGroups(groups)
   groups = await attachOrderStatusToGroups(groups)
+  groups = nestCheckoutPaymentsUnderDocuments(groups, fullLedger)
+  groups = filterReversalMirrorAdjustments(groups, fullLedger)
   if (mf !== 'all') {
     groups = groups.filter((g) => groupMatchesMethodFilter(g, mf))
   }
@@ -1693,6 +1706,302 @@ async function markBalanceTransactionsReversed(
   )
 }
 
+/** Cluster key for document-linked payment rows (aligns with ungrouped split tender grouping). */
+function ungroupedDocPaymentClusterKey(row: {
+  person_id: string | null
+  reference_id: string | null
+  reference_number: string | null
+  created_at: string
+  type: string
+}): string | null {
+  if (row.type !== 'payment_in' && row.type !== 'payment_out') return null
+  if (!row.reference_id) return null
+  const sec = row.created_at.slice(0, 19)
+  return `${row.person_id ?? ''}|${row.reference_id}|${row.reference_number ?? ''}|${sec}|${row.type}`
+}
+
+/**
+ * Distinct payment operation route ids (`payment_group_id` or single row `id`) for active ledger
+ * payments on a document, used when cancelling an order/PO to void checkout rows in place.
+ */
+export async function listActiveLedgerPaymentOperationRouteIdsForDocument(
+  referenceId: string,
+  referenceNumber: string,
+  paymentType: 'payment_in' | 'payment_out',
+  personId: string | null
+): Promise<string[]> {
+  let q = supabase
+    .from(BALANCE_TX)
+    .select('id, payment_group_id, person_id, reference_id, reference_number, created_at, type')
+    .eq('reference_id', referenceId)
+    .eq('reference_number', referenceNumber)
+    .eq('type', paymentType)
+    .is('reversed_at', null)
+    .order('created_at', { ascending: true })
+  if (personId) {
+    q = q.eq('person_id', personId)
+  } else {
+    q = q.is('person_id', null)
+  }
+  const { data, error } = await q
+  if (error) throw error
+  const rows = (data ?? []) as Array<{
+    id: string
+    payment_group_id: string | null
+    person_id: string | null
+    reference_id: string | null
+    reference_number: string | null
+    created_at: string
+    type: string
+  }>
+  if (rows.length === 0) return []
+
+  const routeIds: string[] = []
+  const seenGid = new Set<string>()
+  const withoutGid: typeof rows = []
+  for (const r of rows) {
+    const gid = r.payment_group_id
+    if (gid != null && String(gid).trim() !== '') {
+      const g = String(gid)
+      if (!seenGid.has(g)) {
+        seenGid.add(g)
+        routeIds.push(g)
+      }
+    } else {
+      withoutGid.push(r)
+    }
+  }
+
+  const byCluster = new Map<string, typeof rows>()
+  for (const r of withoutGid) {
+    const k = ungroupedDocPaymentClusterKey(r)
+    if (!k) continue
+    const arr = byCluster.get(k) ?? []
+    arr.push(r)
+    byCluster.set(k, arr)
+  }
+  for (const cl of byCluster.values()) {
+    cl.sort((a, b) => a.created_at.localeCompare(b.created_at))
+    routeIds.push(cl[0].id)
+  }
+
+  routeIds.sort((a, b) => {
+    const ta = rows.find((r) => r.id === a || r.payment_group_id === a)?.created_at ?? ''
+    const tb = rows.find((r) => r.id === b || r.payment_group_id === b)?.created_at ?? ''
+    return ta.localeCompare(tb)
+  })
+  return routeIds
+}
+
+/**
+ * Walk-in cancel: void checkout `payment_in` and the original `order` ledger line in place
+ * (same pattern as person orders — no mirror `adjustment` rows with cancel notes in the log).
+ */
+export async function voidWalkInOrderCancelLedgerInPlace(
+  orderId: string,
+  orderNumber: number
+): Promise<void> {
+  const ref = `O-${orderNumber}`
+  const routes = await listActiveLedgerPaymentOperationRouteIdsForDocument(
+    orderId,
+    ref,
+    'payment_in',
+    null
+  )
+  await voidLedgerPaymentOperationsForDocumentCancel(routes)
+
+  const { data, error } = await supabase
+    .from(BALANCE_TX)
+    .select('*')
+    .eq('reference_id', orderId)
+    .eq('reference_number', ref)
+    .eq('type', 'order')
+    .is('person_id', null)
+    .is('reversed_at', null)
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return
+  const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
+  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+}
+
+/** Earliest active ledger row time for a document line (confirm-time), for retained-payment copies. */
+export async function getLedgerDocumentLineCreatedAt(
+  referenceId: string,
+  referenceNumber: string,
+  docType: 'order' | 'purchase_order',
+  personId: string | null
+): Promise<string | null> {
+  let q = supabase
+    .from(BALANCE_TX)
+    .select('created_at')
+    .eq('reference_id', referenceId)
+    .eq('reference_number', referenceNumber)
+    .eq('type', docType)
+    .is('reversed_at', null)
+    .order('created_at', { ascending: true })
+    .limit(1)
+  if (personId) {
+    q = q.eq('person_id', personId)
+  } else {
+    q = q.is('person_id', null)
+  }
+  const { data, error } = await q
+  if (error) throw error
+  const row = data?.[0] as { created_at: string } | undefined
+  return row?.created_at ?? null
+}
+
+/**
+ * Person order cancel: void the original `order` receivable line in place (no second offsetting row).
+ */
+export async function voidLedgerOrderDocumentRowForCancel(
+  orderId: string,
+  orderNumber: number,
+  personId: string
+): Promise<void> {
+  const ref = `O-${orderNumber}`
+  const { data, error } = await supabase
+    .from(BALANCE_TX)
+    .select('*')
+    .eq('reference_id', orderId)
+    .eq('reference_number', ref)
+    .eq('type', 'order')
+    .eq('person_id', personId)
+    .is('reversed_at', null)
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return
+  const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
+  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+}
+
+/**
+ * PO cancel: void the original `purchase_order` liability line in place instead of inserting a
+ * second offsetting `purchase_order` row.
+ */
+export async function voidLedgerPurchaseOrderDocumentRowForCancel(
+  purchaseOrderId: string,
+  orderNumber: number,
+  personId: string
+): Promise<void> {
+  const ref = `PO-${orderNumber}`
+  const { data, error } = await supabase
+    .from(BALANCE_TX)
+    .select('*')
+    .eq('reference_id', purchaseOrderId)
+    .eq('reference_number', ref)
+    .eq('type', 'purchase_order')
+    .eq('person_id', personId)
+    .is('reversed_at', null)
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return
+  const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
+  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+}
+
+/**
+ * Insert reversal adjustments, mark rows reversed, update `people.balance`. Does not touch
+ * `order_payments` / installments / PO payment tables (used from document cancel after those deletes).
+ */
+async function applyReversalAdjustmentsMarkAndBalance(
+  txs: BalanceTransaction[],
+  skipPeopleBalanceUpdate: boolean
+): Promise<void> {
+  if (txs.length === 0) return
+  const ids = txs.map((t) => t.id)
+
+  const { data: anyReversed, error: revCheckErr } = await supabase.rpc(
+    'balance_tx_any_reversed',
+    { p_ids: ids }
+  )
+  if (!revCheckErr && anyReversed === true) {
+    throw new Error('This payment operation was already reversed')
+  }
+
+  for (const r of txs) {
+    if (r.reversed_at != null && String(r.reversed_at).trim() !== '') {
+      throw new Error('This payment operation was already reversed')
+    }
+  }
+
+  const deltaByPerson = new Map<string, number>()
+  for (const r of txs) {
+    if (!r.person_id) continue
+    const k = r.person_id
+    deltaByPerson.set(k, roundMoney((deltaByPerson.get(k) ?? 0) + r.amount))
+  }
+
+  for (const r of txs) {
+    await insertBalanceTransactionRow({
+      person_id: r.person_id,
+      type: 'adjustment',
+      amount: roundMoney(-r.amount),
+      reference_id: reversalAdjustmentReferenceId(r),
+      reference_number: r.reference_number,
+      note: LEDGER_REVERSAL_ADJUSTMENT_NOTE,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: null,
+    })
+  }
+
+  const nowIso = new Date().toISOString()
+  await markBalanceTransactionsReversed(ids, nowIso)
+
+  if (!skipPeopleBalanceUpdate) {
+    for (const [personId, summed] of deltaByPerson) {
+      const { data: pr, error: pse } = await supabase
+        .from(PEOPLE)
+        .select('balance')
+        .eq('id', personId)
+        .single()
+      if (pse) throw pse
+      const bal = roundMoney(Number((pr as { balance: number }).balance))
+      const next = roundMoney(bal - summed)
+      const { error: pue } = await supabase
+        .from(PEOPLE)
+        .update({
+          balance: next,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', personId)
+      if (pue) throw pue
+    }
+  }
+}
+
+/**
+ * Void all listed payment operations (in-place reversal). Used when cancelling an order/PO with
+ * reverse payments so the log does not gain mirror `payment_in` / `payment_out` rows.
+ */
+export async function voidLedgerPaymentOperationsForDocumentCancel(
+  operationRouteIds: string[]
+): Promise<void> {
+  const allLineIds = new Set<string>()
+  for (const rid of operationRouteIds) {
+    const op = await getLedgerPaymentOperation(rid)
+    if (!op || op.reversed) continue
+    for (const l of op.lines) allLineIds.add(l.id)
+    for (const l of op.walletLines) allLineIds.add(l.id)
+  }
+  if (allLineIds.size === 0) return
+
+  const ids = [...allLineIds]
+  const { data: rawList, error: le } = await supabase
+    .from(BALANCE_TX)
+    .select('*')
+    .in('id', ids)
+  if (le) throw le
+  const txs = (rawList ?? []).map((r) => mapTxRow(r as Record<string, unknown>))
+  if (txs.length !== ids.length) {
+    throw new Error('Some ledger rows are missing; cannot reverse.')
+  }
+
+  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+}
+
 /**
  * Undo a recorded payment_in / payment_out operation (and linked wallet lines).
  * Sets `reversed_at` on originals, inserts balancing `adjustment` rows, updates `people.balance`,
@@ -1886,48 +2195,5 @@ export async function reverseLedgerPaymentOperation(
     }
   }
 
-  const deltaByPerson = new Map<string, number>()
-  for (const r of txs) {
-    if (!r.person_id) continue
-    const k = r.person_id
-    deltaByPerson.set(k, roundMoney((deltaByPerson.get(k) ?? 0) + r.amount))
-  }
-
-  for (const r of txs) {
-    await insertBalanceTransactionRow({
-      person_id: r.person_id,
-      type: 'adjustment',
-      amount: roundMoney(-r.amount),
-      reference_id: reversalAdjustmentReferenceId(r),
-      reference_number: r.reference_number,
-      note: LEDGER_REVERSAL_ADJUSTMENT_NOTE,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: null,
-    })
-  }
-
-  const nowIso = new Date().toISOString()
-  await markBalanceTransactionsReversed(ids, nowIso)
-
-  if (!skipPeopleBalanceUpdate) {
-    for (const [personId, summed] of deltaByPerson) {
-      const { data: pr, error: pse } = await supabase
-        .from(PEOPLE)
-        .select('balance')
-        .eq('id', personId)
-        .single()
-      if (pse) throw pse
-      const bal = roundMoney(Number((pr as { balance: number }).balance))
-      const next = roundMoney(bal - summed)
-      const { error: pue } = await supabase
-        .from(PEOPLE)
-        .update({
-          balance: next,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', personId)
-      if (pue) throw pue
-    }
-  }
+  await applyReversalAdjustmentsMarkAndBalance(txs, skipPeopleBalanceUpdate)
 }

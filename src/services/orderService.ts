@@ -1,10 +1,16 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import {
+  getLedgerDocumentLineCreatedAt,
+  getNextStandaloneLedgerRef,
   insertBalanceTransactionRow,
+  listActiveLedgerPaymentOperationRouteIdsForDocument,
   mapPersonRow,
   roundMoney,
   supabaseErrorMessage,
+  voidLedgerOrderDocumentRowForCancel,
+  voidLedgerPaymentOperationsForDocumentCancel,
+  voidWalkInOrderCancelLedgerInPlace,
 } from '@/services/peopleService'
 import {
   insertOrderPaymentInstallments,
@@ -14,6 +20,10 @@ import {
   createOrderPayment,
   OVERPAYMENT_REQUIRES_PERSON,
 } from '@/services/paymentService'
+import {
+  appendLedgerDocSuffix,
+  retainedPaymentCreatedAt,
+} from '@/utils/ledgerDocSuffix'
 import { normalizePaymentMethod } from '@/utils/paymentMethod'
 import type {
   Order,
@@ -588,37 +598,10 @@ async function insertConfirmOrderLedgerLines(
   }
 }
 
-/** Reverse walk-in ledger rows when a confirmed/completed order is cancelled. */
+/** Reverse walk-in ledger rows when a confirmed/completed order is cancelled (in-place void; no mirror rows). */
 async function applyWalkInCancelLedger(order: OrderWithItemsAndPayments) {
   if (order.person_id) return
-  const total = roundMoney(order.total_amount)
-  const paid = roundMoney(order.paid_amount)
-  if (total > 0.01) {
-    await insertBalanceTransactionRow({
-      person_id: null,
-      type: 'adjustment',
-      amount: roundMoney(-total),
-      reference_id: order.id,
-      reference_number: `O-${order.order_number}`,
-      note: `Cancelled walk-in order #${order.order_number} (reverse sale)`,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: null,
-    })
-  }
-  if (paid > 0.01) {
-    await insertBalanceTransactionRow({
-      person_id: null,
-      type: 'adjustment',
-      amount: paid,
-      reference_id: order.id,
-      reference_number: `O-${order.order_number}`,
-      note: `Cancelled walk-in order #${order.order_number} (reverse payment)`,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: null,
-    })
-  }
+  await voidWalkInOrderCancelLedgerInPlace(order.id, order.order_number)
 }
 
 export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayments> {
@@ -745,8 +728,9 @@ export async function completeOrder(id: string): Promise<OrderWithItemsAndPaymen
 }
 
 /**
- * Mirror PO cancel ledger: reverse payment_in / wallet slices and order receivable,
- * or retain prepaid as one customer wallet line (audit) without double-counting balance.
+ * Person order cancel: void checkout `payment_in` + original `order` line in place.
+ * Retain prepaid: same voids under the cancelled document, then standalone `payment_in` (and wallet
+ * splits) duplicated at the original order ledger timestamp.
  */
 async function applyPersonOrderCancelLedger(
   order: OrderWithItemsAndPayments,
@@ -757,81 +741,222 @@ async function applyPersonOrderCancelLedger(
   const retain = settlement === 'retain_paid_as_wallet_credit'
   const paid = roundMoney(order.paid_amount)
   const total = roundMoney(order.total_amount)
-  const towardPaid = roundMoney(Math.min(paid, total))
-  const walletOver = roundMoney(paid - towardPaid)
+  const refNum = `O-${order.order_number}`
 
-  const { data: balRow0, error: b0e } = await supabase
+  let orderLedgerAnchor: string | null = null
+  if (retain && paid > 0.01) {
+    orderLedgerAnchor = await getLedgerDocumentLineCreatedAt(
+      order.id,
+      refNum,
+      'order',
+      order.person_id
+    )
+  }
+
+  const routeIds = await listActiveLedgerPaymentOperationRouteIdsForDocument(
+    order.id,
+    refNum,
+    'payment_in',
+    order.person_id
+  )
+  await voidLedgerPaymentOperationsForDocumentCancel(routeIds)
+  await voidLedgerOrderDocumentRowForCancel(
+    order.id,
+    order.order_number,
+    order.person_id
+  )
+
+  if (retain && paid > 0.01) {
+    const anchorIso = orderLedgerAnchor ?? new Date().toISOString()
+
+    const { data: balRow0, error: b0e } = await supabase
+      .from('people')
+      .select('balance')
+      .eq('id', order.person_id)
+      .single()
+    if (b0e) throw b0e
+    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+
+    const insts = [...(order.payment_installments ?? [])]
+      .filter((i) => roundMoney(i.amount) > 0.01)
+      .sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() -
+          new Date(b.created_at).getTime()
+      )
+
+    let remainingToOrder = total
+
+    if (insts.length > 0) {
+      const paymentGroupId =
+        insts.length > 1 ? crypto.randomUUID() : null
+      const standaloneRef = await getNextStandaloneLedgerRef('payment_in')
+      for (const inst of insts) {
+        const a = roundMoney(inst.amount)
+        const toward = roundMoney(Math.min(a, remainingToOrder))
+        const walletPart = roundMoney(a - toward)
+
+        if (toward > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'payment_in',
+            amount: roundMoney(-toward),
+            reference_id: null,
+            reference_number: standaloneRef,
+            note: appendLedgerDocSuffix(
+              `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+              order.id
+            ),
+            payment_method: inst.method,
+            payment_group_id: paymentGroupId,
+            wallet_direction: null,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal + roundMoney(-toward))
+          remainingToOrder = roundMoney(remainingToOrder - toward)
+        }
+
+        if (walletPart > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'wallet',
+            amount: roundMoney(-walletPart),
+            reference_id: null,
+            reference_number: null,
+            note: appendLedgerDocSuffix(
+              `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+              order.id
+            ),
+            payment_method: null,
+            payment_group_id: paymentGroupId,
+            wallet_direction: 'out' as WalletDirection,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal - walletPart)
+        }
+      }
+    } else if (order.payments && order.payments.length > 0) {
+      const payLines = order.payments.filter(
+        (p) => roundMoney(p.amount) > 0.01
+      )
+      const paymentGroupId =
+        payLines.length > 1 ? crypto.randomUUID() : null
+      const standaloneRef = await getNextStandaloneLedgerRef('payment_in')
+      for (const p of payLines) {
+        const a = roundMoney(p.amount)
+        const toward = roundMoney(Math.min(a, remainingToOrder))
+        const walletPart = roundMoney(a - toward)
+
+        if (toward > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'payment_in',
+            amount: roundMoney(-toward),
+            reference_id: null,
+            reference_number: standaloneRef,
+            note: appendLedgerDocSuffix(
+              `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+              order.id
+            ),
+            payment_method: p.payment_method,
+            payment_group_id: paymentGroupId,
+            wallet_direction: null,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal + roundMoney(-toward))
+          remainingToOrder = roundMoney(remainingToOrder - toward)
+        }
+
+        if (walletPart > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'wallet',
+            amount: roundMoney(-walletPart),
+            reference_id: null,
+            reference_number: null,
+            note: appendLedgerDocSuffix(
+              `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+              order.id
+            ),
+            payment_method: null,
+            payment_group_id: paymentGroupId,
+            wallet_direction: 'out' as WalletDirection,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal - walletPart)
+        }
+      }
+    } else {
+      const standaloneRef = await getNextStandaloneLedgerRef('payment_in')
+      const toward = roundMoney(Math.min(paid, total))
+      const walletPart = roundMoney(paid - toward)
+      if (toward > 0.01) {
+        await insertBalanceTransactionRow({
+          person_id: order.person_id,
+          type: 'payment_in',
+          amount: roundMoney(-toward),
+          reference_id: null,
+          reference_number: standaloneRef,
+          note: appendLedgerDocSuffix(
+            `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+            order.id
+          ),
+          payment_method: order.payment_method,
+          payment_group_id: null,
+          wallet_direction: null,
+          created_at: retainedPaymentCreatedAt(anchorIso),
+        })
+        bal = roundMoney(bal + roundMoney(-toward))
+      }
+      if (walletPart > 0.01) {
+        await insertBalanceTransactionRow({
+          person_id: order.person_id,
+          type: 'wallet',
+          amount: roundMoney(-walletPart),
+          reference_id: null,
+          reference_number: null,
+          note: appendLedgerDocSuffix(
+            `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+            order.id
+          ),
+          payment_method: null,
+          payment_group_id: null,
+          wallet_direction: 'out' as WalletDirection,
+          created_at: retainedPaymentCreatedAt(anchorIso),
+        })
+        bal = roundMoney(bal - walletPart)
+      }
+    }
+
+    const { error: pbErr } = await supabase
+      .from('people')
+      .update({
+        balance: bal,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', order.person_id)
+    if (pbErr) throw pbErr
+    return
+  }
+
+  const { data: balAfter, error: bae } = await supabase
     .from('people')
     .select('balance')
     .eq('id', order.person_id)
     .single()
-  if (b0e) throw b0e
-  let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+  if (bae) throw bae
+  const balFinal = roundMoney(
+    Number((balAfter as { balance: number }).balance)
+  )
 
-  if (!retain) {
-    if (towardPaid > 0.01) {
-      await insertBalanceTransactionRow({
-        person_id: order.person_id,
-        type: 'payment_in',
-        amount: roundMoney(towardPaid),
-        reference_id: order.id,
-        reference_number: `O-${order.order_number}`,
-        note: 'Cancelled order (reverse payment)',
-        payment_method: null,
-        payment_group_id: null,
-        wallet_direction: null,
-      })
-      bal = roundMoney(bal + towardPaid)
-    }
-
-    if (walletOver > 0.01) {
-      await insertBalanceTransactionRow({
-        person_id: order.person_id,
-        type: 'wallet',
-        amount: roundMoney(walletOver),
-        reference_id: order.id,
-        reference_number: `O-${order.order_number}`,
-        note: 'Cancelled order (reverse wallet credit)',
-        payment_method: null,
-        payment_group_id: null,
-        wallet_direction: 'out' as WalletDirection,
-      })
-      bal = roundMoney(bal + walletOver)
-    }
-  } else if (paid > 0.01) {
-    await insertBalanceTransactionRow({
-      person_id: order.person_id,
-      type: 'wallet',
-      amount: roundMoney(-paid),
-      reference_id: order.id,
-      reference_number: `O-${order.order_number}`,
-      note: `Cancelled order — prepaid retained as customer credit (Order #${order.order_number})`,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: 'out' as WalletDirection,
-    })
-  }
-
-  await insertBalanceTransactionRow({
-    person_id: order.person_id,
-    type: 'order',
-    amount: roundMoney(-total),
-    reference_id: order.id,
-    reference_number: `O-${order.order_number}`,
-    payment_method: null,
-    payment_group_id: null,
-    wallet_direction: null,
-  })
-  bal = roundMoney(bal - total)
-
-  const { error: pbErr } = await supabase
+  const { error: pbErr2 } = await supabase
     .from('people')
     .update({
-      balance: bal,
+      balance: balFinal,
       updated_at: new Date().toISOString(),
     })
     .eq('id', order.person_id)
-  if (pbErr) throw pbErr
+  if (pbErr2) throw pbErr2
 }
 
 export async function cancelOrder(

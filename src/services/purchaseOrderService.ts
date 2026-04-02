@@ -3,13 +3,22 @@ import { adjustStock } from '@/services/productService'
 import { getProductById } from '@/services/productService'
 import { updateProduct } from '@/services/productService'
 import {
+  getLedgerDocumentLineCreatedAt,
+  getNextStandaloneLedgerRef,
   insertBalanceTransactionRow,
+  listActiveLedgerPaymentOperationRouteIdsForDocument,
   mapPersonRow,
   roundMoney,
   supabaseErrorMessage,
+  voidLedgerPaymentOperationsForDocumentCancel,
+  voidLedgerPurchaseOrderDocumentRowForCancel,
 } from '@/services/peopleService'
 import { insertPurchaseOrderPaymentsRows } from '@/services/paymentInstallmentInserts'
 import { createPurchaseOrderPayment } from '@/services/paymentService'
+import {
+  appendLedgerDocSuffix,
+  retainedPaymentCreatedAt,
+} from '@/utils/ledgerDocSuffix'
 import type {
   PurchaseOrder,
   PurchaseOrderWithItems,
@@ -283,6 +292,8 @@ export async function createPurchaseOrder(data: {
     cost_price: number
     update_default_cost_price: boolean
   }[]
+  /** Save as draft: no stock, ledger, or payments until confirmed. */
+  asDraft?: boolean
 }): Promise<PurchaseOrderWithItems> {
   if (!data.items.length) {
     throw new Error('At least one product is required')
@@ -294,6 +305,7 @@ export async function createPurchaseOrder(data: {
     )
   }
 
+  const asDraft = Boolean(data.asDraft)
   const supplierId = data.person_id.trim()
   const { data: prow, error: peSup } = await supabase
     .from('people')
@@ -336,7 +348,7 @@ export async function createPurchaseOrder(data: {
   )
   const remaining_amount = roundMoney(total - paid_amount)
   const allowRem = Boolean(data.allow_remaining_on_account)
-  if (remaining_amount > 0.01) {
+  if (!asDraft && remaining_amount > 0.01) {
     if (!allowRem) {
       throw new Error(
         'Pay the full amount or enable adding the remainder to the supplier balance'
@@ -362,7 +374,7 @@ export async function createPurchaseOrder(data: {
     supplier_name: data.supplier_name?.trim() || null,
     note: data.note?.trim() || null,
     total_amount: total,
-    status: 'received' as PurchaseOrderStatus,
+    status: (asDraft ? 'draft' : 'received') as PurchaseOrderStatus,
     person_id: supplierId,
   }
 
@@ -375,7 +387,7 @@ export async function createPurchaseOrder(data: {
   if (orderError) throw orderError
   const orderId = (insertedOrder as PurchaseOrder).id
 
-  if (payments.length > 0) {
+  if (!asDraft && payments.length > 0) {
     try {
       await insertPurchaseOrderPaymentsRows(
         payments.map((p) => ({
@@ -423,31 +435,133 @@ export async function createPurchaseOrder(data: {
 
   if (itemsError) throw itemsError
 
-  // 5. For each item, adjustStock type 'in'
-  const note = `Purchase Order #${order_number}`
-  for (const item of data.items) {
-    await adjustStock(item.product_id, 'in', item.quantity, note)
+  if (!asDraft) {
+    const note = `Purchase Order #${order_number}`
+    for (const item of data.items) {
+      await adjustStock(item.product_id, 'in', item.quantity, note)
+    }
+
+    for (const item of data.items) {
+      if (item.update_default_cost_price) {
+        await updateProduct(item.product_id, { cost_price: item.cost_price })
+      }
+    }
+
+    await createPurchaseOrderPayment({
+      personId: supplierId,
+      purchaseOrderId: orderId,
+      orderNumber: order_number,
+      totalAmount: total,
+      payments,
+    })
   }
 
-  // 6. If update_default_cost_price, update product cost_price
-  for (const item of data.items) {
-    if (item.update_default_cost_price) {
+  // Return created PurchaseOrderWithItems
+  const created = await getPurchaseOrderById(orderId)
+  if (!created) throw new Error('Failed to fetch created purchase order')
+  return created
+}
+
+export async function confirmPurchaseOrder(
+  id: string,
+  data: {
+    payments?: { payment_method: PaymentMethod; amount: number }[]
+    allow_remaining_on_account?: boolean
+    note?: string | null
+  }
+): Promise<PurchaseOrderWithItems> {
+  const order = await getPurchaseOrderById(id)
+  if (!order) throw new Error('Purchase order not found')
+  if (order.status !== 'draft') {
+    throw new Error('Only draft purchase orders can be confirmed')
+  }
+  if (!order.person_id?.trim()) {
+    throw new Error('Supplier is required')
+  }
+  const supplierId = order.person_id.trim()
+
+  const payments = (data.payments ?? [])
+    .map((p) => ({
+      payment_method: p.payment_method,
+      amount: roundMoney(p.amount),
+    }))
+    .filter((p) => p.amount > 0.001)
+  const total = roundMoney(order.total_amount)
+  const paymentsSum = roundMoney(
+    payments.reduce((s, p) => s + p.amount, 0)
+  )
+  const paid_amount = roundMoney(
+    paymentsSum > total ? total : paymentsSum
+  )
+  const remaining_amount = roundMoney(total - paid_amount)
+  const allowRem = Boolean(data.allow_remaining_on_account)
+  if (remaining_amount > 0.01) {
+    if (!allowRem) {
+      throw new Error(
+        'Pay the full amount or enable adding the remainder to the supplier balance'
+      )
+    }
+  }
+
+  if (payments.length > 0) {
+    try {
+      await insertPurchaseOrderPaymentsRows(
+        payments.map((p) => ({
+          purchase_order_id: id,
+          payment_method: p.payment_method,
+          amount: p.amount,
+        }))
+      )
+    } catch (e: unknown) {
+      const msg = supabaseErrorMessage(e).toLowerCase()
+      const code =
+        typeof e === 'object' && e !== null && 'code' in e
+          ? String((e as { code: unknown }).code)
+          : ''
+      const tableMissing =
+        msg.includes('does not exist') ||
+        msg.includes('relation') ||
+        code === '42P01'
+      if (!tableMissing) throw e
+    }
+  }
+
+  const stockNote = `Purchase Order #${order.order_number}`
+  for (const item of order.items) {
+    await adjustStock(item.product_id, 'in', item.quantity, stockNote)
+  }
+
+  for (const item of order.items) {
+    if (item.cost_price_updated) {
       await updateProduct(item.product_id, { cost_price: item.cost_price })
     }
   }
 
   await createPurchaseOrderPayment({
     personId: supplierId,
-    purchaseOrderId: orderId,
-    orderNumber: order_number,
+    purchaseOrderId: id,
+    orderNumber: order.order_number,
     totalAmount: total,
     payments,
   })
 
-  // 7. Return created PurchaseOrderWithItems
-  const created = await getPurchaseOrderById(orderId)
-  if (!created) throw new Error('Failed to fetch created purchase order')
-  return created
+  const noteUp =
+    data.note !== undefined
+      ? (data.note?.trim() ?? '') || null
+      : undefined
+  const { error: updErr } = await supabase
+    .from(PURCHASE_ORDERS)
+    .update({
+      status: 'received' as PurchaseOrderStatus,
+      ...(noteUp !== undefined ? { note: noteUp } : {}),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (updErr) throw updErr
+
+  const out = await getPurchaseOrderById(id)
+  if (!out) throw new Error('Failed to fetch purchase order')
+  return out
 }
 
 export type CancelPurchaseOrderSettlement =
@@ -462,6 +576,23 @@ export async function cancelPurchaseOrder(
   if (!order) throw new Error('Purchase order not found')
   if (order.status === 'cancelled') {
     throw new Error('Purchase order is already cancelled')
+  }
+
+  if (order.status === 'draft') {
+    const { error: draftUpdateErr } = await supabase
+      .from(PURCHASE_ORDERS)
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+    if (draftUpdateErr) throw draftUpdateErr
+    const { error: draftDelPayErr } = await supabase
+      .from(PURCHASE_ORDER_PAYMENTS)
+      .delete()
+      .eq('purchase_order_id', id)
+    if (draftDelPayErr) throw draftDelPayErr
+    return
   }
 
   const retainWalletCredit =
@@ -486,86 +617,125 @@ export async function cancelPurchaseOrder(
   if (delPayErr) throw delPayErr
 
   if (order.person_id) {
-    const { data: balRow0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (b0e) throw b0e
-    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
-
     const paidAtPo = roundMoney(
       (order.payments ?? []).reduce((s, p) => s + p.amount, 0)
     )
     const poTotal = roundMoney(order.total_amount)
-    const towardPaid = roundMoney(Math.min(paidAtPo, poTotal))
-    const walletOver = roundMoney(paidAtPo - towardPaid)
+    const refPo = `PO-${order.order_number}`
 
-    if (!retainWalletCredit) {
-      if (towardPaid > 0.01) {
-        await insertBalanceTransactionRow({
-          person_id: order.person_id,
-          type: 'payment_out',
-          amount: roundMoney(-towardPaid),
-          reference_id: order.id,
-          reference_number: `PO-${order.order_number}`,
-          note: 'Cancelled purchase order (reverse payment)',
-          payment_method: null,
-          payment_group_id: null,
-          wallet_direction: null,
-        })
-        bal = roundMoney(bal - towardPaid)
-      }
-
-      if (walletOver > 0.01) {
-        await insertBalanceTransactionRow({
-          person_id: order.person_id,
-          type: 'wallet',
-          amount: roundMoney(-walletOver),
-          reference_id: order.id,
-          reference_number: `PO-${order.order_number}`,
-          note: 'Cancelled purchase order (reverse wallet credit)',
-          payment_method: null,
-          payment_group_id: null,
-          wallet_direction: 'in' as WalletDirection,
-        })
-        bal = roundMoney(bal - walletOver)
-      }
-    } else if (paidAtPo > 0.01) {
-      await insertBalanceTransactionRow({
-        person_id: order.person_id,
-        type: 'wallet',
-        amount: roundMoney(paidAtPo),
-        reference_id: order.id,
-        reference_number: `PO-${order.order_number}`,
-        note: `Cancelled PO — prepaid retained as supplier credit (PO #${order.order_number})`,
-        payment_method: null,
-        payment_group_id: null,
-        wallet_direction: 'in' as WalletDirection,
-      })
+    let poLedgerAnchor: string | null = null
+    if (retainWalletCredit && paidAtPo > 0.01) {
+      poLedgerAnchor = await getLedgerDocumentLineCreatedAt(
+        order.id,
+        refPo,
+        'purchase_order',
+        order.person_id
+      )
     }
 
-    const reversal = poTotal
-    await insertBalanceTransactionRow({
-      person_id: order.person_id,
-      type: 'purchase_order',
-      amount: reversal,
-      reference_id: order.id,
-      reference_number: `PO-${order.order_number}`,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: null,
-    })
-    bal = roundMoney(bal + reversal)
+    const routeIds = await listActiveLedgerPaymentOperationRouteIdsForDocument(
+      order.id,
+      refPo,
+      'payment_out',
+      order.person_id
+    )
+    await voidLedgerPaymentOperationsForDocumentCancel(routeIds)
+    await voidLedgerPurchaseOrderDocumentRowForCancel(
+      order.id,
+      order.order_number,
+      order.person_id
+    )
 
-    const { error: pbErr } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.person_id)
-    if (pbErr) throw pbErr
+    if (retainWalletCredit && paidAtPo > 0.01) {
+      const anchorIso = poLedgerAnchor ?? new Date().toISOString()
+
+      const { data: balRow0, error: b0e } = await supabase
+        .from('people')
+        .select('balance')
+        .eq('id', order.person_id)
+        .single()
+      if (b0e) throw b0e
+      let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+
+      const payLines = (order.payments ?? []).filter(
+        (p) => roundMoney(p.amount) > 0.01
+      )
+      let remainingLiability = poTotal
+      const paymentGroupId =
+        payLines.length > 1 ? crypto.randomUUID() : null
+      const standaloneRef = await getNextStandaloneLedgerRef('payment_out')
+
+      for (const p of payLines) {
+        const a = roundMoney(p.amount)
+        const toward = roundMoney(Math.min(a, remainingLiability))
+        const walletPart = roundMoney(a - toward)
+
+        if (toward > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'payment_out',
+            amount: roundMoney(toward),
+            reference_id: null,
+            reference_number: standaloneRef,
+            note: appendLedgerDocSuffix(
+              `Retained · ${refPo} — cancelled PO #${order.order_number} (prepaid kept on account)`,
+              order.id
+            ),
+            payment_method: p.payment_method,
+            payment_group_id: paymentGroupId,
+            wallet_direction: null,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal + toward)
+          remainingLiability = roundMoney(remainingLiability - toward)
+        }
+
+        if (walletPart > 0.01) {
+          await insertBalanceTransactionRow({
+            person_id: order.person_id,
+            type: 'wallet',
+            amount: roundMoney(walletPart),
+            reference_id: null,
+            reference_number: null,
+            note: appendLedgerDocSuffix(
+              `Overpayment retained · ${refPo} — cancelled PO #${order.order_number}`,
+              order.id
+            ),
+            payment_method: null,
+            payment_group_id: paymentGroupId,
+            wallet_direction: 'in' as WalletDirection,
+            created_at: retainedPaymentCreatedAt(anchorIso),
+          })
+          bal = roundMoney(bal + walletPart)
+        }
+      }
+
+      const { error: pbErr } = await supabase
+        .from('people')
+        .update({
+          balance: bal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.person_id)
+      if (pbErr) throw pbErr
+    } else {
+      const { data: balAfter, error: bae } = await supabase
+        .from('people')
+        .select('balance')
+        .eq('id', order.person_id)
+        .single()
+      if (bae) throw bae
+      const bal = roundMoney(Number((balAfter as { balance: number }).balance))
+
+      const { error: pbErr } = await supabase
+        .from('people')
+        .update({
+          balance: bal,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', order.person_id)
+      if (pbErr) throw pbErr
+    }
   }
 
   const note = `Cancelled Purchase Order #${order.order_number}`

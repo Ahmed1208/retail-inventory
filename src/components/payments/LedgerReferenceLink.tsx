@@ -2,7 +2,11 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 
 import { cn } from '@/lib/utils'
-import { ledgerReferenceHref, type LedgerLinkRow } from '@/utils/ledgerLinks'
+import {
+  isRetainedFromCancelledDocumentNote,
+  ledgerReferenceHref,
+  type LedgerLinkRow,
+} from '@/utils/ledgerLinks'
 
 type Props = {
   row: LedgerLinkRow
@@ -16,6 +20,37 @@ export function LedgerReferenceLink({
   linkClassName,
 }: Props) {
   const { t } = useTranslation()
+  const isRetainedPayment =
+    (row.type === 'payment_in' || row.type === 'payment_out') &&
+    isRetainedFromCancelledDocumentNote(row.note)
+  const op = row.ledger_operation_route_id
+  const hasStandaloneRef =
+    row.reference_number != null &&
+    /^(PI|PY)-/i.test(row.reference_number)
+
+  if (
+    isRetainedPayment &&
+    op &&
+    !hasStandaloneRef
+  ) {
+    const href = `/payments/operations/${op}`
+    const shortId = op.includes('-') ? op.split('-')[0]! : op.slice(0, 8)
+    const label = t('payments.retainedStandalonePaymentRef', { id: shortId })
+    return (
+      <Link
+        to={href}
+        title={op}
+        className={cn(
+          'font-medium font-mono text-xs text-primary underline-offset-4 hover:underline',
+          linkClassName
+        )}
+        aria-label={t('payments.openPaymentOperationReference', { ref: op })}
+      >
+        {label}
+      </Link>
+    )
+  }
+
   const ref = row.reference_number
   if (!ref) {
     return (
