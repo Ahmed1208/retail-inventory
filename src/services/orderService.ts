@@ -29,6 +29,10 @@ import type {
   WalletDirection,
 } from '@/types'
 
+export type CancelOrderSettlement =
+  | 'reverse_payments'
+  | 'retain_paid_as_wallet_credit'
+
 const ORDERS = 'orders'
 const ORDER_ITEMS = 'order_items'
 const ORDER_PAYMENTS = 'order_payments'
@@ -463,7 +467,7 @@ async function insertConfirmOrderLedgerLines(
     type: 'order',
     amount: total,
     reference_id: order.id,
-    reference_number: String(order.order_number),
+    reference_number: `O-${order.order_number}`,
     payment_method: null,
     payment_group_id: null,
     wallet_direction: null,
@@ -505,7 +509,7 @@ async function insertConfirmOrderLedgerLines(
             type: 'payment_in',
             amount: roundMoney(-toward),
             reference_id: order.id,
-            reference_number: String(order.order_number),
+            reference_number: `O-${order.order_number}`,
             note: inst.note?.trim() || 'Order payment',
             payment_method: inst.method,
             payment_group_id: paymentGroupId,
@@ -525,7 +529,7 @@ async function insertConfirmOrderLedgerLines(
             type: 'wallet',
             amount: roundMoney(-walletPart),
             reference_id: order.id,
-            reference_number: String(order.order_number),
+            reference_number: `O-${order.order_number}`,
             note,
             payment_method: null,
             payment_group_id: paymentGroupId,
@@ -543,7 +547,7 @@ async function insertConfirmOrderLedgerLines(
           type: 'payment_in',
           amount: roundMoney(-toward),
           reference_id: order.id,
-          reference_number: String(order.order_number),
+          reference_number: `O-${order.order_number}`,
           note: 'Payment at confirmation',
           payment_method: null,
           payment_group_id: null,
@@ -561,7 +565,7 @@ async function insertConfirmOrderLedgerLines(
           type: 'wallet',
           amount: roundMoney(-walletPart),
           reference_id: order.id,
-          reference_number: String(order.order_number),
+          reference_number: `O-${order.order_number}`,
           note,
           payment_method: null,
           payment_group_id: null,
@@ -595,7 +599,7 @@ async function applyWalkInCancelLedger(order: OrderWithItemsAndPayments) {
       type: 'adjustment',
       amount: roundMoney(-total),
       reference_id: order.id,
-      reference_number: String(order.order_number),
+      reference_number: `O-${order.order_number}`,
       note: `Cancelled walk-in order #${order.order_number} (reverse sale)`,
       payment_method: null,
       payment_group_id: null,
@@ -608,7 +612,7 @@ async function applyWalkInCancelLedger(order: OrderWithItemsAndPayments) {
       type: 'adjustment',
       amount: paid,
       reference_id: order.id,
-      reference_number: String(order.order_number),
+      reference_number: `O-${order.order_number}`,
       note: `Cancelled walk-in order #${order.order_number} (reverse payment)`,
       payment_method: null,
       payment_group_id: null,
@@ -740,50 +744,111 @@ export async function completeOrder(id: string): Promise<OrderWithItemsAndPaymen
   return out
 }
 
-async function applyPersonCancelReversal(order: OrderWithItemsAndPayments) {
+/**
+ * Mirror PO cancel ledger: reverse payment_in / wallet slices and order receivable,
+ * or retain prepaid as one customer wallet line (audit) without double-counting balance.
+ */
+async function applyPersonOrderCancelLedger(
+  order: OrderWithItemsAndPayments,
+  settlement: CancelOrderSettlement
+) {
   if (!order.person_id) return
-  const net = roundMoney(order.total_amount - order.paid_amount)
-  if (Math.abs(net) < 0.01 && order.paid_amount < 0.01) return
 
-  if (Math.abs(net) > 0.01) {
-    await insertBalanceTransactionRow({
-      person_id: order.person_id,
-      type: 'adjustment',
-      amount: roundMoney(-net),
-      reference_id: order.id,
-      reference_number: String(order.order_number),
-      note: `Cancelled order #${order.order_number}`,
-      payment_method: null,
-      payment_group_id: null,
-      wallet_direction: null,
-    })
-  }
+  const retain = settlement === 'retain_paid_as_wallet_credit'
+  const paid = roundMoney(order.paid_amount)
+  const total = roundMoney(order.total_amount)
+  const towardPaid = roundMoney(Math.min(paid, total))
+  const walletOver = roundMoney(paid - towardPaid)
 
-  const { data: b0, error: b0e } = await supabase
+  const { data: balRow0, error: b0e } = await supabase
     .from('people')
     .select('balance')
     .eq('id', order.person_id)
     .single()
   if (b0e) throw b0e
-  const cur = Number((b0 as { balance: number }).balance)
-  const newBal = roundMoney(cur - net)
+  let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
 
-  const { error: pb } = await supabase
+  if (!retain) {
+    if (towardPaid > 0.01) {
+      await insertBalanceTransactionRow({
+        person_id: order.person_id,
+        type: 'payment_in',
+        amount: roundMoney(towardPaid),
+        reference_id: order.id,
+        reference_number: `O-${order.order_number}`,
+        note: 'Cancelled order (reverse payment)',
+        payment_method: null,
+        payment_group_id: null,
+        wallet_direction: null,
+      })
+      bal = roundMoney(bal + towardPaid)
+    }
+
+    if (walletOver > 0.01) {
+      await insertBalanceTransactionRow({
+        person_id: order.person_id,
+        type: 'wallet',
+        amount: roundMoney(walletOver),
+        reference_id: order.id,
+        reference_number: `O-${order.order_number}`,
+        note: 'Cancelled order (reverse wallet credit)',
+        payment_method: null,
+        payment_group_id: null,
+        wallet_direction: 'out' as WalletDirection,
+      })
+      bal = roundMoney(bal + walletOver)
+    }
+  } else if (paid > 0.01) {
+    await insertBalanceTransactionRow({
+      person_id: order.person_id,
+      type: 'wallet',
+      amount: roundMoney(-paid),
+      reference_id: order.id,
+      reference_number: `O-${order.order_number}`,
+      note: `Cancelled order — prepaid retained as customer credit (Order #${order.order_number})`,
+      payment_method: null,
+      payment_group_id: null,
+      wallet_direction: 'out' as WalletDirection,
+    })
+  }
+
+  await insertBalanceTransactionRow({
+    person_id: order.person_id,
+    type: 'order',
+    amount: roundMoney(-total),
+    reference_id: order.id,
+    reference_number: `O-${order.order_number}`,
+    payment_method: null,
+    payment_group_id: null,
+    wallet_direction: null,
+  })
+  bal = roundMoney(bal - total)
+
+  const { error: pbErr } = await supabase
     .from('people')
     .update({
-      balance: newBal,
+      balance: bal,
       updated_at: new Date().toISOString(),
     })
     .eq('id', order.person_id)
-  if (pb) throw pb
+  if (pbErr) throw pbErr
 }
 
-export async function cancelOrder(id: string): Promise<void> {
+export async function cancelOrder(
+  id: string,
+  options?: { settlement?: CancelOrderSettlement }
+): Promise<void> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
   if (order.status_flow === 'cancelled') {
     throw new Error('Order is already cancelled')
   }
+
+  const settlement: CancelOrderSettlement =
+    order.person_id &&
+    options?.settlement === 'retain_paid_as_wallet_credit'
+      ? 'retain_paid_as_wallet_credit'
+      : 'reverse_payments'
 
   const restoreStock =
     order.status_flow === 'confirmed' || order.status_flow === 'completed'
@@ -793,15 +858,35 @@ export async function cancelOrder(id: string): Promise<void> {
     for (const item of order.items) {
       await adjustStock(item.product_id, 'in', item.quantity, note)
     }
-    await applyPersonCancelReversal(order)
-    await applyWalkInCancelLedger(order)
+
+    const { error: delInstErr } = await supabase
+      .from(PAYMENT_INSTALLMENTS)
+      .delete()
+      .eq('order_id', id)
+    if (delInstErr) throw delInstErr
+
+    const { error: delPayErr } = await supabase
+      .from(ORDER_PAYMENTS)
+      .delete()
+      .eq('order_id', id)
+    if (delPayErr) throw delPayErr
+
+    if (order.person_id) {
+      await applyPersonOrderCancelLedger(order, settlement)
+    } else {
+      await applyWalkInCancelLedger(order)
+    }
   }
 
+  const totalAmt = roundMoney(order.total_amount)
   const { error: updateError } = await supabase
     .from(ORDERS)
     .update({
       status_flow: 'cancelled',
       status: syncStatusFromFlow('cancelled'),
+      ...(restoreStock
+        ? { paid_amount: 0, remaining_amount: totalAmt }
+        : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)

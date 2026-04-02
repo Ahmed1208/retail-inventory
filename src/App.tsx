@@ -22,6 +22,7 @@ import { InventoryHub } from '@/pages/InventoryHub'
 import { Control } from '@/pages/Control'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
+import { PaymentOperationDetail } from '@/pages/PaymentOperationDetail'
 import { NewPayment } from '@/pages/NewPayment'
 import { NotFound } from '@/pages/NotFound'
 
@@ -42,6 +43,10 @@ function App() {
             <Route path="/orders" element={<OrdersHome />} />
             <Route path="/people" element={<People />} />
             <Route path="/payments/list" element={<PaymentsList />} />
+            <Route
+              path="/payments/operations/:id"
+              element={<PaymentOperationDetail />}
+            />
             <Route path="/payments/new" element={<NewPayment />} />
             <Route path="/payments" element={<PaymentsHub />} />
             <Route path="/categories" element={<Categories />} />

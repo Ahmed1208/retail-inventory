@@ -110,6 +110,14 @@
       "list": {
         "title": "سجل المعاملات",
         "desc": "فتح السجل الكامل لحركات الرصيد: طلبات، أوامر شراء، مدفوعات، محفظة، وتسويات."
+      },
+      "editLedgerNote": {
+        "title": "تعديل ملاحظات الدفعة",
+        "desc": "السماح بتغيير الملاحظة على عمليات الدفع الوارد/الصادر من صفحة تفاصيل الدفعة."
+      },
+      "reverseLedgerOperation": {
+        "title": "عكس الدفعات المسجّلة",
+        "desc": "السماح بإلغاء عملية دفع وارد/صادر من صفحة تفاصيل الدفعة (الدفتر والرصيد وصفوف الطلب/أمر الشراء المرتبطة عند الإمكان)."
       }
     },
     "inventoryHub": {
@@ -484,6 +492,11 @@
     "orderDetailTitle": "طلب #{{number}}",
     "cancelConfirmTitle": "إلغاء الطلب",
     "cancelConfirmMessage": "إلغاء الطلب #{{number}}؟ سيتم استعادة المخزون تلقائياً لجميع الأصناف.",
+    "openPaymentOperation": "فتح الدفعة في سجل المعاملات",
+    "cancelSettlementLegend": "كيفية تسوية المدفوعات المسجّلة",
+    "cancelSettlementReverse": "عكس المدفوعات في الدفتر (افتراضي)",
+    "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للعميل (سطر واحد في الدفتر)",
+    "cancelCompletedOrderHint": "هذا الطلب مكتمل. الإلغاء يعيد المخزون ويعكس حركات الدفتر المرتبطة بالبيع.",
     "totalOrders": "إجمالي الطلبات",
     "totalRevenue": "إجمالي الإيرادات",
     "pendingOrders": "قيد الانتظار",
@@ -568,6 +581,10 @@
     "costPriceUpdated": "تم تحديث الافتراضي",
     "cancelConfirmTitle": "إلغاء أمر الشراء",
     "cancelConfirmMessage": "إلغاء أمر الشراء #{{number}}؟ سيتم خصم المخزون لجميع الأصناف.",
+    "openPaymentOperation": "فتح الدفعة في سجل المعاملات",
+    "cancelSettlementLegend": "كيفية تسوية المدفوعات المسجّلة",
+    "cancelSettlementReverse": "عكس المدفوعات في الدفتر (افتراضي)",
+    "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للمورد (سطر واحد في الدفتر)",
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
     "selectSupplier": "مورد",
     "supplierBalance": "رصيد المورد"
@@ -695,6 +712,8 @@
     "methodColumn": "الطريقة",
     "methodDetailsColumn": "طريقة الدفع",
     "logDetailsColumn": "تفاصيل أخرى",
+    "logStatusColumn": "الحالة",
+    "expandNestedPaymentsAria": "إظهار أو إخفاء أسطر دفعات إتمام الشراء لهذا المستند",
     "listDocumentTotal": "إجمالي المستند",
     "listDocumentTotalHint": "إجمالي البيع للطلب، أو إجمالي التزام أمر الشراء.",
     "listBalanceImpact": "أثر الرصيد",
@@ -706,7 +725,37 @@
     "confirmAndAddToWallet": "تأكيد وإضافة {{amount}} للمحفظة",
     "selectPersonForOverpayment": "اختر شخصاً لتطبيق الدفع الزائد على محفظته",
     "showFullLedger": "عرض الدفتر الكامل",
-    "showFullLedgerHelp": "إظهار كل أسطر الأرصدة. عند الإيقاف، تُخفى دفعات تأكيد الطلب/أمر الشراء الظاهرة أيضاً في صف الطلب أو أمر الشراء."
+    "showFullLedgerHelp": "إظهار كل أسطر الأرصدة. عند الإيقاف، تُخفى دفعات تأكيد الطلب/أمر الشراء الظاهرة أيضاً في صف الطلب أو أمر الشراء.",
+    "openOrderReference": "فتح الطلب {{ref}}",
+    "openPurchaseOrderReference": "فتح أمر الشراء {{ref}}",
+    "openPaymentOperationReference": "فتح الدفعة {{ref}}",
+    "paymentOperationTitle": "دفعة",
+    "backToTransactionLog": "رجوع لسجل المعاملات",
+    "paymentOperationNotFound": "تعذر العثور على هذه الدفعة.",
+    "paymentOperationUntitled": "دفعة",
+    "person": "الشخص",
+    "relatedDocument": "مستند مرتبط",
+    "relatedSalesOrder": "فتح طلب البيع",
+    "relatedPurchaseOrder": "فتح أمر الشراء",
+    "operationTenderLines": "أسطر طرق الدفع",
+    "operationWalletLines": "المحفظة (دفع زائد)",
+    "operationReversedBanner": "تم عكس هذه الدفعة. تُبقى الأسطر في الدفتر للمراجعة مع إشارة العكس.",
+    "reverseOperation": "عكس الدفعة",
+    "reverseOperationConfirmTitle": "عكس هذه الدفعة؟",
+    "reverseOperationConfirmDescription": "سيُلغى أثر الدفعة في الدفتر ويُعاد الرصيد عند وجود شخص مرتبط، ويُحدَّث طلب البيع أو أمر الشراء إن كانت الدفعة مرتبطة بهما. لا يمكن التراجع عن ذلك من التطبيق.",
+    "toastOperationReversed": "تم عكس الدفعة",
+    "operationNoteNoEditReversed": "لا يمكن تعديل الملاحظة بعد عكس الدفعة.",
+    "reversedBadge": "معكوسة",
+    "poCancelledBadge": "ملغي",
+    "orderCancelledBadge": "ملغي",
+    "orderCompletedBadge": "مكتمل",
+    "reversedDetailsHint": "لا أثر صافٍ على الرصيد",
+    "reversedBalanceImpactHint": "تم عكس هذه الدفعة؛ التغيير الصافي على الرصيد صفر.",
+    "operationNote": "ملاحظة",
+    "operationNotePlaceholder": "ملاحظة اختيارية لهذه الدفعة…",
+    "saveOperationNote": "حفظ الملاحظة",
+    "toastOperationNoteSaved": "تم تحديث الملاحظة",
+    "operationNoteReadOnly": "تعديل ملاحظات الدفعات معطّل في إعدادات التحكم."
   },
   "reports": {
     "title": "التقارير",

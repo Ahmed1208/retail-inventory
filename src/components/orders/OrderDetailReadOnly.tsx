@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Printer } from 'lucide-react'
 
 import type { OrderWithItemsAndPayments, Person } from '@/types'
@@ -21,11 +21,10 @@ export function OrderDetailReadOnly({
   people,
   canPrint = true,
   canCancel = true,
-  canAddPayment = true,
   canEditNote = true,
+  paymentOperationLinkSlot,
   onPrint,
   onCancel,
-  onAddPayment,
   noteMut,
 }: {
   order: OrderWithItemsAndPayments
@@ -35,11 +34,11 @@ export function OrderDetailReadOnly({
   people: Person[]
   canPrint?: boolean
   canCancel?: boolean
-  canAddPayment?: boolean
   canEditNote?: boolean
+  /** Optional link row under payment lines (e.g. open ledger operation). */
+  paymentOperationLinkSlot?: ReactNode
   onPrint: () => void
   onCancel: () => void
-  onAddPayment: () => void
   noteMut: {
     mutate: (p: { id: string; text: string }) => void
     isPending: boolean
@@ -58,13 +57,7 @@ export function OrderDetailReadOnly({
       ? Math.min(100, (order.paid_amount / order.total_amount) * 100)
       : 0
 
-  const statusAllowsCancel =
-    order.status_flow !== 'cancelled' && order.status_flow !== 'completed'
-  const statusAllowsAddPay =
-    order.remaining_amount > 0.01 &&
-    order.status_flow !== 'draft' &&
-    order.status_flow !== 'cancelled' &&
-    order.status_flow !== 'completed'
+  const statusAllowsCancel = order.status_flow !== 'cancelled'
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-auto">
@@ -182,22 +175,17 @@ export function OrderDetailReadOnly({
             ))}
           </ul>
         )}
+        {paymentOperationLinkSlot != null && paymentOperationLinkSlot !== false && (
+          <div className="mt-2 text-sm text-muted-foreground">
+            {paymentOperationLinkSlot}
+          </div>
+        )}
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
           <div
             className="h-full bg-emerald-500 transition-all"
             style={{ width: `${paidRatio}%` }}
           />
         </div>
-        {canAddPayment && statusAllowsAddPay && (
-          <Button
-            type="button"
-            className="mt-3"
-            variant="secondary"
-            onClick={onAddPayment}
-          >
-            {t('orders.addPayment')}
-          </Button>
-        )}
       </div>
 
       <div className="grid gap-2 p-4 sm:grid-cols-2">

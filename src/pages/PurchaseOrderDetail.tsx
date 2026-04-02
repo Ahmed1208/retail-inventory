@@ -7,13 +7,15 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 
 import {
   cancelPurchaseOrder,
+  type CancelPurchaseOrderSettlement,
   getPurchaseOrderById,
 } from '@/services/purchaseOrderService'
+import { getLedgerPaymentOperationRouteIdForPo } from '@/services/peopleService'
 import type { PurchaseOrderPayment } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -38,8 +40,12 @@ export function PurchaseOrderDetail() {
   const fc = (n: number) => formatCurrency(n, lang)
 
   const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
+  const canListPayments = useFeatureEnabled('payments.list')
 
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelSettlement, setCancelSettlement] =
+    useState<CancelPurchaseOrderSettlement>('reverse_payments')
+  const [cancelSubmitting, setCancelSubmitting] = useState(false)
 
   const {
     data: po,
@@ -50,6 +56,20 @@ export function PurchaseOrderDetail() {
     queryFn: () => getPurchaseOrderById(id!),
     enabled: !!id,
   })
+
+  const showPoPaymentOpLink =
+    !!po &&
+    po.status === 'received' &&
+    !!po.person_id &&
+    (po.payments?.length ?? 0) > 0 &&
+    canListPayments
+
+  const { data: poPaymentOpRouteId, isFetching: poPaymentOpFetching } =
+    useQuery({
+      queryKey: ['poLedgerPaymentOpRoute', po?.id],
+      queryFn: () => getLedgerPaymentOperationRouteIdForPo(po!.id),
+      enabled: showPoPaymentOpLink,
+    })
 
   useEffect(() => {
     if (po) {
@@ -68,6 +88,7 @@ export function PurchaseOrderDetail() {
     qc.invalidateQueries({ queryKey: ['products'] })
     qc.invalidateQueries({ queryKey: ['people'] })
     qc.invalidateQueries({ queryKey: ['dashboardStats'] })
+    qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
   }
 
   if (!id) return null
@@ -101,6 +122,10 @@ export function PurchaseOrderDetail() {
   const canCancel =
     canCancelPO &&
     po.status === 'received'
+
+  const paidAtPo = (po.payments ?? []).reduce((s, p) => s + p.amount, 0)
+  const showCancelSettlementChoice =
+    !!po.person_id && paidAtPo > 0.01
 
   return (
     <div
@@ -142,7 +167,10 @@ export function PurchaseOrderDetail() {
               <Button
                 type="button"
                 variant="destructive"
-                onClick={() => setCancelOpen(true)}
+                onClick={() => {
+                  setCancelSettlement('reverse_payments')
+                  setCancelOpen(true)
+                }}
               >
                 {t('purchaseOrders.cancelPurchaseOrder')}
               </Button>
@@ -177,6 +205,25 @@ export function PurchaseOrderDetail() {
                   </span>
                 ))}
               </span>
+              {showPoPaymentOpLink && (
+                <span className="mt-2 block text-muted-foreground">
+                  {poPaymentOpFetching ? (
+                    <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
+                  ) : poPaymentOpRouteId ? (
+                    <Link
+                      to={`/payments/operations/${poPaymentOpRouteId}`}
+                      className={cn(
+                        buttonVariants({ variant: 'link' }),
+                        'h-auto p-0 align-baseline font-medium text-primary'
+                      )}
+                    >
+                      {t('purchaseOrders.openPaymentOperation')}
+                    </Link>
+                  ) : (
+                    '—'
+                  )}
+                </span>
+              )}
             </p>
           )}
           {po.note && (
@@ -255,31 +302,96 @@ export function PurchaseOrderDetail() {
             <AlertDialogTitle>
               {t('purchaseOrders.cancelConfirmTitle')}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              {(
-                t as (key: string, opts?: Record<string, number>) => string
-              )('purchaseOrders.cancelConfirmMessage', {
-                number: po.order_number,
-              })}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-start text-muted-foreground">
+                <p>
+                  {(
+                    t as (key: string, opts?: Record<string, number>) => string
+                  )('purchaseOrders.cancelConfirmMessage', {
+                    number: po.order_number,
+                  })}
+                </p>
+                {showCancelSettlementChoice && (
+                  <fieldset className="space-y-3 rounded-md border border-border p-3">
+                    <legend className="px-1 text-sm font-medium text-foreground">
+                      {t('purchaseOrders.cancelSettlementLegend')}
+                    </legend>
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="po-cancel-reverse"
+                        type="radio"
+                        name="po-cancel-settlement"
+                        className="mt-1"
+                        checked={cancelSettlement === 'reverse_payments'}
+                        onChange={() =>
+                          setCancelSettlement('reverse_payments')
+                        }
+                      />
+                      <Label
+                        htmlFor="po-cancel-reverse"
+                        className="cursor-pointer font-normal leading-snug"
+                      >
+                        {t('purchaseOrders.cancelSettlementReverse')}
+                      </Label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="po-cancel-retain"
+                        type="radio"
+                        name="po-cancel-settlement"
+                        className="mt-1"
+                        checked={
+                          cancelSettlement === 'retain_paid_as_wallet_credit'
+                        }
+                        onChange={() =>
+                          setCancelSettlement('retain_paid_as_wallet_credit')
+                        }
+                      />
+                      <Label
+                        htmlFor="po-cancel-retain"
+                        className="cursor-pointer font-normal leading-snug"
+                      >
+                        {t('purchaseOrders.cancelSettlementRetain')}
+                      </Label>
+                    </div>
+                  </fieldset>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogCancel disabled={cancelSubmitting}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={cancelSubmitting}
               onClick={async () => {
+                setCancelSubmitting(true)
                 try {
-                  await cancelPurchaseOrder(po.id)
+                  await cancelPurchaseOrder(
+                    po.id,
+                    showCancelSettlementChoice
+                      ? { settlement: cancelSettlement }
+                      : undefined
+                  )
                   invalidatePO()
                   setCancelOpen(false)
                   toast.success(t('purchaseOrders.toastCancelled'))
                 } catch {
                   toast.error(t('purchaseOrders.toastError'))
+                } finally {
+                  setCancelSubmitting(false)
                 }
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('purchaseOrders.cancelPurchaseOrder')}
-            </AlertDialogAction>
+              {cancelSubmitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t('purchaseOrders.cancelPurchaseOrder')
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

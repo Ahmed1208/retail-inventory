@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "db:push": "npx supabase db push",
+    "db:reset": "npx supabase db reset",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 
 import {
   getAllPeople,
@@ -26,9 +26,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
 
 type MethodFilterState = 'all' | 'unspecified' | PaymentMethod
 
@@ -76,6 +79,7 @@ function balanceImpactDisplay(
   fullLedger: boolean
 ): number {
   if (fullLedger) return row.amount
+  if (row.reversed) return 0
   if (row.type === 'order') {
     const hasKnownTender = row.paymentLines.some((l) =>
       isPaymentMethod(l.payment_method)
@@ -134,6 +138,9 @@ export function PaymentsList() {
   const [personId, setPersonId] = useState<string>('all')
   const [methodFilter, setMethodFilter] = useState<MethodFilterState>('all')
   const [fullLedger, setFullLedger] = useState(false)
+  const [expandedNestedParents, setExpandedNestedParents] = useState<
+    Set<string>
+  >(() => new Set())
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
 
@@ -176,7 +183,14 @@ export function PaymentsList() {
   const filtered = useMemo(() => {
     const q = debouncedSearch.trim().toLowerCase()
     if (!q) return rows
-    return rows.filter((r) => {
+
+    const reversedBadgeStr = t('payments.reversedBadge').toLowerCase()
+    const reversedHintStr = t('payments.reversedDetailsHint').toLowerCase()
+    const poCancelledStr = t('payments.poCancelledBadge').toLowerCase()
+    const orderCancelledStr = t('payments.orderCancelledBadge').toLowerCase()
+    const orderCompletedStr = t('payments.orderCompletedBadge').toLowerCase()
+
+    const matchesSearchRow = (r: PaymentGroupedListItem) => {
       const note = (r.note ?? '').toLowerCase()
       const ref = (r.reference_number ?? '').toLowerCase()
       const typeStr = txTypeLabel(r.type, t).toLowerCase()
@@ -211,13 +225,59 @@ export function PaymentsList() {
         methodCols.includes(q) ||
         docStr.includes(q) ||
         impactStr.includes(q) ||
-        r.id.toLowerCase().includes(q)
+        r.id.toLowerCase().includes(q) ||
+        (r.reversed && reversedBadgeStr.includes(q)) ||
+        (r.reversed && reversedHintStr.includes(q)) ||
+        (r.type === 'purchase_order' &&
+          r.purchaseOrderStatus === 'cancelled' &&
+          poCancelledStr.includes(q)) ||
+        (r.type === 'order' &&
+          r.orderStatus === 'cancelled' &&
+          orderCancelledStr.includes(q)) ||
+        (r.type === 'order' &&
+          r.orderStatus === 'completed' &&
+          orderCompletedStr.includes(q))
       )
-    })
+    }
+
+    return rows.filter(
+      (parent) =>
+        matchesSearchRow(parent) ||
+        (parent.children ?? []).some((c) => matchesSearchRow(c))
+    )
   }, [rows, debouncedSearch, t, fc, fullLedger, i18n.language])
+
+  const toggleNestedParent = (parentId: string) => {
+    setExpandedNestedParents((prev) => {
+      const next = new Set(prev)
+      if (next.has(parentId)) next.delete(parentId)
+      else next.add(parentId)
+      return next
+    })
+  }
+
+  const visibleRowCount = useMemo(
+    () =>
+      filtered.reduce((n, p) => {
+        const childCount = p.children?.length ?? 0
+        const showChildren =
+          !fullLedger && childCount > 0 && expandedNestedParents.has(p.id)
+        return n + 1 + (showChildren ? childCount : 0)
+      }, 0),
+    [filtered, fullLedger, expandedNestedParents]
+  )
 
   /** Wallet / adjustment / tender not mapped to the four method columns. */
   const formatResidualDetails = (row: PaymentGroupedListItem) => {
+    if (
+      !fullLedger &&
+      row.reversed &&
+      (row.type === 'payment_in' ||
+        row.type === 'payment_out' ||
+        row.type === 'wallet')
+    ) {
+      return t('payments.reversedDetailsHint')
+    }
     if (row.type === 'wallet') return t('people.txWallet')
     if (row.type === 'adjustment') return t('people.emDash')
     const residual = row.paymentLines.filter(
@@ -237,12 +297,188 @@ export function PaymentsList() {
       timeStyle: 'short',
     }).format(new Date(iso))
 
+  const renderTransactionRow = (
+    row: PaymentGroupedListItem,
+    isChild: boolean,
+    rowKey: string,
+    nestedExpand?: { expanded: boolean; onToggle: () => void }
+  ) => {
+    const sums = aggregateTenderByMethod(row.paymentLines)
+    const docTotal = documentTotalValue(row)
+    const impact = balanceImpactDisplay(row, fullLedger)
+    const personLabel =
+      row.person_id == null
+        ? t('payments.walkInCustomer')
+        : row.person.name
+    const strikeTender = row.reversed && !fullLedger
+    const poCancelled =
+      row.type === 'purchase_order' &&
+      row.purchaseOrderStatus === 'cancelled'
+    const orderCancelled =
+      row.type === 'order' && row.orderStatus === 'cancelled'
+    const orderCompleted =
+      !isChild &&
+      row.type === 'order' &&
+      row.orderStatus === 'completed'
+
+    const statusInner = isChild ? (
+      row.reversed ? (
+        <Badge
+          variant="outline"
+          className="font-normal text-muted-foreground"
+        >
+          {t('payments.reversedBadge')}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">{t('people.emDash')}</span>
+      )
+    ) : row.reversed ||
+      poCancelled ||
+      orderCancelled ||
+      orderCompleted ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        {row.reversed && (
+          <Badge
+            variant="outline"
+            className="font-normal text-muted-foreground"
+          >
+            {t('payments.reversedBadge')}
+          </Badge>
+        )}
+        {poCancelled && (
+          <Badge
+            variant="outline"
+            className="font-normal text-muted-foreground"
+          >
+            {t('payments.poCancelledBadge')}
+          </Badge>
+        )}
+        {orderCancelled && (
+          <Badge
+            variant="outline"
+            className="font-normal text-muted-foreground"
+          >
+            {t('payments.orderCancelledBadge')}
+          </Badge>
+        )}
+        {orderCompleted && (
+          <Badge
+            variant="outline"
+            className="font-normal text-muted-foreground"
+          >
+            {t('payments.orderCompletedBadge')}
+          </Badge>
+        )}
+      </div>
+    ) : (
+      <span className="text-muted-foreground">{t('people.emDash')}</span>
+    )
+
+    return (
+      <tr
+        key={rowKey}
+        className={cn(
+          'border-b border-border/50 hover:bg-muted/30',
+          strikeTender && 'opacity-[0.85]',
+          isChild && 'bg-muted/15'
+        )}
+      >
+        <td
+          className={cn(
+            'px-3 py-2 whitespace-nowrap',
+            isChild && 'border-s-2 border-s-border ps-8'
+          )}
+        >
+          {formatDateTime(row.created_at)}
+        </td>
+        <td className="px-3 py-2">
+          <div className="font-medium">{personLabel}</div>
+          {row.person.phone && (
+            <div className="text-xs text-muted-foreground font-mono">
+              {row.person.phone}
+            </div>
+          )}
+        </td>
+        <td className="px-3 py-2">
+          {nestedExpand ? (
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-expanded={nestedExpand.expanded}
+                aria-label={t('payments.expandNestedPaymentsAria')}
+                onClick={() => nestedExpand.onToggle()}
+              >
+                <ChevronRight
+                  className={cn(
+                    'size-4 transition-transform',
+                    nestedExpand.expanded && 'rotate-90',
+                    isRTL && '-scale-x-100'
+                  )}
+                />
+              </Button>
+              <span>{txTypeLabel(row.type, t)}</span>
+            </div>
+          ) : (
+            txTypeLabel(row.type, t)
+          )}
+        </td>
+        <td className="px-3 py-2 align-top">{statusInner}</td>
+        <td className="px-3 py-2 text-end tabular-nums text-muted-foreground whitespace-nowrap">
+          {docTotal != null ? fc(docTotal) : t('people.emDash')}
+        </td>
+        {PAYMENT_METHODS.map((m) => (
+          <td
+            key={m}
+            className="px-3 py-2 text-end tabular-nums text-muted-foreground whitespace-nowrap"
+          >
+            <span
+              className={cn(strikeTender && 'line-through opacity-80')}
+            >
+              {formatMethodCell(sums[m])}
+            </span>
+          </td>
+        ))}
+        <td className="px-3 py-2 text-muted-foreground max-w-[min(100%,14rem)] whitespace-normal">
+          {formatResidualDetails(row)}
+        </td>
+        <td className="px-3 py-2 text-muted-foreground">
+          <LedgerReferenceLink row={row} />
+        </td>
+        <td
+          className={cn(
+            'px-3 py-2 text-end tabular-nums font-medium',
+            impact > 0
+              ? 'text-green-600 dark:text-green-400'
+              : impact < 0
+                ? 'text-red-600 dark:text-red-400'
+                : ''
+          )}
+          title={
+            row.reversed && !fullLedger
+              ? t('payments.reversedBalanceImpactHint')
+              : undefined
+          }
+        >
+          {impact > 0 ? '+' : ''}
+          {fc(impact)}
+        </td>
+      </tr>
+    )
+  }
+
   useEffect(() => {
     document.title = `${t('payments.allPayments')} | StockPilot`
     return () => {
       document.title = 'StockPilot'
     }
   }, [t])
+
+  useEffect(() => {
+    if (fullLedger) setExpandedNestedParents(new Set())
+  }, [fullLedger])
 
   if (!canList) {
     return <Navigate to="/payments" replace />
@@ -383,7 +619,7 @@ export function PaymentsList() {
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="p-4">
-            <LoadingSkeleton rows={8} columns={11} />
+            <LoadingSkeleton rows={8} columns={12} />
           </div>
         ) : isError ? (
           <p className="px-4 py-12 text-center text-sm text-destructive">
@@ -406,6 +642,9 @@ export function PaymentsList() {
                   </th>
                   <th className="px-3 py-2.5 text-start font-medium text-muted-foreground">
                     {t('people.transactionType')}
+                  </th>
+                  <th className="px-3 py-2.5 text-start font-medium text-muted-foreground whitespace-nowrap">
+                    {t('payments.logStatusColumn')}
                   </th>
                   <th
                     className="px-3 py-2.5 text-end font-medium text-muted-foreground whitespace-nowrap"
@@ -436,62 +675,34 @@ export function PaymentsList() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((row: PaymentGroupedListItem) => {
-                  const sums = aggregateTenderByMethod(row.paymentLines)
-                  const docTotal = documentTotalValue(row)
-                  const impact = balanceImpactDisplay(row, fullLedger)
-                  const personLabel =
-                    row.person_id == null
-                      ? t('payments.walkInCustomer')
-                      : row.person.name
+                {filtered.map((parent) => {
+                  const nestedChildCount = parent.children?.length ?? 0
+                  const hasNestedChildren =
+                    !fullLedger && nestedChildCount > 0
+                  const nestedOpen =
+                    hasNestedChildren && expandedNestedParents.has(parent.id)
                   return (
-                  <tr
-                    key={row.id}
-                    className="border-b border-border/50 hover:bg-muted/30"
-                  >
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {formatDateTime(row.created_at)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="font-medium">{personLabel}</div>
-                      {row.person.phone && (
-                        <div className="text-xs text-muted-foreground font-mono">
-                          {row.person.phone}
-                        </div>
+                    <Fragment key={parent.id}>
+                      {renderTransactionRow(
+                        parent,
+                        false,
+                        parent.id,
+                        hasNestedChildren
+                          ? {
+                              expanded: nestedOpen,
+                              onToggle: () => toggleNestedParent(parent.id),
+                            }
+                          : undefined
                       )}
-                    </td>
-                    <td className="px-3 py-2">{txTypeLabel(row.type, t)}</td>
-                    <td className="px-3 py-2 text-end tabular-nums text-muted-foreground whitespace-nowrap">
-                      {docTotal != null ? fc(docTotal) : t('people.emDash')}
-                    </td>
-                    {PAYMENT_METHODS.map((m) => (
-                      <td
-                        key={m}
-                        className="px-3 py-2 text-end tabular-nums text-muted-foreground whitespace-nowrap"
-                      >
-                        {formatMethodCell(sums[m])}
-                      </td>
-                    ))}
-                    <td className="px-3 py-2 text-muted-foreground max-w-[min(100%,14rem)] whitespace-normal">
-                      {formatResidualDetails(row)}
-                    </td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {row.reference_number ?? t('people.emDash')}
-                    </td>
-                    <td
-                      className={cn(
-                        'px-3 py-2 text-end tabular-nums font-medium',
-                        impact > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : impact < 0
-                            ? 'text-red-600 dark:text-red-400'
-                            : ''
-                      )}
-                    >
-                      {impact > 0 ? '+' : ''}
-                      {fc(impact)}
-                    </td>
-                  </tr>
+                      {nestedOpen &&
+                        (parent.children ?? []).map((child) =>
+                          renderTransactionRow(
+                            child,
+                            true,
+                            `${parent.id}:${child.id}`
+                          )
+                        )}
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -502,7 +713,7 @@ export function PaymentsList() {
 
       {!isLoading && filtered.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          {t('payments.resultCount', { count: filtered.length })}
+          {t('payments.resultCount', { count: visibleRowCount })}
         </p>
       )}
     </div>

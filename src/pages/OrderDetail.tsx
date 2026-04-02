@@ -6,26 +6,21 @@ import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
 import {
-  addPaymentInstallment,
   cancelOrder,
+  type CancelOrderSettlement,
   getOrderById,
   updateOrderNote,
 } from '@/services/orderService'
-import { getAllPeople, roundMoney } from '@/services/peopleService'
-import type { OrderWithItemsAndPayments, PaymentMethod } from '@/types'
+import {
+  getAllPeople,
+  getLedgerPaymentOperationRouteIdForOrder,
+  roundMoney,
+} from '@/services/peopleService'
+import type { OrderWithItemsAndPayments } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -33,22 +28,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { PrintInvoice } from '@/components/orders/PrintInvoice'
 import { PosOrderForm } from '@/components/orders/PosOrderForm'
 import { OrderDetailReadOnly } from '@/components/orders/OrderDetailReadOnly'
-import {
-  PAYMENT_METHODS,
-  paymentLabel,
-} from '@/components/orders/ordersShared'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 export function OrderDetail() {
@@ -63,16 +47,13 @@ export function OrderDetail() {
   const [printOrder, setPrintOrder] =
     useState<OrderWithItemsAndPayments | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [payOpen, setPayOpen] = useState(false)
-  const [payMethod, setPayMethod] = useState<PaymentMethod>('cash')
-  const [payAmount, setPayAmount] = useState('')
-  const [payNote, setPayNote] = useState('')
-
+  const [cancelSettlement, setCancelSettlement] =
+    useState<CancelOrderSettlement>('reverse_payments')
   const canEditDraftPos = useFeatureEnabled('orders.editDraftPos')
   const canPrintInvoice = useFeatureEnabled('orders.printInvoice')
   const canCancelOrder = useFeatureEnabled('orders.cancelOrder')
-  const canAddPaymentFc = useFeatureEnabled('orders.addPayment')
   const canEditNote = useFeatureEnabled('orders.editNote')
+  const canListPayments = useFeatureEnabled('payments.list')
 
   const { data: people = [] } = useQuery({
     queryKey: ['people'],
@@ -89,6 +70,25 @@ export function OrderDetail() {
     enabled: !!id,
   })
 
+  const showOrderPaymentOpLink =
+    !!order &&
+    (order.status_flow === 'confirmed' ||
+      order.status_flow === 'completed') &&
+    !!order.person_id &&
+    order.payment_installments.length > 0 &&
+    canListPayments
+
+  const { data: orderPaymentOpRouteId, isFetching: orderPayOpFetching } =
+    useQuery({
+      queryKey: ['orderLedgerPaymentOpRoute', order?.id],
+      queryFn: () => getLedgerPaymentOperationRouteIdForOrder(order!.id),
+      enabled: showOrderPaymentOpLink,
+    })
+
+  const paidAtOrder = order ? roundMoney(order.paid_amount) : 0
+  const showCancelSettlementChoice =
+    !!order?.person_id && paidAtOrder > 0.01
+
   useEffect(() => {
     if (order) {
       document.title = `${t('orders.orderDetailTitle', { number: order.order_number })} | StockPilot`
@@ -104,6 +104,7 @@ export function OrderDetail() {
     qc.invalidateQueries({ queryKey: ['orders'] })
     qc.invalidateQueries({ queryKey: ['order'] })
     qc.invalidateQueries({ queryKey: ['people'] })
+    qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
   }
 
   const noteMut = useMutation({
@@ -113,35 +114,21 @@ export function OrderDetail() {
   })
 
   const cancelMut = useMutation({
-    mutationFn: (oid: string) => cancelOrder(oid),
+    mutationFn: (p: {
+      oid: string
+      settlement?: CancelOrderSettlement
+    }) =>
+      cancelOrder(
+        p.oid,
+        p.settlement ? { settlement: p.settlement } : undefined
+      ),
     onSuccess: () => {
       invalidateAll()
       setCancelOpen(false)
       toast.success(t('orders.toastOrderCancelled'))
     },
-    onError: (e: Error) => toast.error(e.message || t('orders.toastError')),
-  })
-
-  const payMut = useMutation({
-    mutationFn: async () => {
-      if (!id) throw new Error('no order')
-      const amt = roundMoney(parseFloat(payAmount) || 0)
-      if (amt < 0.01) throw new Error(t('orders.paymentAmount'))
-      return addPaymentInstallment({
-        order_id: id,
-        method: payMethod,
-        amount: amt,
-        note: payNote || undefined,
-      })
-    },
-    onSuccess: () => {
-      invalidateAll()
-      setPayOpen(false)
-      setPayAmount('')
-      setPayNote('')
-      toast.success(t('orders.addPayment'))
-    },
-    onError: (e: Error) => toast.error(e.message || t('orders.toastError')),
+    onError: (e: Error) =>
+      toast.error(e.message || t('orders.toastError')),
   })
 
   const handlePrint = (o: OrderWithItemsAndPayments) => {
@@ -234,11 +221,31 @@ export function OrderDetail() {
           people={people}
           canPrint={canPrintInvoice}
           canCancel={canCancelOrder}
-          canAddPayment={canAddPaymentFc}
           canEditNote={canEditNote}
+          paymentOperationLinkSlot={
+            showOrderPaymentOpLink ? (
+              orderPayOpFetching ? (
+                <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
+              ) : orderPaymentOpRouteId ? (
+                <Link
+                  to={`/payments/operations/${orderPaymentOpRouteId}`}
+                  className={cn(
+                    buttonVariants({ variant: 'link' }),
+                    'h-auto p-0 align-baseline font-medium text-primary'
+                  )}
+                >
+                  {t('orders.openPaymentOperation')}
+                </Link>
+              ) : (
+                '—'
+              )
+            ) : undefined
+          }
           onPrint={() => handlePrint(order)}
-          onCancel={() => setCancelOpen(true)}
-          onAddPayment={() => setPayOpen(true)}
+          onCancel={() => {
+            setCancelSettlement('reverse_payments')
+            setCancelOpen(true)
+          }}
           noteMut={{
             mutate: (p) => noteMut.mutate(p),
             isPending: noteMut.isPending,
@@ -250,79 +257,90 @@ export function OrderDetail() {
         <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t('orders.cancelConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('orders.cancelConfirmMessage', {
-                number: order.order_number,
-              })}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-start text-muted-foreground">
+                <p>
+                  {t('orders.cancelConfirmMessage', {
+                    number: order.order_number,
+                  })}
+                </p>
+                {order.status_flow === 'completed' && (
+                  <p>{t('orders.cancelCompletedOrderHint')}</p>
+                )}
+                {showCancelSettlementChoice && (
+                  <fieldset className="space-y-3 rounded-md border border-border p-3">
+                    <legend className="px-1 text-sm font-medium text-foreground">
+                      {t('orders.cancelSettlementLegend')}
+                    </legend>
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="order-cancel-reverse"
+                        type="radio"
+                        name="order-cancel-settlement"
+                        className="mt-1"
+                        checked={cancelSettlement === 'reverse_payments'}
+                        onChange={() =>
+                          setCancelSettlement('reverse_payments')
+                        }
+                      />
+                      <Label
+                        htmlFor="order-cancel-reverse"
+                        className="cursor-pointer font-normal leading-snug"
+                      >
+                        {t('orders.cancelSettlementReverse')}
+                      </Label>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <input
+                        id="order-cancel-retain"
+                        type="radio"
+                        name="order-cancel-settlement"
+                        className="mt-1"
+                        checked={
+                          cancelSettlement === 'retain_paid_as_wallet_credit'
+                        }
+                        onChange={() =>
+                          setCancelSettlement('retain_paid_as_wallet_credit')
+                        }
+                      />
+                      <Label
+                        htmlFor="order-cancel-retain"
+                        className="cursor-pointer font-normal leading-snug"
+                      >
+                        {t('orders.cancelSettlementRetain')}
+                      </Label>
+                    </div>
+                  </fieldset>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => cancelMut.mutate(order.id)}>
-              {t('orders.cancelOrder')}
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={cancelMut.isPending}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={cancelMut.isPending}
+              onClick={() =>
+                cancelMut.mutate({
+                  oid: order.id,
+                  settlement: showCancelSettlementChoice
+                    ? cancelSettlement
+                    : undefined,
+                })
+              }
+            >
+              {cancelMut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t('orders.cancelOrder')
+              )}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
-        <DialogContent dir={isRTL ? 'rtl' : 'ltr'}>
-          <DialogHeader>
-            <DialogTitle>{t('orders.addPayment')}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div>
-              <Label>{t('orders.paymentMethod')}</Label>
-              <Select
-                value={payMethod}
-                onValueChange={(v) => setPayMethod(v as PaymentMethod)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {paymentLabel(m, t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>{t('orders.paymentAmount')}</Label>
-              <Input
-                type="number"
-                min={0}
-                step="0.01"
-                value={payAmount}
-                onChange={(e) => setPayAmount(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label>{t('orders.noteOptional')}</Label>
-              <Input
-                value={payNote}
-                onChange={(e) => setPayNote(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setPayOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => payMut.mutate()}
-              disabled={payMut.isPending}
-            >
-              {payMut.isPending && (
-                <Loader2 className="me-2 h-4 w-4 animate-spin" />
-              )}
-              {t('orders.addPayment')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

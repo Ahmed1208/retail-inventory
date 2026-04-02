@@ -16,6 +16,8 @@ export const FEATURE_CONTROL_IDS = [
   'sidebar.people',
   'sidebar.payments',
   'payments.list',
+  'payments.editLedgerNote',
+  'payments.reverseLedgerOperation',
   // Inventory hub cards
   'inventory.hubProducts',
   'inventory.hubPurchaseOrders',
@@ -118,6 +120,18 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.payments.list.title',
             descriptionKey: 'control.payments.list.desc',
+          },
+          {
+            id: 'payments.editLedgerNote',
+            defaultEnabled: true,
+            titleKey: 'control.payments.editLedgerNote.title',
+            descriptionKey: 'control.payments.editLedgerNote.desc',
+          },
+          {
+            id: 'payments.reverseLedgerOperation',
+            defaultEnabled: true,
+            titleKey: 'control.payments.reverseLedgerOperation.title',
+            descriptionKey: 'control.payments.reverseLedgerOperation.desc',
           },
         ],
       },

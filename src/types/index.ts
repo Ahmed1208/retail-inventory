@@ -115,6 +115,8 @@ export interface BalanceTransaction {
   /** Set when type is `wallet` (overpayment credit). */
   wallet_direction: WalletDirection | null
   created_at: string
+  /** Set when this row was undone by a reversal (migration 013+). */
+  reversed_at?: string | null
 }
 
 export interface BalanceTransactionWithPerson extends BalanceTransaction {

@@ -30,6 +30,7 @@ import {
 import {
   getPurchaseOrdersByPersonId,
 } from '@/services/purchaseOrderService'
+import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
 import type {
   BalanceTransaction,
   BalanceTransactionType,
@@ -992,7 +993,18 @@ function PersonProfileDialog({
                           </td>
                           <td className="px-3 py-2">{txTypeLabel(row.type, t)}</td>
                           <td className="px-3 py-2">
-                            {row.reference_number ?? t('people.emDash')}
+                            <LedgerReferenceLink
+                              row={{
+                                type: row.type,
+                                reference_id: row.reference_id,
+                                reference_number: row.reference_number,
+                                ledger_operation_route_id:
+                                  row.type === 'payment_in' ||
+                                  row.type === 'payment_out'
+                                    ? row.payment_group_id ?? row.id
+                                    : undefined,
+                              }}
+                            />
                           </td>
                           <td
                             className={cn(

@@ -450,12 +450,23 @@ export async function createPurchaseOrder(data: {
   return created
 }
 
-export async function cancelPurchaseOrder(id: string): Promise<void> {
+export type CancelPurchaseOrderSettlement =
+  | 'reverse_payments'
+  | 'retain_paid_as_wallet_credit'
+
+export async function cancelPurchaseOrder(
+  id: string,
+  options?: { settlement?: CancelPurchaseOrderSettlement }
+): Promise<void> {
   const order = await getPurchaseOrderById(id)
   if (!order) throw new Error('Purchase order not found')
   if (order.status === 'cancelled') {
     throw new Error('Purchase order is already cancelled')
   }
+
+  const retainWalletCredit =
+    Boolean(order.person_id) &&
+    options?.settlement === 'retain_paid_as_wallet_credit'
 
   // Update status to cancelled
   const { error: updateError } = await supabase
@@ -467,6 +478,12 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
     .eq('id', id)
 
   if (updateError) throw updateError
+
+  const { error: delPayErr } = await supabase
+    .from(PURCHASE_ORDER_PAYMENTS)
+    .delete()
+    .eq('purchase_order_id', id)
+  if (delPayErr) throw delPayErr
 
   if (order.person_id) {
     const { data: balRow0, error: b0e } = await supabase
@@ -484,34 +501,48 @@ export async function cancelPurchaseOrder(id: string): Promise<void> {
     const towardPaid = roundMoney(Math.min(paidAtPo, poTotal))
     const walletOver = roundMoney(paidAtPo - towardPaid)
 
-    if (towardPaid > 0.01) {
-      await insertBalanceTransactionRow({
-        person_id: order.person_id,
-        type: 'payment_out',
-        amount: roundMoney(-towardPaid),
-        reference_id: order.id,
-        reference_number: `PO-${order.order_number}`,
-        note: 'Cancelled purchase order (reverse payment)',
-        payment_method: null,
-        payment_group_id: null,
-        wallet_direction: null,
-      })
-      bal = roundMoney(bal - towardPaid)
-    }
+    if (!retainWalletCredit) {
+      if (towardPaid > 0.01) {
+        await insertBalanceTransactionRow({
+          person_id: order.person_id,
+          type: 'payment_out',
+          amount: roundMoney(-towardPaid),
+          reference_id: order.id,
+          reference_number: `PO-${order.order_number}`,
+          note: 'Cancelled purchase order (reverse payment)',
+          payment_method: null,
+          payment_group_id: null,
+          wallet_direction: null,
+        })
+        bal = roundMoney(bal - towardPaid)
+      }
 
-    if (walletOver > 0.01) {
+      if (walletOver > 0.01) {
+        await insertBalanceTransactionRow({
+          person_id: order.person_id,
+          type: 'wallet',
+          amount: roundMoney(-walletOver),
+          reference_id: order.id,
+          reference_number: `PO-${order.order_number}`,
+          note: 'Cancelled purchase order (reverse wallet credit)',
+          payment_method: null,
+          payment_group_id: null,
+          wallet_direction: 'in' as WalletDirection,
+        })
+        bal = roundMoney(bal - walletOver)
+      }
+    } else if (paidAtPo > 0.01) {
       await insertBalanceTransactionRow({
         person_id: order.person_id,
         type: 'wallet',
-        amount: roundMoney(-walletOver),
+        amount: roundMoney(paidAtPo),
         reference_id: order.id,
         reference_number: `PO-${order.order_number}`,
-        note: 'Cancelled purchase order (reverse wallet credit)',
+        note: `Cancelled PO — prepaid retained as supplier credit (PO #${order.order_number})`,
         payment_method: null,
         payment_group_id: null,
         wallet_direction: 'in' as WalletDirection,
       })
-      bal = roundMoney(bal - walletOver)
     }
 
     const reversal = poTotal

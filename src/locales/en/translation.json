@@ -110,6 +110,14 @@
       "list": {
         "title": "Transaction log",
         "desc": "Opens the full balance ledger: orders, purchase orders, payments, wallet, and adjustments."
+      },
+      "editLedgerNote": {
+        "title": "Edit payment notes",
+        "desc": "Allow changing the note on recorded payment-in / payment-out operations from the payment detail page."
+      },
+      "reverseLedgerOperation": {
+        "title": "Reverse recorded payments",
+        "desc": "Allow undoing a payment-in / payment-out operation from the payment detail page (ledger, balance, and linked order/PO rows when possible)."
       }
     },
     "inventoryHub": {
@@ -484,6 +492,11 @@
     "orderDetailTitle": "Order #{{number}}",
     "cancelConfirmTitle": "Cancel Order",
     "cancelConfirmMessage": "Cancel order #{{number}}? Stock will be restored automatically for all items.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementLegend": "How to settle recorded payments",
+    "cancelSettlementReverse": "Reverse payments on the ledger (default)",
+    "cancelSettlementRetain": "Keep total paid as customer wallet credit (one ledger line)",
+    "cancelCompletedOrderHint": "This order is completed. Cancelling will restore stock and reverse ledger entries tied to the sale.",
     "totalOrders": "Total Orders",
     "totalRevenue": "Total Revenue",
     "pendingOrders": "Pending",
@@ -568,6 +581,10 @@
     "costPriceUpdated": "Default updated",
     "cancelConfirmTitle": "Cancel Purchase Order",
     "cancelConfirmMessage": "Cancel purchase order #{{number}}? Stock will be deducted for all items.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementLegend": "How to settle recorded payments",
+    "cancelSettlementReverse": "Reverse payments on the ledger (default)",
+    "cancelSettlementRetain": "Keep total paid as supplier wallet credit (one ledger line)",
     "emptyOrders": "No purchase orders match your filters.",
     "selectSupplier": "Supplier",
     "supplierBalance": "Supplier balance"
@@ -695,6 +712,8 @@
     "methodColumn": "Method",
     "methodDetailsColumn": "Payment method",
     "logDetailsColumn": "Other details",
+    "logStatusColumn": "Status",
+    "expandNestedPaymentsAria": "Show or hide checkout payment lines for this document",
     "listDocumentTotal": "Document total",
     "listDocumentTotalHint": "Sale total for an order, or purchase order liability total.",
     "listBalanceImpact": "Balance impact",
@@ -706,7 +725,37 @@
     "confirmAndAddToWallet": "Confirm & add {{amount}} to wallet",
     "selectPersonForOverpayment": "Select a person to apply overpayment to their wallet",
     "showFullLedger": "Show full ledger",
-    "showFullLedgerHelp": "Include every balance line. When off, checkout payments that are already summarized on order and purchase order rows are hidden."
+    "showFullLedgerHelp": "Include every balance line. When off, checkout payments that are already summarized on order and purchase order rows are hidden.",
+    "openOrderReference": "Open order {{ref}}",
+    "openPurchaseOrderReference": "Open purchase order {{ref}}",
+    "openPaymentOperationReference": "Open payment {{ref}}",
+    "paymentOperationTitle": "Payment",
+    "backToTransactionLog": "Back to transaction log",
+    "paymentOperationNotFound": "This payment could not be found.",
+    "paymentOperationUntitled": "Payment",
+    "person": "Person",
+    "relatedDocument": "Related document",
+    "relatedSalesOrder": "Open sales order",
+    "relatedPurchaseOrder": "Open purchase order",
+    "operationTenderLines": "Tender lines",
+    "operationWalletLines": "Wallet (overpayment)",
+    "operationReversedBanner": "This payment was reversed. Ledger rows are kept for audit with a reversal marker.",
+    "reverseOperation": "Reverse payment",
+    "reverseOperationConfirmTitle": "Reverse this payment?",
+    "reverseOperationConfirmDescription": "This will undo the payment in the ledger, restore the person’s balance when applicable, and update the linked sales order or purchase order if this payment was tied to one. This cannot be undone from the app.",
+    "toastOperationReversed": "Payment reversed",
+    "operationNoteNoEditReversed": "Notes cannot be edited after this payment was reversed.",
+    "reversedBadge": "Reversed",
+    "poCancelledBadge": "Cancelled",
+    "orderCancelledBadge": "Cancelled",
+    "orderCompletedBadge": "Completed",
+    "reversedDetailsHint": "Net effect cancelled",
+    "reversedBalanceImpactHint": "This payment was reversed; net change to balance is zero.",
+    "operationNote": "Note",
+    "operationNotePlaceholder": "Optional note for this payment…",
+    "saveOperationNote": "Save note",
+    "toastOperationNoteSaved": "Note updated",
+    "operationNoteReadOnly": "Editing payment notes is turned off in Control settings."
   },
   "reports": {
     "title": "Reports",
