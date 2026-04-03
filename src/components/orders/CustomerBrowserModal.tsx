@@ -42,6 +42,7 @@ export function CustomerBrowserModal({
 }: Props) {
   const { t } = useTranslation()
   const searchRef = useRef<HTMLInputElement>(null)
+  const lastListRefreshKey = useRef(0)
   const [search, setSearch] = useState('')
   const [highlight, setHighlight] = useState(0)
 
@@ -71,9 +72,15 @@ export function CustomerBrowserModal({
   }, [open])
 
   useEffect(() => {
-    if (!open || listRefreshKey <= 0) return
+    if (
+      listRefreshKey <= 0 ||
+      listRefreshKey === lastListRefreshKey.current
+    )
+      return
+    lastListRefreshKey.current = listRefreshKey
     setSearch('')
     setHighlight(0)
+    if (!open) return
     const timer = window.setTimeout(() => searchRef.current?.focus(), 50)
     return () => window.clearTimeout(timer)
   }, [listRefreshKey, open])
