@@ -2,8 +2,8 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Banknote,
-  LayoutDashboard,
   ShoppingCart,
+  Shield,
   SlidersHorizontal,
   Users,
   Wallet,
@@ -70,13 +70,21 @@ interface SidebarProps {
 export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
-  const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
+
   const showControlNav = useFeatureEnabled('sidebar.control')
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
   const showPaymentsNav = useFeatureEnabled('sidebar.payments')
   const showRegisterNav = useFeatureEnabled('sidebar.register')
+  const showAdminGroup = useFeatureEnabled('sidebar.admin')
+  const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
+  const showDocumentationNav = useFeatureEnabled('sidebar.documentation')
+  const showReportsShortcut = useFeatureEnabled('sidebar.reports')
+
+  const anyAdminChild =
+    showDashboardNav || showDocumentationNav || showReportsShortcut
+  const showAdminNav = showAdminGroup && anyAdminChild
 
   const content = (
     <>
@@ -87,17 +95,22 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Main">
-        {showDashboardNav && (
-          <NavLink to="/" end onClick={onNavigate} className={linkClass}>
-            <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
-            <span>{t('nav.dashboard')}</span>
-          </NavLink>
-        )}
-
         {showControlNav && (
           <NavLink to="/control" end onClick={onNavigate} className={linkClass}>
             <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t('nav.control')}</span>
+          </NavLink>
+        )}
+
+        {showAdminNav && (
+          <NavLink
+            to="/admin"
+            end
+            onClick={onNavigate}
+            className={linkClass}
+          >
+            <Shield className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.admin')}</span>
           </NavLink>
         )}
 

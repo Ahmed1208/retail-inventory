@@ -18,6 +18,9 @@ export const FEATURE_CONTROL_IDS = [
   'sidebar.people',
   'sidebar.payments',
   'sidebar.register',
+  'sidebar.admin',
+  'sidebar.documentation',
+  'sidebar.reports',
   // Header
   'header.lowStockBell',
   // Dashboard (home)
@@ -140,6 +143,24 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.sidebar.register.title',
             descriptionKey: 'control.sidebar.register.desc',
+          },
+          {
+            id: 'sidebar.admin',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.admin.title',
+            descriptionKey: 'control.sidebar.admin.desc',
+          },
+          {
+            id: 'sidebar.documentation',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.documentation.title',
+            descriptionKey: 'control.sidebar.documentation.desc',
+          },
+          {
+            id: 'sidebar.reports',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.reports.title',
+            descriptionKey: 'control.sidebar.reports.desc',
           },
         ],
       },

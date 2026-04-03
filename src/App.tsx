@@ -20,6 +20,8 @@ import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { Control } from '@/pages/Control'
+import { AdminHub } from '@/pages/AdminHub'
+import { Documentation } from '@/pages/Documentation'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
 import { PaymentOperationDetail } from '@/pages/PaymentOperationDetail'
@@ -58,6 +60,8 @@ function App() {
               element={<Navigate to="/?tab=reports" replace />}
             />
             <Route path="/control" element={<Control />} />
+            <Route path="/admin" element={<AdminHub />} />
+            <Route path="/documentation" element={<Documentation />} />
             <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
             <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />
             <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
