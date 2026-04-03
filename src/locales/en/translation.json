@@ -603,7 +603,9 @@
     "availableCredit": "Available credit",
     "creditBlocked": "This order exceeds the customer's credit limit.",
     "subtotal": "Subtotal",
-    "discountedTotal": "After discount"
+    "discountedTotal": "After discount",
+    "quickCreateCustomer": "عميل جديد",
+    "quickCreateCustomerTitle": "إنشاء عميل"
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
@@ -687,7 +689,9 @@
     "cancelSettlementRetain": "Keep total paid as supplier wallet credit (one ledger line)",
     "emptyOrders": "No purchase orders match your filters.",
     "selectSupplier": "Supplier",
-    "supplierBalance": "Supplier balance"
+    "supplierBalance": "Supplier balance",
+    "quickCreateSupplier": "مورد جديد",
+    "quickCreateSupplierTitle": "إنشاء مورد"
   },
   "people": {
     "title": "People",

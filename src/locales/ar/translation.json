@@ -603,7 +603,9 @@
     "availableCredit": "الائتمان المتاح",
     "creditBlocked": "هذا الطلب يتجاوز حد الائتمان للعميل.",
     "subtotal": "المجموع الفرعي",
-    "discountedTotal": "بعد الخصم"
+    "discountedTotal": "بعد الخصم",
+    "quickCreateCustomer": "عميل جديد",
+    "quickCreateCustomerTitle": "إنشاء عميل"
   },
   "purchaseOrders": {
     "title": "أوامر الشراء",
@@ -687,7 +689,9 @@
     "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للمورد (سطر واحد في الدفتر)",
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
     "selectSupplier": "مورد",
-    "supplierBalance": "رصيد المورد"
+    "supplierBalance": "رصيد المورد",
+    "quickCreateSupplier": "مورد جديد",
+    "quickCreateSupplierTitle": "إنشاء مورد"
   },
   "people": {
     "title": "الأشخاص",

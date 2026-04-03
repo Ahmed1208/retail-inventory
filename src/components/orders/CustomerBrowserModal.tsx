@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search } from 'lucide-react'
+import { Search, UserPlus } from 'lucide-react'
 
 import type { Person } from '@/types'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
@@ -19,6 +20,12 @@ type Props = {
   isRTL: boolean
   formatCurrency: (n: number) => string
   onPick: (person: Person | null) => void
+  /** When false, window Escape handler does not close (stacked dialog owns Esc). */
+  escapeClosesBrowser?: boolean
+  showQuickCreate?: boolean
+  onRequestQuickCreate?: () => void
+  /** Increment after a new person is saved to clear search so the new row is visible. */
+  listRefreshKey?: number
 }
 
 export function CustomerBrowserModal({
@@ -28,6 +35,10 @@ export function CustomerBrowserModal({
   isRTL,
   formatCurrency,
   onPick,
+  escapeClosesBrowser = true,
+  showQuickCreate = false,
+  onRequestQuickCreate,
+  listRefreshKey = 0,
 }: Props) {
   const { t } = useTranslation()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -60,6 +71,14 @@ export function CustomerBrowserModal({
   }, [open])
 
   useEffect(() => {
+    if (!open || listRefreshKey <= 0) return
+    setSearch('')
+    setHighlight(0)
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 50)
+    return () => window.clearTimeout(timer)
+  }, [listRefreshKey, open])
+
+  useEffect(() => {
     setHighlight((h) =>
       rowCount === 0 ? 0 : Math.min(h, rowCount - 1)
     )
@@ -85,6 +104,7 @@ export function CustomerBrowserModal({
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (!escapeClosesBrowser) return
         e.preventDefault()
         onOpenChange(false)
       }
@@ -107,7 +127,7 @@ export function CustomerBrowserModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, rowCount, highlight, pickAt, onOpenChange])
+  }, [open, rowCount, highlight, pickAt, onOpenChange, escapeClosesBrowser])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,9 +140,23 @@ export function CustomerBrowserModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="shrink-0 border-b px-4 py-3 text-start sm:text-start">
-          <DialogTitle className="text-lg">
-            {t('orders.customerBrowser')}
-          </DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DialogTitle className="text-lg">
+              {t('orders.customerBrowser')}
+            </DialogTitle>
+            {showQuickCreate && onRequestQuickCreate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={onRequestQuickCreate}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                {t('orders.quickCreateCustomer')}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="relative shrink-0 border-b bg-muted/30 px-4 py-3">

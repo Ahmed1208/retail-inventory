@@ -28,6 +28,7 @@ import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
 import { SupplierBrowserModal } from '@/components/purchaseOrders/SupplierBrowserModal'
+import { QuickCreatePersonDialog } from '@/components/people/QuickCreatePersonDialog'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
 import {
   findProductByInput,
@@ -59,9 +60,12 @@ export function PurchaseOrderForm() {
   const fc = useCallback((n: number) => formatCurrency(n, lang), [lang])
   const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
   const canCheckout = useFeatureEnabled('orders.posCheckout')
+  const canAddPerson = useFeatureEnabled('people.addPerson')
 
   const [selectedSupplier, setSelectedSupplier] = useState<Person | null>(null)
   const [supplierBrowserOpen, setSupplierBrowserOpen] = useState(false)
+  const [quickCreateSupplierOpen, setQuickCreateSupplierOpen] = useState(false)
+  const [peopleListRefreshKey, setPeopleListRefreshKey] = useState(0)
   const [productBrowserOpen, setProductBrowserOpen] = useState(false)
   const [browserTargetLineKey, setBrowserTargetLineKey] = useState<
     string | null
@@ -625,6 +629,17 @@ export function PurchaseOrderForm() {
         isRTL={isRTL}
         formatCurrency={fc}
         onPick={setSelectedSupplier}
+        escapeClosesBrowser={!quickCreateSupplierOpen}
+        showQuickCreate={canAddPerson}
+        onRequestQuickCreate={() => setQuickCreateSupplierOpen(true)}
+        listRefreshKey={peopleListRefreshKey}
+      />
+      <QuickCreatePersonDialog
+        open={quickCreateSupplierOpen}
+        onOpenChange={setQuickCreateSupplierOpen}
+        role="supplier"
+        isRTL={isRTL}
+        onSuccess={() => setPeopleListRefreshKey((k) => k + 1)}
       />
       <ProductBrowserModal
         open={productBrowserOpen}

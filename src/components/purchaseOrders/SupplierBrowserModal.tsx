@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Search } from 'lucide-react'
+import { Search, UserPlus } from 'lucide-react'
 
 import type { Person } from '@/types'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Dialog,
@@ -19,6 +20,10 @@ type Props = {
   isRTL: boolean
   formatCurrency: (n: number) => string
   onPick: (person: Person | null) => void
+  escapeClosesBrowser?: boolean
+  showQuickCreate?: boolean
+  onRequestQuickCreate?: () => void
+  listRefreshKey?: number
 }
 
 export function SupplierBrowserModal({
@@ -28,6 +33,10 @@ export function SupplierBrowserModal({
   isRTL,
   formatCurrency,
   onPick,
+  escapeClosesBrowser = true,
+  showQuickCreate = false,
+  onRequestQuickCreate,
+  listRefreshKey = 0,
 }: Props) {
   const { t } = useTranslation()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -60,6 +69,14 @@ export function SupplierBrowserModal({
   }, [open])
 
   useEffect(() => {
+    if (!open || listRefreshKey <= 0) return
+    setSearch('')
+    setHighlight(0)
+    const timer = window.setTimeout(() => searchRef.current?.focus(), 50)
+    return () => window.clearTimeout(timer)
+  }, [listRefreshKey, open])
+
+  useEffect(() => {
     setHighlight((h) => (rowCount === 0 ? 0 : Math.min(h, rowCount - 1)))
   }, [rowCount])
 
@@ -83,6 +100,7 @@ export function SupplierBrowserModal({
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (!escapeClosesBrowser) return
         e.preventDefault()
         onOpenChange(false)
       }
@@ -103,7 +121,7 @@ export function SupplierBrowserModal({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, rowCount, highlight, pickAt, onOpenChange])
+  }, [open, rowCount, highlight, pickAt, onOpenChange, escapeClosesBrowser])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,9 +134,23 @@ export function SupplierBrowserModal({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader className="shrink-0 border-b px-4 py-3 text-start sm:text-start">
-          <DialogTitle className="text-lg">
-            {t('purchaseOrders.supplierBrowser')}
-          </DialogTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <DialogTitle className="text-lg">
+              {t('purchaseOrders.supplierBrowser')}
+            </DialogTitle>
+            {showQuickCreate && onRequestQuickCreate && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={onRequestQuickCreate}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                {t('purchaseOrders.quickCreateSupplier')}
+              </Button>
+            )}
+          </div>
         </DialogHeader>
 
         <div className="relative shrink-0 border-b bg-muted/30 px-4 py-3">

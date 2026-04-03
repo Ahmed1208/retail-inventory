@@ -29,6 +29,7 @@ import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { CustomerBrowserModal } from '@/components/orders/CustomerBrowserModal'
+import { QuickCreatePersonDialog } from '@/components/people/QuickCreatePersonDialog'
 import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
 import { OrderCheckoutModal } from '@/components/orders/OrderCheckoutModal'
 import {
@@ -71,12 +72,15 @@ export function PosOrderForm({
   const fc = useCallback((n: number) => formatCurrency(n, lang), [lang])
   const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
   const canCheckout = useFeatureEnabled('orders.posCheckout')
+  const canAddPerson = useFeatureEnabled('people.addPerson')
 
   const [browserOpen, setBrowserOpen] = useState(false)
   const [browserTargetLineKey, setBrowserTargetLineKey] = useState<
     string | null
   >(null)
   const [customerBrowserOpen, setCustomerBrowserOpen] = useState(false)
+  const [quickCreateCustomerOpen, setQuickCreateCustomerOpen] = useState(false)
+  const [peopleListRefreshKey, setPeopleListRefreshKey] = useState(0)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
 
   const [orderType, setOrderType] = useState<OrderType>('retail')
@@ -712,6 +716,17 @@ export function PosOrderForm({
         isRTL={isRTL}
         formatCurrency={fc}
         onPick={(p) => setPersonId(p?.id ?? null)}
+        escapeClosesBrowser={!quickCreateCustomerOpen}
+        showQuickCreate={canAddPerson}
+        onRequestQuickCreate={() => setQuickCreateCustomerOpen(true)}
+        listRefreshKey={peopleListRefreshKey}
+      />
+      <QuickCreatePersonDialog
+        open={quickCreateCustomerOpen}
+        onOpenChange={setQuickCreateCustomerOpen}
+        role="customer"
+        isRTL={isRTL}
+        onSuccess={() => setPeopleListRefreshKey((k) => k + 1)}
       />
       <OrderCheckoutModal
         open={checkoutOpen}
