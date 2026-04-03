@@ -73,10 +73,14 @@
       "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings.",
       "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
       "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
-      "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings."
+      "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings.",
+      "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
+      "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
     },
     "area": {
       "sidebar": "Navigation",
+      "header": "Top bar",
+      "dashboard": "Dashboard (home)",
       "inventoryHub": "Inventory hub",
       "people": "People",
       "products": "Products",
@@ -90,6 +94,14 @@
     },
     "sidebar": {
       "groupNav": "Sidebar links",
+      "dashboard": {
+        "title": "Dashboard menu",
+        "desc": "Shows the home / dashboard link in the sidebar."
+      },
+      "control": {
+        "title": "Control menu",
+        "desc": "Shows the Control link to open this feature settings page."
+      },
       "inventory": {
         "title": "Inventory menu",
         "desc": "Shows the Inventory item in the sidebar (hub and sub-routes)."
@@ -111,6 +123,41 @@
         "desc": "Shows the Register item for cash-drawer balances by tender and manual add/withdraw."
       }
     },
+    "header": {
+      "group": "Header",
+      "lowStockBell": {
+        "title": "Low stock alerts (bell)",
+        "desc": "Shows the bell icon and badge linking to low-stock products."
+      }
+    },
+    "dashboard": {
+      "groupTabs": "Dashboard tabs",
+      "groupOverview": "Overview tab — sections",
+      "overviewTab": {
+        "title": "Overview tab",
+        "desc": "Shows the main dashboard tab (stats and activity widgets)."
+      },
+      "reportsTab": {
+        "title": "Reports tab",
+        "desc": "Shows the Reports tab on the home page and allows opening sales/inventory reports there."
+      },
+      "statsCards": {
+        "title": "Top stat cards",
+        "desc": "Product count, inventory value, low-stock count, movements today, and purchases today."
+      },
+      "financialSnapshot": {
+        "title": "Receivables & payables",
+        "desc": "The two cards for total receivables and total payables."
+      },
+      "recentMovements": {
+        "title": "Recent stock movements",
+        "desc": "The table of latest stock in/out/adjustments on the overview."
+      },
+      "lowStockPanel": {
+        "title": "Low stock list",
+        "desc": "The low-stock products panel on the overview."
+      }
+    },
     "register": {
       "group": "Register",
       "deposit": {
@@ -120,6 +167,10 @@
       "withdraw": {
         "title": "Withdraw from register",
         "desc": "Allows recording money taken out of the register (by tender type)."
+      },
+      "viewActivity": {
+        "title": "Register activity",
+        "desc": "Shows the recent activity table and the “View activity” shortcut on the Register page."
       }
     },
     "paymentsApp": {
@@ -134,7 +185,11 @@
       },
       "reverseLedgerOperation": {
         "title": "Reverse recorded payments",
-        "desc": "Allow undoing a payment-in / payment-out operation from the payment detail page (ledger, balance, and linked order/PO rows when possible)."
+        "desc": "Allow undoing a payment-in / payment-out, or a register deposit/withdraw, from the payment detail page (ledger, balance, and linked order/PO rows when applicable)."
+      },
+      "fullLedgerView": {
+        "title": "Full ledger mode (transaction log)",
+        "desc": "Shows the “Show full ledger” option on the payments list to expand reversed rows and see raw balance impact."
       }
     },
     "inventoryHub": {
@@ -244,6 +299,10 @@
         "title": "Create purchase order",
         "desc": "Shows the new purchase order shortcut and enables the full-page create flow (supplier picker, product browser, lines, payments)."
       },
+      "confirmReceive": {
+        "title": "Confirm / receive draft PO",
+        "desc": "Shows the button on a draft purchase order to confirm receipt, enter supplier payments, and post stock."
+      },
       "cancel": {
         "title": "Cancel purchase order",
         "desc": "Shows the cancel action on received purchase orders (detail page)."
@@ -282,8 +341,8 @@
         "desc": "Shows cancel order on the order detail page when status allows."
       },
       "addPayment": {
-        "title": "Add payment",
-        "desc": "Shows add payment when the order has a remaining balance."
+        "title": "Add payment (reserved)",
+        "desc": "Reserved for future use: partial payments on confirmed orders from the order screen. Checkout payments are controlled by Checkout and Record payment."
       },
       "editNote": {
         "title": "Edit order note",

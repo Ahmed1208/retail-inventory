@@ -11,16 +11,29 @@ export const FEATURE_CONTROL_IDS = [
   'people.recordPayment',
   'people.addPerson',
   // Sidebar (main nav)
+  'sidebar.dashboard',
+  'sidebar.control',
   'sidebar.inventory',
   'sidebar.orders',
   'sidebar.people',
   'sidebar.payments',
   'sidebar.register',
+  // Header
+  'header.lowStockBell',
+  // Dashboard (home)
+  'dashboard.overviewTab',
+  'dashboard.reportsTab',
+  'dashboard.statsCards',
+  'dashboard.financialSnapshot',
+  'dashboard.recentMovements',
+  'dashboard.lowStockPanel',
   'register.deposit',
+  'register.viewActivity',
   'register.withdraw',
   'payments.list',
   'payments.editLedgerNote',
   'payments.reverseLedgerOperation',
+  'payments.fullLedgerView',
   // Inventory hub cards
   'inventory.hubProducts',
   'inventory.hubPurchaseOrders',
@@ -43,6 +56,7 @@ export const FEATURE_CONTROL_IDS = [
   // Purchase orders
   'purchaseOrders.hubList',
   'purchaseOrders.create',
+  'purchaseOrders.confirmReceive',
   'purchaseOrders.cancel',
   // Orders / POS
   'orders.hubList',
@@ -85,6 +99,18 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
         titleKey: 'control.sidebar.groupNav',
         items: [
           {
+            id: 'sidebar.dashboard',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.dashboard.title',
+            descriptionKey: 'control.sidebar.dashboard.desc',
+          },
+          {
+            id: 'sidebar.control',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.control.title',
+            descriptionKey: 'control.sidebar.control.desc',
+          },
+          {
             id: 'sidebar.inventory',
             defaultEnabled: true,
             titleKey: 'control.sidebar.inventory.title',
@@ -119,6 +145,73 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
     ],
   },
   {
+    titleKey: 'control.area.header',
+    groups: [
+      {
+        titleKey: 'control.header.group',
+        items: [
+          {
+            id: 'header.lowStockBell',
+            defaultEnabled: true,
+            titleKey: 'control.header.lowStockBell.title',
+            descriptionKey: 'control.header.lowStockBell.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    titleKey: 'control.area.dashboard',
+    groups: [
+      {
+        titleKey: 'control.dashboard.groupTabs',
+        items: [
+          {
+            id: 'dashboard.overviewTab',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.overviewTab.title',
+            descriptionKey: 'control.dashboard.overviewTab.desc',
+          },
+          {
+            id: 'dashboard.reportsTab',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.reportsTab.title',
+            descriptionKey: 'control.dashboard.reportsTab.desc',
+          },
+        ],
+      },
+      {
+        titleKey: 'control.dashboard.groupOverview',
+        items: [
+          {
+            id: 'dashboard.statsCards',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.statsCards.title',
+            descriptionKey: 'control.dashboard.statsCards.desc',
+          },
+          {
+            id: 'dashboard.financialSnapshot',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.financialSnapshot.title',
+            descriptionKey: 'control.dashboard.financialSnapshot.desc',
+          },
+          {
+            id: 'dashboard.recentMovements',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.recentMovements.title',
+            descriptionKey: 'control.dashboard.recentMovements.desc',
+          },
+          {
+            id: 'dashboard.lowStockPanel',
+            defaultEnabled: true,
+            titleKey: 'control.dashboard.lowStockPanel.title',
+            descriptionKey: 'control.dashboard.lowStockPanel.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
     titleKey: 'control.area.register',
     groups: [
       {
@@ -135,6 +228,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.register.withdraw.title',
             descriptionKey: 'control.register.withdraw.desc',
+          },
+          {
+            id: 'register.viewActivity',
+            defaultEnabled: true,
+            titleKey: 'control.register.viewActivity.title',
+            descriptionKey: 'control.register.viewActivity.desc',
           },
         ],
       },
@@ -163,6 +262,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.payments.reverseLedgerOperation.title',
             descriptionKey: 'control.payments.reverseLedgerOperation.desc',
+          },
+          {
+            id: 'payments.fullLedgerView',
+            defaultEnabled: true,
+            titleKey: 'control.payments.fullLedgerView.title',
+            descriptionKey: 'control.payments.fullLedgerView.desc',
           },
         ],
       },
@@ -365,6 +470,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.purchaseOrders.create.title',
             descriptionKey: 'control.purchaseOrders.create.desc',
+          },
+          {
+            id: 'purchaseOrders.confirmReceive',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.confirmReceive.title',
+            descriptionKey: 'control.purchaseOrders.confirmReceive.desc',
           },
           {
             id: 'purchaseOrders.cancel',

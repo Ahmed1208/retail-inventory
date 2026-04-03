@@ -48,6 +48,7 @@ export function PurchaseOrderDetail() {
 
   const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
   const canCreatePo = useFeatureEnabled('purchaseOrders.create')
+  const canConfirmReceive = useFeatureEnabled('purchaseOrders.confirmReceive')
   const canListPayments = useFeatureEnabled('payments.list')
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -258,7 +259,7 @@ export function PurchaseOrderDetail() {
           </div>
           <POStatusBadge status={po.status} t={t} />
           <div className="ms-auto flex flex-wrap gap-2">
-            {po.status === 'draft' && canCreatePo && (
+            {po.status === 'draft' && canCreatePo && canConfirmReceive && (
               <Button type="button" onClick={openConfirmDraft}>
                 {t('purchaseOrders.confirmReceiveDraft')}
               </Button>

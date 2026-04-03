@@ -70,6 +70,8 @@ interface SidebarProps {
 export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
+  const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
+  const showControlNav = useFeatureEnabled('sidebar.control')
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
@@ -85,15 +87,19 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto p-3" aria-label="Main">
-        <NavLink to="/" end onClick={onNavigate} className={linkClass}>
-          <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
-          <span>{t('nav.dashboard')}</span>
-        </NavLink>
+        {showDashboardNav && (
+          <NavLink to="/" end onClick={onNavigate} className={linkClass}>
+            <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.dashboard')}</span>
+          </NavLink>
+        )}
 
-        <NavLink to="/control" end onClick={onNavigate} className={linkClass}>
-          <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden />
-          <span>{t('nav.control')}</span>
-        </NavLink>
+        {showControlNav && (
+          <NavLink to="/control" end onClick={onNavigate} className={linkClass}>
+            <SlidersHorizontal className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.control')}</span>
+          </NavLink>
+        )}
 
         {showInventoryNav && (
           <NavLink

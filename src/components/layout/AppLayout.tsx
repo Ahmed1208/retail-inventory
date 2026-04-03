@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const pathToTitleKey: Record<string, string> = {
   '/': 'dashboard.title',
@@ -41,6 +42,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const isMutating = useIsMutating() > 0
+  const showLowStockBell = useFeatureEnabled('header.lowStockBell')
 
   const { data: lowStockProducts = [] } = useQuery({
     queryKey: ['lowStockProducts'],
@@ -107,20 +109,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="relative">
-              <Link
-                to={lowStockHref}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
-                aria-label={t('common.lowStock')}
-              >
-                <Bell className="h-5 w-5" />
-              </Link>
-              {lowStockCount > 0 && (
-                <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
-                  {lowStockCount > 99 ? '99+' : lowStockCount}
-                </span>
-              )}
-            </div>
+            {showLowStockBell && (
+              <div className="relative">
+                <Link
+                  to={lowStockHref}
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
+                  aria-label={t('common.lowStock')}
+                >
+                  <Bell className="h-5 w-5" />
+                </Link>
+                {lowStockCount > 0 && (
+                  <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                    {lowStockCount > 99 ? '99+' : lowStockCount}
+                  </span>
+                )}
+              </div>
+            )}
 
             <button
               type="button"

@@ -112,6 +112,7 @@ export function Register() {
   const canPage = useFeatureEnabled('sidebar.register')
   const canDeposit = useFeatureEnabled('register.deposit')
   const canWithdraw = useFeatureEnabled('register.withdraw')
+  const canViewActivity = useFeatureEnabled('register.viewActivity')
 
   const [addOpen, setAddOpen] = useState(false)
   const [withdrawOpen, setWithdrawOpen] = useState(false)
@@ -137,7 +138,7 @@ export function Register() {
   const activityQuery = useQuery({
     queryKey: ['registerActivity'],
     queryFn: () => listRegisterActivity(100),
-    enabled: canPage,
+    enabled: canPage && canViewActivity,
   })
 
   const resetForm = () => {
@@ -297,12 +298,20 @@ export function Register() {
           <MinusCircle className="h-4 w-4" aria-hidden />
           {t('register.withdrawFromRegister')}
         </Button>
-        <Button type="button" variant="outline" className="gap-2" onClick={scrollToActivity}>
-          <ListOrdered className="h-4 w-4" aria-hidden />
-          {t('register.viewActivity')}
-        </Button>
+        {canViewActivity ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={scrollToActivity}
+          >
+            <ListOrdered className="h-4 w-4" aria-hidden />
+            {t('register.viewActivity')}
+          </Button>
+        ) : null}
       </div>
 
+      {canViewActivity ? (
       <div ref={activityRef} id="register-activity" className="scroll-mt-4 space-y-3">
         <h2 className="text-lg font-semibold">{t('register.activityTitle')}</h2>
         {activityQuery.isLoading ? (
@@ -370,6 +379,7 @@ export function Register() {
           </div>
         )}
       </div>
+      ) : null}
 
       <Dialog
         open={addOpen}

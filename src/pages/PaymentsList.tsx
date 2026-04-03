@@ -131,6 +131,7 @@ export function PaymentsList() {
   const { isRTL } = useLanguage()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const canList = useFeatureEnabled('payments.list')
+  const canFullLedgerView = useFeatureEnabled('payments.fullLedgerView')
 
   const [from, setFrom] = useState(() => {
     const d = new Date()
@@ -144,6 +145,7 @@ export function PaymentsList() {
   const [personId, setPersonId] = useState<string>('all')
   const [methodFilter, setMethodFilter] = useState<MethodFilterState>('all')
   const [fullLedger, setFullLedger] = useState(false)
+  const effectiveFullLedger = canFullLedgerView && fullLedger
   const [expandedNestedParents, setExpandedNestedParents] = useState<
     Set<string>
   >(() => new Set())
@@ -163,7 +165,7 @@ export function PaymentsList() {
       typeFilter,
       personId,
       methodFilter,
-      fullLedger,
+      effectiveFullLedger,
     ],
     queryFn: () =>
       listBalanceTransactionsWithPeople({
@@ -171,7 +173,7 @@ export function PaymentsList() {
         to,
         personId: personId === 'all' ? undefined : personId,
         typeFilter,
-        fullLedger,
+        fullLedger: effectiveFullLedger,
         paymentMethodFilter:
           methodFilter === 'all'
             ? 'all'
@@ -207,7 +209,7 @@ export function PaymentsList() {
       const doc = documentTotalValue(r)
       const docStr =
         doc != null ? `${doc} ${fc(doc)}`.toLowerCase() : ''
-      const impact = balanceImpactDisplay(r, fullLedger)
+      const impact = balanceImpactDisplay(r, effectiveFullLedger)
       const impactStr = `${impact} ${fc(impact)}`.toLowerCase()
       const meth = r.paymentLines
         .map((l) => {
@@ -251,7 +253,7 @@ export function PaymentsList() {
         matchesSearchRow(parent) ||
         (parent.children ?? []).some((c) => matchesSearchRow(c))
     )
-  }, [rows, debouncedSearch, t, fc, fullLedger, i18n.language])
+  }, [rows, debouncedSearch, t, fc, effectiveFullLedger, i18n.language])
 
   const toggleNestedParent = (parentId: string) => {
     setExpandedNestedParents((prev) => {
@@ -267,16 +269,16 @@ export function PaymentsList() {
       filtered.reduce((n, p) => {
         const childCount = p.children?.length ?? 0
         const showChildren =
-          !fullLedger && childCount > 0 && expandedNestedParents.has(p.id)
+          !effectiveFullLedger && childCount > 0 && expandedNestedParents.has(p.id)
         return n + 1 + (showChildren ? childCount : 0)
       }, 0),
-    [filtered, fullLedger, expandedNestedParents]
+    [filtered, effectiveFullLedger, expandedNestedParents]
   )
 
   /** Wallet / adjustment / tender not mapped to the four method columns. */
   const formatResidualDetails = (row: PaymentGroupedListItem) => {
     if (
-      !fullLedger &&
+      !effectiveFullLedger &&
       row.reversed &&
       (row.type === 'payment_in' ||
         row.type === 'payment_out' ||
@@ -326,7 +328,7 @@ export function PaymentsList() {
   ) => {
     const sums = aggregateTenderByMethod(row.paymentLines)
     const docTotal = documentTotalValue(row)
-    const impact = balanceImpactDisplay(row, fullLedger)
+    const impact = balanceImpactDisplay(row, effectiveFullLedger)
     const personLabel =
       row.person_id == null &&
       (row.type === 'register_deposit' || row.type === 'register_withdraw')
@@ -334,7 +336,7 @@ export function PaymentsList() {
         : row.person_id == null
           ? t('payments.walkInCustomer')
           : row.person.name
-    const strikeTender = row.reversed && !fullLedger
+    const strikeTender = row.reversed && !effectiveFullLedger
     const poCancelled =
       row.type === 'purchase_order' &&
       row.purchaseOrderStatus === 'cancelled'
@@ -481,7 +483,7 @@ export function PaymentsList() {
                 : ''
           )}
           title={
-            row.reversed && !fullLedger
+            row.reversed && !effectiveFullLedger
               ? t('payments.reversedBalanceImpactHint')
               : undefined
           }
@@ -501,8 +503,8 @@ export function PaymentsList() {
   }, [t])
 
   useEffect(() => {
-    if (fullLedger) setExpandedNestedParents(new Set())
-  }, [fullLedger])
+    setExpandedNestedParents(new Set())
+  }, [effectiveFullLedger])
 
   if (!canList) {
     return <Navigate to="/payments" replace />
@@ -624,20 +626,22 @@ export function PaymentsList() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm md:max-w-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-4 shrink-0 rounded border-input"
-            checked={fullLedger}
-            onChange={(e) => setFullLedger(e.target.checked)}
-          />
-          <span>
-            <span className="font-medium">{t('payments.showFullLedger')}</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              {t('payments.showFullLedgerHelp')}
+        {canFullLedgerView ? (
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm md:max-w-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 rounded border-input"
+              checked={fullLedger}
+              onChange={(e) => setFullLedger(e.target.checked)}
+            />
+            <span>
+              <span className="font-medium">{t('payments.showFullLedger')}</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {t('payments.showFullLedgerHelp')}
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -702,7 +706,7 @@ export function PaymentsList() {
                 {filtered.map((parent) => {
                   const nestedChildCount = parent.children?.length ?? 0
                   const hasNestedChildren =
-                    !fullLedger && nestedChildCount > 0
+                    !effectiveFullLedger && nestedChildCount > 0
                   const nestedOpen =
                     hasNestedChildren && expandedNestedParents.has(parent.id)
                   return (
