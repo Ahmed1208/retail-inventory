@@ -1,13 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  Package,
-  Truck,
-  ArrowLeftRight,
-  Tag,
-  Layers,
-} from 'lucide-react'
+import { Package, Truck, Tag, Layers } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -20,7 +14,6 @@ const sections = [
     key: 'nav.purchaseOrders',
     feature: 'inventory.hubPurchaseOrders',
   },
-  { to: '/movements', icon: ArrowLeftRight, key: 'nav.stockMovements', feature: 'inventory.hubMovements' },
   { to: '/categories', icon: Tag, key: 'nav.categories', feature: 'inventory.hubCategories' },
   { to: '/brands', icon: Layers, key: 'nav.brands', feature: 'inventory.hubBrands' },
 ] as const
@@ -32,13 +25,11 @@ export function InventoryHub() {
   const { t } = useTranslation()
   const hubProducts = useFeatureEnabled('inventory.hubProducts')
   const hubPo = useFeatureEnabled('inventory.hubPurchaseOrders')
-  const hubMovements = useFeatureEnabled('inventory.hubMovements')
   const hubCategories = useFeatureEnabled('inventory.hubCategories')
   const hubBrands = useFeatureEnabled('inventory.hubBrands')
   const hubFlags: Record<HubFeatureId, boolean> = {
     'inventory.hubProducts': hubProducts,
     'inventory.hubPurchaseOrders': hubPo,
-    'inventory.hubMovements': hubMovements,
     'inventory.hubCategories': hubCategories,
     'inventory.hubBrands': hubBrands,
   }

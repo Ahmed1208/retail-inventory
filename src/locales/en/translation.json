@@ -17,7 +17,8 @@
     "register": "Register",
     "admin": "Admin",
     "documentation": "Documentation",
-    "adminHubDescription": "Open dashboard, documentation, or reports from here."
+    "adminHubDescription": "Open dashboard, documentation, or reports from here.",
+    "backToAdmin": "Back to Admin"
   },
   "common": {
     "search": "Search",
@@ -145,7 +146,7 @@
       },
       "documentation": {
         "title": "Documentation page",
-        "desc": "Shows the Documentation link under Admin and enables the /documentation user guide route."
+        "desc": "Shows the Documentation link under Admin and enables the /admin/documentation user guide route."
       },
       "reports": {
         "title": "Reports shortcut (sidebar)",
@@ -760,6 +761,10 @@
     "toastPayment": "Payment recorded",
     "toastError": "Something went wrong",
     "validationNameMin": "Name must be at least 2 characters",
+    "validationPhoneRequired": "Phone number is required.",
+    "formCreateRequiredHint": "Name and phone are required.",
+    "validationPhoneDuplicate": "This phone number is already used by another person.",
+    "validationPhoneDuplicateNamed": "This phone number is already used by {{name}}.",
     "validationRoles": "Select at least one role",
     "paymentAmount": "Amount",
     "paymentNote": "Note (optional)",

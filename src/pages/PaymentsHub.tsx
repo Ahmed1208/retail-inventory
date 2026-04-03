@@ -51,13 +51,13 @@ export function PaymentsHub() {
           {t('payments.hubDisabled')}
         </p>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid items-stretch gap-4 sm:grid-cols-2">
           {cards.map(({ to, icon: Icon, titleKey, descKey }) => (
-            <li key={to}>
+            <li key={to} className="flex min-h-0">
               <Link
                 to={to}
                 className={cn(
-                  'flex flex-col gap-2 rounded-xl border border-border bg-card p-6 shadow-sm',
+                  'flex h-full min-h-[8.5rem] w-full flex-col gap-2 rounded-xl border border-border bg-card p-6 shadow-sm',
                   'transition-colors hover:border-primary/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
                 )}
               >
@@ -67,7 +67,7 @@ export function PaymentsHub() {
                   </span>
                   <span className="text-lg font-medium">{t(titleKey)}</span>
                 </span>
-                <span className="text-sm text-muted-foreground ps-[3.75rem]">
+                <span className="flex flex-1 text-sm text-muted-foreground ps-[3.75rem]">
                   {t(descKey)}
                 </span>
               </Link>

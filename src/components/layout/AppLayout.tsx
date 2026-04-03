@@ -1,5 +1,5 @@
 import { useQuery, useIsMutating } from '@tanstack/react-query'
-import { useLocation, Link, useSearchParams } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Bell, Menu } from 'lucide-react'
 
@@ -19,11 +19,9 @@ import { useState } from 'react'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const pathToTitleKey: Record<string, string> = {
-  '/': 'dashboard.title',
   '/control': 'control.title',
   '/inventory': 'nav.inventory',
   '/products': 'products.title',
-  '/movements': 'stockMovements.title',
   '/people': 'people.title',
   '/payments': 'nav.payments',
   '/register': 'register.title',
@@ -37,7 +35,6 @@ const pathToTitleKey: Record<string, string> = {
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage()
   const { pathname } = useLocation()
-  const [searchParams] = useSearchParams()
   const { t } = useTranslation()
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -49,14 +46,21 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     queryFn: getLowStockProducts,
   })
   const lowStockCount = lowStockProducts.length
-  const dashboardReportsTab =
-    pathname === '/' && searchParams.get('tab') === 'reports'
-  const pageTitle = dashboardReportsTab
-    ? 'reports.title'
-    : pathname === '/orders/new'
-      ? 'orders.newOrder'
-      : pathname.startsWith('/orders')
-        ? 'orders.title'
+  const pageTitle =
+    pathname === '/admin' || pathname === '/admin/'
+      ? 'nav.admin'
+      : pathname === '/admin/dashboard'
+        ? 'dashboard.title'
+      : pathname === '/admin/reports'
+        ? 'reports.title'
+      : pathname === '/admin/documentation'
+        ? 'documentation.title'
+      : pathname === '/admin/movements'
+        ? 'stockMovements.title'
+      : pathname === '/orders/new'
+        ? 'orders.newOrder'
+        : pathname.startsWith('/orders')
+          ? 'orders.title'
     : pathname === '/purchase-orders/new'
       ? 'purchaseOrders.newPurchaseOrder'
       : pathname.startsWith('/purchase-orders')

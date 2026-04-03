@@ -17,7 +17,6 @@ const INVENTORY_PATHS = [
   '/inventory',
   '/products',
   '/purchase-orders',
-  '/movements',
   '/categories',
   '/brands',
 ] as const
@@ -81,9 +80,13 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
   const showDocumentationNav = useFeatureEnabled('sidebar.documentation')
   const showReportsShortcut = useFeatureEnabled('sidebar.reports')
+  const showHubMovements = useFeatureEnabled('inventory.hubMovements')
 
   const anyAdminChild =
-    showDashboardNav || showDocumentationNav || showReportsShortcut
+    showDashboardNav ||
+    showDocumentationNav ||
+    showReportsShortcut ||
+    showHubMovements
   const showAdminNav = showAdminGroup && anyAdminChild
 
   const content = (

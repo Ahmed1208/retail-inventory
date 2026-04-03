@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Minus, ArrowLeftRight, List } from 'lucide-react'
 
@@ -21,7 +22,9 @@ type TypeFilter = 'all' | StockMovementType
 
 export function StockMovements() {
   const { t, i18n } = useTranslation()
+  const { pathname } = useLocation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as string
+  const hideInventoryBack = pathname.startsWith('/admin/movements')
 
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -103,7 +106,7 @@ export function StockMovements() {
 
   return (
     <div className="space-y-4">
-      <BackToInventoryLink />
+      {!hideInventoryBack ? <BackToInventoryLink /> : null}
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <Input

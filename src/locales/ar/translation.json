@@ -17,7 +17,8 @@
     "register": "الصندوق",
     "admin": "الإدارة",
     "documentation": "التوثيق",
-    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو التقارير من هنا."
+    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو التقارير من هنا.",
+    "backToAdmin": "العودة للإدارة"
   },
   "common": {
     "search": "بحث",
@@ -145,7 +146,7 @@
       },
       "documentation": {
         "title": "صفحة التوثيق",
-        "desc": "إظهار رابط التوثيق تحت الإدارة وتفعيل مسار دليل المستخدم /documentation."
+        "desc": "إظهار رابط التوثيق تحت الإدارة وتفعيل مسار دليل المستخدم /admin/documentation."
       },
       "reports": {
         "title": "اختصار التقارير (الشريط الجانبي)",
@@ -760,6 +761,10 @@
     "toastPayment": "تم تسجيل الدفعة",
     "toastError": "حدث خطأ",
     "validationNameMin": "الاسم يجب أن يكون حرفين على الأقل",
+    "validationPhoneRequired": "رقم الهاتف مطلوب.",
+    "formCreateRequiredHint": "الاسم ورقم الهاتف مطلوبان.",
+    "validationPhoneDuplicate": "رقم الهاتف مستخدم بالفعل لشخص آخر.",
+    "validationPhoneDuplicateNamed": "رقم الهاتف مستخدم بالفعل من قِبل {{name}}.",
     "validationRoles": "اختر دوراً واحداً على الأقل",
     "paymentAmount": "المبلغ",
     "paymentNote": "ملاحظة (اختياري)",

@@ -72,7 +72,7 @@ export function Documentation() {
     }
   }, [t])
 
-  if (!canView) return <Navigate to="/" replace />
+  if (!canView) return <Navigate to="/admin/dashboard" replace />
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">

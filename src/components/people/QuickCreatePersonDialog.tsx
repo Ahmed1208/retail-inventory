@@ -6,7 +6,14 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import { createPerson, roundMoney } from '@/services/peopleService'
+import {
+  createPerson,
+  DuplicatePhoneError,
+  DUPLICATE_PHONE_ERROR,
+  PHONE_REQUIRED_ERROR,
+  roundMoney,
+  supabaseErrorMessage,
+} from '@/services/peopleService'
 import type { Person, PersonRole } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +32,9 @@ import { cn } from '@/lib/utils'
 const quickCustomerSchema = z
   .object({
     name: z.string().min(2),
-    phone: z.string().optional(),
+    phone: z
+      .string()
+      .refine((s) => s.trim().length >= 1, { message: 'required' }),
     address: z.string().optional(),
     notes: z.string().optional(),
     discount_rate: z.coerce.number().min(0).max(100),
@@ -44,7 +53,9 @@ const quickCustomerSchema = z
 
 const quickSupplierSchema = z.object({
   name: z.string().min(2),
-  phone: z.string().optional(),
+  phone: z
+    .string()
+    .refine((s) => s.trim().length >= 1, { message: 'required' }),
   address: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -132,8 +143,26 @@ export function QuickCreatePersonDialog({
       onOpenChange(false)
       onSuccess(person)
     },
-    onError: (e: Error) => {
-      toast.error(e?.message || t('people.toastError'))
+    onError: (e: unknown) => {
+      if (e instanceof DuplicatePhoneError) {
+        const n = e.otherPersonName.trim()
+        toast.error(
+          n
+            ? t('people.validationPhoneDuplicateNamed', { name: n })
+            : t('people.validationPhoneDuplicate')
+        )
+        return
+      }
+      const msg = supabaseErrorMessage(e)
+      if (msg === DUPLICATE_PHONE_ERROR) {
+        toast.error(t('people.validationPhoneDuplicate'))
+        return
+      }
+      if (msg === PHONE_REQUIRED_ERROR) {
+        toast.error(t('people.validationPhoneRequired'))
+        return
+      }
+      toast.error(msg || t('people.toastError'))
     },
   })
 
@@ -184,9 +213,23 @@ export function QuickCreatePersonDialog({
         </DialogHeader>
         {isCustomer ? (
           <form onSubmit={submitCustomer} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('people.formCreateRequiredHint')}
+            </p>
             <div>
-              <Label>{t('people.name')}</Label>
-              <Input className="mt-1" {...customerForm.register('name')} />
+              <Label>
+                {t('people.name')}
+                <span className="text-destructive" aria-hidden>
+                  {' '}
+                  *
+                </span>
+              </Label>
+              <Input
+                className="mt-1"
+                {...customerForm.register('name')}
+                autoComplete="name"
+                aria-required
+              />
               {customerForm.formState.errors.name && (
                 <p className="mt-1 text-sm text-destructive">
                   {t('people.validationNameMin')}
@@ -194,8 +237,25 @@ export function QuickCreatePersonDialog({
               )}
             </div>
             <div>
-              <Label>{t('people.phone')}</Label>
-              <Input className="mt-1" {...customerForm.register('phone')} />
+              <Label>
+                {t('people.phone')}
+                <span className="text-destructive" aria-hidden>
+                  {' '}
+                  *
+                </span>
+              </Label>
+              <Input
+                className="mt-1"
+                {...customerForm.register('phone')}
+                type="tel"
+                autoComplete="tel"
+                aria-required
+              />
+              {customerForm.formState.errors.phone && (
+                <p className="mt-1 text-sm text-destructive">
+                  {t('people.validationPhoneRequired')}
+                </p>
+              )}
             </div>
             <div>
               <Label>{t('people.address')}</Label>
@@ -273,9 +333,23 @@ export function QuickCreatePersonDialog({
           </form>
         ) : (
           <form onSubmit={submitSupplier} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {t('people.formCreateRequiredHint')}
+            </p>
             <div>
-              <Label>{t('people.name')}</Label>
-              <Input className="mt-1" {...supplierForm.register('name')} />
+              <Label>
+                {t('people.name')}
+                <span className="text-destructive" aria-hidden>
+                  {' '}
+                  *
+                </span>
+              </Label>
+              <Input
+                className="mt-1"
+                {...supplierForm.register('name')}
+                autoComplete="name"
+                aria-required
+              />
               {supplierForm.formState.errors.name && (
                 <p className="mt-1 text-sm text-destructive">
                   {t('people.validationNameMin')}
@@ -283,8 +357,25 @@ export function QuickCreatePersonDialog({
               )}
             </div>
             <div>
-              <Label>{t('people.phone')}</Label>
-              <Input className="mt-1" {...supplierForm.register('phone')} />
+              <Label>
+                {t('people.phone')}
+                <span className="text-destructive" aria-hidden>
+                  {' '}
+                  *
+                </span>
+              </Label>
+              <Input
+                className="mt-1"
+                {...supplierForm.register('phone')}
+                type="tel"
+                autoComplete="tel"
+                aria-required
+              />
+              {supplierForm.formState.errors.phone && (
+                <p className="mt-1 text-sm text-destructive">
+                  {t('people.validationPhoneRequired')}
+                </p>
+              )}
             </div>
             <div>
               <Label>{t('people.address')}</Label>

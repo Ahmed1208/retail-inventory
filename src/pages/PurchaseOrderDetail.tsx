@@ -13,6 +13,7 @@ import {
   updatePurchaseOrderNote,
 } from '@/services/purchaseOrderService'
 import {
+  getAllPeople,
   getLedgerPaymentOperationRouteIdForPo,
   roundMoney,
   supabaseErrorMessage,
@@ -85,6 +86,16 @@ export function PurchaseOrderDetail() {
     queryFn: () => getPurchaseOrderById(id!),
     enabled: !!id,
   })
+
+  const { data: people = [] } = useQuery({
+    queryKey: ['people'],
+    queryFn: () => getAllPeople(),
+  })
+
+  const supplierPerson = useMemo(() => {
+    if (!po?.person_id) return null
+    return people.find((p) => p.id === po.person_id) ?? null
+  }, [po?.person_id, people])
 
   const showPoPaymentOpLink =
     !!po &&
@@ -257,8 +268,8 @@ export function PurchaseOrderDetail() {
         </Link>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto p-4">
-        <header className="mb-4 flex flex-wrap items-start gap-3 border-b pb-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+        <header className="flex flex-wrap items-start gap-3 border-b bg-background p-4">
           <div>
             <h1 className="text-2xl font-bold tabular-nums">
               #{t('purchaseOrders.poPrefix')}-{po.order_number}
@@ -270,7 +281,9 @@ export function PurchaseOrderDetail() {
               }).format(new Date(po.created_at))}
             </p>
           </div>
-          <POStatusBadge status={po.status} t={t} />
+          <div className="flex flex-wrap gap-2">
+            <POStatusBadge status={po.status} t={t} />
+          </div>
           <div className="ms-auto flex flex-wrap gap-2">
             {po.status === 'draft' && canCreatePo && canConfirmReceive && (
               <Button type="button" onClick={openConfirmDraft}>
@@ -292,126 +305,134 @@ export function PurchaseOrderDetail() {
           </div>
         </header>
 
-        <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
-          <p>
-            <span className="text-muted-foreground">
-              {t('purchaseOrders.supplierName')}:
-            </span>{' '}
-            {po.supplier_name ?? '—'}
+        <div className="border-b bg-background p-4">
+          <p className="font-medium">
+            {supplierPerson?.name ?? po.supplier_name ?? '—'}
           </p>
-          <p>
-            <span className="text-muted-foreground">
-              {t('purchaseOrders.date')}:
-            </span>{' '}
-            {new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-              dateStyle: 'medium',
-            }).format(new Date(po.created_at))}
-          </p>
-          {po.payments && po.payments.length > 0 && (
-            <p className="sm:col-span-2">
-              <span className="text-muted-foreground">
-                {t('orders.paymentMethod')}:
-              </span>
-              <span className="mt-1 block">
-                {po.payments.map((p: PurchaseOrderPayment) => (
-                  <span key={p.id ?? p.payment_method} className="block">
-                    {paymentLabelPO(p.payment_method, t)}: {fc(p.amount)}
-                  </span>
-                ))}
-              </span>
-              {showPoPaymentOpLink && (
-                <span className="mt-2 block text-muted-foreground">
-                  {poPaymentOpFetching ? (
-                    <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
-                  ) : poPaymentOpRouteId ? (
-                    <Link
-                      to={`/payments/operations/${poPaymentOpRouteId}`}
-                      className={cn(
-                        buttonVariants({ variant: 'link' }),
-                        'h-auto p-0 align-baseline font-medium text-primary'
-                      )}
-                    >
-                      {t('purchaseOrders.openPaymentOperation')}
-                    </Link>
-                  ) : (
-                    '—'
-                  )}
-                </span>
-              )}
+          {supplierPerson && (
+            <p className="text-sm text-muted-foreground">
+              {t('purchaseOrders.supplierBalance')}:{' '}
+              {fc(supplierPerson.balance)}
             </p>
           )}
-          <div className="sm:col-span-2">
-            <EditableNoteCard
-              label={t('purchaseOrders.note')}
-              value={po.note ?? ''}
-              canEdit={canEditPoNote}
-              isPending={noteMut.isPending}
-              fieldId={`po-note-${po.id}`}
-              onSave={async (text) => {
-                await noteMut.mutateAsync(text)
-              }}
-            />
-          </div>
         </div>
 
-        <div className="rounded-lg border border-border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-3 py-2 text-start font-medium">
-                  {t('common.name')}
-                </th>
-                <th className="px-3 py-2 text-end font-medium">
-                  {t('common.quantity')}
-                </th>
-                <th className="px-3 py-2 text-end font-medium">
-                  {t('purchaseOrders.costPricePaid')}
-                </th>
-                <th className="px-3 py-2 text-end font-medium">
-                  {t('purchaseOrders.previousCostPrice')}
-                </th>
-                <th className="px-3 py-2 text-center font-medium">
-                  {t('purchaseOrders.costPriceUpdated')}
-                </th>
-                <th className="px-3 py-2 text-end font-medium">
-                  {t('purchaseOrders.lineTotal')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {po.items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="border-b border-border/50 last:border-0"
-                >
-                  <td className="px-3 py-2 font-medium">
-                    {item.product.name}
-                  </td>
-                  <td className="px-3 py-2 text-end tabular-nums">
-                    {item.quantity}
-                  </td>
-                  <td className="px-3 py-2 text-end tabular-nums">
-                    {fc(item.cost_price)}
-                  </td>
-                  <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
-                    {item.previous_cost_price != null
-                      ? fc(item.previous_cost_price)
-                      : '—'}
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    {item.cost_price_updated ? t('common.yes') : t('common.no')}
-                  </td>
-                  <td className="px-3 py-2 text-end tabular-nums">
-                    {fc(item.total_price)}
-                  </td>
+        <div className="p-4">
+          <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
+            <p>
+              <span className="text-muted-foreground">
+                {t('purchaseOrders.date')}:
+              </span>{' '}
+              {new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
+                dateStyle: 'medium',
+              }).format(new Date(po.created_at))}
+            </p>
+            {po.payments && po.payments.length > 0 && (
+              <p className="sm:col-span-2">
+                <span className="text-muted-foreground">
+                  {t('orders.paymentMethod')}:
+                </span>
+                <span className="mt-1 block">
+                  {po.payments.map((p: PurchaseOrderPayment) => (
+                    <span key={p.id ?? p.payment_method} className="block">
+                      {paymentLabelPO(p.payment_method, t)}: {fc(p.amount)}
+                    </span>
+                  ))}
+                </span>
+                {showPoPaymentOpLink && (
+                  <span className="mt-2 block text-muted-foreground">
+                    {poPaymentOpFetching ? (
+                      <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
+                    ) : poPaymentOpRouteId ? (
+                      <Link
+                        to={`/payments/operations/${poPaymentOpRouteId}`}
+                        className={cn(
+                          buttonVariants({ variant: 'link' }),
+                          'h-auto p-0 align-baseline font-medium text-primary'
+                        )}
+                      >
+                        {t('purchaseOrders.openPaymentOperation')}
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
+                  </span>
+                )}
+              </p>
+            )}
+            <div className="sm:col-span-2">
+              <EditableNoteCard
+                label={t('purchaseOrders.note')}
+                value={po.note ?? ''}
+                canEdit={canEditPoNote}
+                isPending={noteMut.isPending}
+                fieldId={`po-note-${po.id}`}
+                onSave={async (text) => {
+                  await noteMut.mutateAsync(text)
+                }}
+              />
+            </div>
+          </div>
+
+          <h2 className="mb-2 text-sm font-semibold">{t('orders.products')}</h2>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-3 py-2 text-start font-medium">
+                    {t('common.name')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium">
+                    {t('common.quantity')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium">
+                    {t('purchaseOrders.costPricePaid')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium">
+                    {t('purchaseOrders.previousCostPrice')}
+                  </th>
+                  <th className="px-3 py-2 text-center font-medium">
+                    {t('purchaseOrders.costPriceUpdated')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium">
+                    {t('purchaseOrders.lineTotal')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {po.items.map((item) => (
+                  <tr key={item.id} className="border-t">
+                    <td className="px-3 py-2 font-medium">
+                      {item.product.name}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {item.quantity}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {fc(item.cost_price)}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
+                      {item.previous_cost_price != null
+                        ? fc(item.previous_cost_price)
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      {item.cost_price_updated
+                        ? t('common.yes')
+                        : t('common.no')}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {fc(item.total_price)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-4 text-sm font-semibold">
+            {t('purchaseOrders.totalAmount')}: {fc(po.total_amount)}
+          </p>
         </div>
-        <p className="mt-4 text-sm font-semibold">
-          {t('purchaseOrders.totalAmount')}: {fc(po.total_amount)}
-        </p>
       </div>
 
       <PurchaseOrderCheckoutModal

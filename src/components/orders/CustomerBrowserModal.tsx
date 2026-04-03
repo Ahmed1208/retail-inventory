@@ -146,8 +146,8 @@ export function CustomerBrowserModal({
         dir={isRTL ? 'rtl' : 'ltr'}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <DialogHeader className="shrink-0 border-b px-4 py-3 text-start sm:text-start">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <DialogHeader className="shrink-0 border-b px-4 py-3 pe-12 text-start sm:pe-14 sm:text-start">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <DialogTitle className="text-lg">
               {t('orders.customerBrowser')}
             </DialogTitle>

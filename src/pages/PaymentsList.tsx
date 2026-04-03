@@ -12,7 +12,7 @@ import {
   type PaymentGroupedListItem,
   type PaymentsHubTypeFilter,
 } from '@/services/peopleService'
-import type { BalanceTransactionType, PaymentMethod } from '@/types'
+import type { BalanceTransactionType, PaymentMethod, Person } from '@/types'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useLanguage } from '@/hooks/useLanguage'
@@ -34,6 +34,7 @@ import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
 import { isRetainedFromCancelledDocumentNote } from '@/utils/ledgerLinks'
+import { PersonProfileDialog } from '@/components/people/PersonProfileDialog'
 
 type MethodFilterState = 'all' | 'unspecified' | PaymentMethod
 
@@ -151,11 +152,20 @@ export function PaymentsList() {
   >(() => new Set())
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
+  const [ledgerProfilePerson, setLedgerProfilePerson] = useState<Person | null>(
+    null
+  )
 
   const { data: people = [] } = useQuery({
     queryKey: ['people'],
     queryFn: () => getAllPeople(),
   })
+
+  const peopleById = useMemo(() => {
+    const m = new Map<string, Person>()
+    for (const p of people) m.set(p.id, p)
+    return m
+  }, [people])
 
   const { data: rows = [], isLoading, isError, error: queryError } = useQuery({
     queryKey: [
@@ -336,6 +346,8 @@ export function PaymentsList() {
         : row.person_id == null
           ? t('payments.walkInCustomer')
           : row.person.name
+    const profilePerson =
+      row.person_id != null ? peopleById.get(row.person_id) ?? null : null
     const strikeTender = row.reversed && !effectiveFullLedger
     const poCancelled =
       row.type === 'purchase_order' &&
@@ -418,12 +430,23 @@ export function PaymentsList() {
           {formatDateTime(row.created_at)}
         </td>
         <td className="px-3 py-2">
-          <div className="font-medium">{personLabel}</div>
-          {row.person.phone && (
+          {profilePerson ? (
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto p-0 font-medium text-foreground hover:text-primary"
+              onClick={() => setLedgerProfilePerson(profilePerson)}
+            >
+              {personLabel}
+            </Button>
+          ) : (
+            <div className="font-medium">{personLabel}</div>
+          )}
+          {row.person_id != null && row.person.phone ? (
             <div className="text-xs text-muted-foreground font-mono">
               {row.person.phone}
             </div>
-          )}
+          ) : null}
         </td>
         <td className="px-3 py-2">
           {nestedExpand ? (
@@ -744,6 +767,13 @@ export function PaymentsList() {
           {t('payments.resultCount', { count: visibleRowCount })}
         </p>
       )}
+
+      <PersonProfileDialog
+        person={ledgerProfilePerson}
+        onOpenChange={(open) => {
+          if (!open) setLedgerProfilePerson(null)
+        }}
+      />
     </div>
   )
 }

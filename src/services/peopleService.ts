@@ -22,6 +22,96 @@ export function roundMoney(n: number): number {
   return Math.round(n * 100) / 100
 }
 
+/** Thrown when phone matches another person (trimmed, case-insensitive). */
+export const DUPLICATE_PHONE_ERROR = 'PHONE_DUPLICATE'
+
+/** Thrown when create payload has no phone (app validation). */
+export const PHONE_REQUIRED_ERROR = 'PHONE_REQUIRED'
+
+export class DuplicatePhoneError extends Error {
+  otherPersonName: string
+
+  constructor(otherPersonName: string) {
+    super(DUPLICATE_PHONE_ERROR)
+    this.name = 'DuplicatePhoneError'
+    this.otherPersonName = otherPersonName
+  }
+}
+
+function normalizePhoneCompare(s: string): string {
+  return s.trim().toLowerCase()
+}
+
+function isMissingPersonPhoneConflictRpcError(error: unknown): boolean {
+  const m = supabaseErrorMessage(error).toLowerCase()
+  const code =
+    typeof error === 'object' && error !== null
+      ? String((error as { code?: string }).code ?? '')
+      : ''
+  if (code === '42883') return true
+  if (m.includes('person_phone_conflict')) {
+    if (
+      m.includes('does not exist') ||
+      m.includes('could not find') ||
+      m.includes('unknown function')
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Finds another person with the same normalized phone (matches DB unique index rule).
+ * Uses RPC when available; otherwise scans `people` so duplicates are blocked even without migrations.
+ */
+export async function findConflictingPersonByPhone(
+  phone: string,
+  excludePersonId?: string
+): Promise<{ id: string; name: string } | null> {
+  const raw = phone.trim()
+  if (!raw) return null
+  const key = normalizePhoneCompare(raw)
+
+  const { data, error } = await supabase.rpc('person_phone_conflict', {
+    p_phone: raw,
+    p_exclude_person_id: excludePersonId ?? null,
+  })
+
+  if (!error && data != null) {
+    const rows = Array.isArray(data) ? data : [data]
+    const row = rows[0] as
+      | { conflict_id?: string; conflict_name?: string }
+      | undefined
+    if (row?.conflict_id != null && String(row.conflict_id) !== '') {
+      return {
+        id: String(row.conflict_id),
+        name: String(row.conflict_name ?? ''),
+      }
+    }
+  }
+
+  if (error && !isMissingPersonPhoneConflictRpcError(error)) throw error
+
+  const { data: all, error: pe } = await supabase
+    .from(PEOPLE)
+    .select('id,name,phone')
+
+  if (pe) throw pe
+  for (const r of all ?? []) {
+    const pr = r as { id: string; name: string; phone: string | null }
+    if (!pr.phone?.trim()) continue
+    if (normalizePhoneCompare(pr.phone) !== key) continue
+    if (excludePersonId && pr.id === excludePersonId) continue
+    return { id: pr.id, name: pr.name }
+  }
+  return null
+}
+
+function isPostgresUniqueViolation(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { code?: string }).code === '23505'
+}
+
 /** Best-effort message from Supabase/PostgREST errors (message, details, hint). */
 export function supabaseErrorMessage(e: unknown): string {
   if (e instanceof Error && e.message?.trim()) return e.message.trim()
@@ -34,6 +124,23 @@ export function supabaseErrorMessage(e: unknown): string {
   }
   if (typeof e === 'string' && e.trim()) return e.trim()
   return ''
+}
+
+function isPeoplePhoneUniqueViolation(e: unknown): boolean {
+  const s = supabaseErrorMessage(e).toLowerCase()
+  return s.includes('people_phone_lower_trim_unique')
+}
+
+async function assertPhoneNotDuplicate(
+  phone: string | null | undefined,
+  excludePersonId?: string
+): Promise<void> {
+  const raw = phone?.trim() ?? ''
+  if (raw === '') return
+  const conflict = await findConflictingPersonByPhone(raw, excludePersonId)
+  if (conflict) {
+    throw new DuplicatePhoneError(conflict.name)
+  }
 }
 
 /** True when PostgREST/Postgres reports this column is missing (migration not applied). */
@@ -221,9 +328,14 @@ export async function createPerson(
     throw new Error('At least one role is required')
   }
 
+  const trimmedPhone = data.phone?.trim() ?? ''
+  if (trimmedPhone === '') {
+    throw new Error(PHONE_REQUIRED_ERROR)
+  }
+
   const payload = {
     name: data.name.trim(),
-    phone: data.phone?.trim() || null,
+    phone: trimmedPhone,
     address: data.address?.trim() || null,
     notes: data.notes?.trim() || null,
     roles: data.roles,
@@ -231,13 +343,21 @@ export async function createPerson(
     credit_limit: data.credit_limit,
   }
 
+  await assertPhoneNotDuplicate(payload.phone)
+
   const { data: inserted, error } = await supabase
     .from(PEOPLE)
     .insert(payload)
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isPostgresUniqueViolation(error) && isPeoplePhoneUniqueViolation(error)) {
+      const again = await findConflictingPersonByPhone(trimmedPhone)
+      throw new DuplicatePhoneError(again?.name ?? '')
+    }
+    throw error
+  }
   return mapPersonRow(inserted as Record<string, unknown>)
 }
 
@@ -306,6 +426,11 @@ export async function updatePerson(
   if (data.credit_limit !== undefined) patch.credit_limit = data.credit_limit
   if (data.updated_at !== undefined) patch.updated_at = data.updated_at
 
+  if (data.phone !== undefined) {
+    const nextPhone = data.phone?.trim() || null
+    await assertPhoneNotDuplicate(nextPhone, id)
+  }
+
   const { data: updated, error } = await supabase
     .from(PEOPLE)
     .update(patch)
@@ -313,7 +438,17 @@ export async function updatePerson(
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isPostgresUniqueViolation(error) && isPeoplePhoneUniqueViolation(error)) {
+      const phoneForCheck =
+        data.phone !== undefined
+          ? data.phone?.trim() || ''
+          : existing.phone?.trim() || ''
+      const again = await findConflictingPersonByPhone(phoneForCheck, id)
+      throw new DuplicatePhoneError(again?.name ?? '')
+    }
+    throw error
+  }
   return mapPersonRow(updated as Record<string, unknown>)
 }
 

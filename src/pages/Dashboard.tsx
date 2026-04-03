@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -20,7 +20,6 @@ import {
 import type { StockMovementType } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
-import { Reports } from '@/pages/Reports'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const REFETCH_INTERVAL_MS = 60_000
@@ -113,7 +112,7 @@ function MovementTypeBadge({
 export function Dashboard() {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
   const showOverviewTab = useFeatureEnabled('dashboard.overviewTab')
   const showReportsTab = useFeatureEnabled('dashboard.reportsTab')
@@ -122,41 +121,12 @@ export function Dashboard() {
   const showRecentMovements = useFeatureEnabled('dashboard.recentMovements')
   const showLowStockPanel = useFeatureEnabled('dashboard.lowStockPanel')
 
-  const hasAnyDashboardTab = showOverviewTab || showReportsTab
-  const bothTabs = showOverviewTab && showReportsTab
-  let activeTab: 'main' | 'reports' = 'main'
-  if (bothTabs) {
-    activeTab = tabParam === 'reports' ? 'reports' : 'main'
-  } else if (showReportsTab && !showOverviewTab) {
-    activeTab = 'reports'
-  } else {
-    activeTab = 'main'
-  }
-
-  const mainTabId = useId()
-  const reportsTabId = useId()
-
   useEffect(() => {
-    if (!showReportsTab && tabParam === 'reports') {
-      setSearchParams({}, { replace: true })
-    }
-  }, [showReportsTab, tabParam, setSearchParams])
-
-  useEffect(() => {
-    document.title =
-      activeTab === 'reports' ? 'Reports | StockPilot' : 'Dashboard | StockPilot'
+    document.title = 'Dashboard | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [activeTab])
-
-  const setTab = (tab: 'main' | 'reports') => {
-    if (tab === 'main') {
-      setSearchParams({}, { replace: true })
-    } else {
-      setSearchParams({ tab }, { replace: true })
-    }
-  }
+  }, [])
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboardStats'],
@@ -181,19 +151,19 @@ export function Dashboard() {
   const movementTypeKey = (type: StockMovementType) =>
     `stockMovements.${type}` as const
 
-  const tabBtnClass = (selected: boolean) =>
-    cn(
-      'rounded-lg px-4 py-2 text-sm font-medium transition-colors',
-      selected
-        ? 'bg-primary text-primary-foreground shadow-sm'
-        : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
-    )
+  if (tabParam === 'reports') {
+    return <Navigate to="/admin/reports" replace />
+  }
 
   if (tabParam === 'control') {
     return <Navigate to="/control" replace />
   }
 
-  if (!hasAnyDashboardTab) {
+  if (!showOverviewTab && showReportsTab) {
+    return <Navigate to="/admin/reports" replace />
+  }
+
+  if (!showOverviewTab) {
     return (
       <div className="space-y-4 rounded-xl border border-border bg-card/40 p-8 text-center">
         <p className="text-muted-foreground">
@@ -217,47 +187,13 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {bothTabs ? (
-        <div
-          role="tablist"
-          aria-label={t('dashboard.title')}
-          className="flex flex-wrap gap-2 border-b border-border pb-4"
-        >
-          <button
-            type="button"
-            role="tab"
-            id={mainTabId}
-            aria-selected={activeTab === 'main'}
-            aria-controls="dashboard-main-panel"
-            className={tabBtnClass(activeTab === 'main')}
-            onClick={() => setTab('main')}
-          >
-            {t('dashboard.mainDashboard')}
-          </button>
-          <button
-            type="button"
-            role="tab"
-            id={reportsTabId}
-            aria-selected={activeTab === 'reports'}
-            aria-controls="dashboard-reports-panel"
-            className={tabBtnClass(activeTab === 'reports')}
-            onClick={() => setTab('reports')}
-          >
-            {t('nav.reports')}
-          </button>
-        </div>
-      ) : null}
-
-      {activeTab === 'main' && showOverviewTab ? (
-        <section
-          id="dashboard-main-panel"
-          role="tabpanel"
-          aria-labelledby={bothTabs ? mainTabId : undefined}
-          className="space-y-6 rounded-xl border border-border bg-card/40 p-4 md:p-6"
-        >
-          <h2 className="text-lg font-semibold text-foreground">
-            {t('dashboard.mainDashboard')}
-          </h2>
+      <section
+        id="dashboard-main-panel"
+        className="space-y-6 rounded-xl border border-border bg-card/40 p-4 md:p-6"
+      >
+        <h2 className="text-lg font-semibold text-foreground">
+          {t('dashboard.mainDashboard')}
+        </h2>
 
           {!overviewHasAnyWidget ? (
             <p className="text-sm text-muted-foreground">
@@ -470,19 +406,7 @@ export function Dashboard() {
               ) : null}
             </>
           )}
-        </section>
-      ) : null}
-
-      {activeTab === 'reports' && showReportsTab ? (
-        <section
-          id="dashboard-reports-panel"
-          role="tabpanel"
-          aria-labelledby={bothTabs ? reportsTabId : undefined}
-          className="rounded-xl border border-border bg-card/40 p-4 md:p-6"
-        >
-          <Reports embedded />
-        </section>
-      ) : null}
+      </section>
     </div>
   )
 }

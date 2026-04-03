@@ -20,7 +20,10 @@ import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { Control } from '@/pages/Control'
+import { AdminSectionLayout } from '@/components/layout/AdminSectionLayout'
+import { RootRedirect } from '@/components/routing/RootRedirect'
 import { AdminHub } from '@/pages/AdminHub'
+import { AdminReports } from '@/pages/AdminReports'
 import { Documentation } from '@/pages/Documentation'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
@@ -36,10 +39,13 @@ function App() {
       <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
         <AppLayout>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/inventory" element={<InventoryHub />} />
             <Route path="/products" element={<Products />} />
-            <Route path="/movements" element={<StockMovements />} />
+            <Route
+              path="/movements"
+              element={<Navigate to="/admin/movements" replace />}
+            />
             <Route path="/orders/list" element={<Orders />} />
             <Route path="/orders/new" element={<NewOrder />} />
             <Route path="/orders/:id" element={<OrderDetail />} />
@@ -57,11 +63,20 @@ function App() {
             <Route path="/brands" element={<Brands />} />
             <Route
               path="/reports"
-              element={<Navigate to="/?tab=reports" replace />}
+              element={<Navigate to="/admin/reports" replace />}
             />
             <Route path="/control" element={<Control />} />
-            <Route path="/admin" element={<AdminHub />} />
-            <Route path="/documentation" element={<Documentation />} />
+            <Route
+              path="/documentation"
+              element={<Navigate to="/admin/documentation" replace />}
+            />
+            <Route path="/admin" element={<AdminSectionLayout />}>
+              <Route index element={<AdminHub />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="documentation" element={<Documentation />} />
+              <Route path="movements" element={<StockMovements />} />
+            </Route>
             <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
             <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />
             <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />

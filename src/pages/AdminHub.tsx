@@ -1,29 +1,35 @@
 import { useEffect } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { BookOpen, LayoutDashboard, LineChart } from 'lucide-react'
+import { ArrowLeftRight, BookOpen, LayoutDashboard, LineChart } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const sections = [
   {
-    to: '/',
+    to: '/admin/dashboard',
     icon: LayoutDashboard,
     key: 'nav.dashboard',
     feature: 'sidebar.dashboard' as const,
   },
   {
-    to: '/documentation',
+    to: '/admin/documentation',
     icon: BookOpen,
     key: 'nav.documentation',
     feature: 'sidebar.documentation' as const,
   },
   {
-    to: '/?tab=reports',
+    to: '/admin/reports',
     icon: LineChart,
     key: 'nav.reports',
     feature: 'sidebar.reports' as const,
+  },
+  {
+    to: '/admin/movements',
+    icon: ArrowLeftRight,
+    key: 'nav.stockMovements',
+    feature: 'inventory.hubMovements' as const,
   },
 ] as const
 
@@ -34,10 +40,13 @@ export function AdminHub() {
   const showDocs = useFeatureEnabled('sidebar.documentation')
   const showReports = useFeatureEnabled('sidebar.reports')
 
+  const showMovements = useFeatureEnabled('inventory.hubMovements')
+
   const flags = {
     'sidebar.dashboard': showDashboard,
     'sidebar.documentation': showDocs,
     'sidebar.reports': showReports,
+    'inventory.hubMovements': showMovements,
   } as const
 
   const visibleSections = sections.filter((s) => flags[s.feature])
@@ -49,7 +58,7 @@ export function AdminHub() {
     }
   }, [t])
 
-  if (!canAdmin) return <Navigate to="/" replace />
+  if (!canAdmin) return <Navigate to="/admin/dashboard" replace />
 
   return (
     <div className="space-y-6">
