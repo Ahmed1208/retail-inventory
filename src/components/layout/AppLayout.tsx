@@ -25,6 +25,7 @@ const pathToTitleKey: Record<string, string> = {
   '/movements': 'stockMovements.title',
   '/people': 'people.title',
   '/payments': 'nav.payments',
+  '/register': 'register.title',
   '/payments/list': 'payments.allPayments',
   '/payments/new': 'payments.newPayment',
   '/categories': 'categories.title',
@@ -60,7 +61,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ? 'purchaseOrders.title'
         : pathname.startsWith('/payments')
           ? (pathToTitleKey[pathname] ?? 'nav.payments')
-          : (pathToTitleKey[pathname] ?? 'dashboard.title')
+          : pathname === '/register'
+            ? 'register.title'
+            : (pathToTitleKey[pathname] ?? 'dashboard.title')
   const lowStockHref = '/products?lowStock=1'
 
   return (

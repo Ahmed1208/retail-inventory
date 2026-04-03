@@ -24,6 +24,7 @@ import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
 import { PaymentOperationDetail } from '@/pages/PaymentOperationDetail'
 import { NewPayment } from '@/pages/NewPayment'
+import { Register } from '@/pages/Register'
 import { NotFound } from '@/pages/NotFound'
 
 function App() {
@@ -49,6 +50,7 @@ function App() {
             />
             <Route path="/payments/new" element={<NewPayment />} />
             <Route path="/payments" element={<PaymentsHub />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/categories" element={<Categories />} />
             <Route path="/brands" element={<Brands />} />
             <Route

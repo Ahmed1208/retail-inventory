@@ -13,7 +13,8 @@
     "stockMovements": "حركات المخزون",
     "reports": "التقارير",
     "control": "التحكم",
-    "payments": "المدفوعات"
+    "payments": "المدفوعات",
+    "register": "الصندوق"
   },
   "common": {
     "search": "بحث",
@@ -84,7 +85,8 @@
       "purchaseOrders": "أوامر الشراء",
       "orders": "طلبات المبيعات",
       "reports": "التقارير",
-      "paymentsApp": "المدفوعات"
+      "paymentsApp": "المدفوعات",
+      "register": "الصندوق"
     },
     "sidebar": {
       "groupNav": "روابط الشريط الجانبي",
@@ -103,6 +105,21 @@
       "payments": {
         "title": "قائمة المدفوعات",
         "desc": "إظهار عنصر المدفوعات في الشريط الجانبي (المركز والسجل ودفعة جديدة)."
+      },
+      "register": {
+        "title": "قائمة الصندوق",
+        "desc": "إظهار عنصر الصندوق لأرصدة الوسائل (نقد، فيزا، شيك، إنستاباي) والإيداع/السحب اليدوي."
+      }
+    },
+    "register": {
+      "group": "الصندوق",
+      "deposit": {
+        "title": "إيداع في الصندوق",
+        "desc": "تسجيل أموال أُدخلت إلى الصندوق (حسب وسيلة الدفع)."
+      },
+      "withdraw": {
+        "title": "سحب من الصندوق",
+        "desc": "تسجيل أموال أُخرجت من الصندوق (حسب وسيلة الدفع)."
       }
     },
     "paymentsApp": {
@@ -655,6 +672,8 @@
     "balanceExplanationNegative": "أنت مدين لـ {{name}} بـ {{amount}}",
     "balanceExplanationZero": "مسوّى",
     "txWallet": "محفظة",
+    "txRegisterDeposit": "إيداع صندوق",
+    "txRegisterWithdraw": "سحب صندوق",
     "profileOverview": "نظرة عامة",
     "profileOrders": "الطلبات",
     "profilePurchaseOrders": "أوامر الشراء",
@@ -766,6 +785,35 @@
     "operationNoteReadOnly": "تعديل ملاحظات الدفعات معطّل في إعدادات التحكم.",
     "notePreview": "معاينة",
     "operationNoteLinkHint": "مراجع الأوامر مثل O-12 أو PO-3 تصبح روابط عندما تنتهي الملاحظة بعلامة مستند من النظام."
+  },
+  "register": {
+    "title": "الصندوق",
+    "subtitle": "رصيد جاري لكل وسيلة (نقد، فيزا، شيك، إنستاباي) من المبيعات والمشتريات، مع حركات يدوية.",
+    "disclaimer": "الدفعات المسجّلة في الدفتر دون وسيلة دفع تُحتسب ضمن النقد في الصندوق. الطلبات متعددة الوسائل تُوزَّع حسب ما سُجّل.",
+    "balancesTitle": "الرصيد حسب وسيلة الدفع",
+    "totalInRegister": "الإجمالي في الصندوق",
+    "addToRegister": "إيداع في الصندوق",
+    "withdrawFromRegister": "سحب من الصندوق",
+    "viewActivity": "نشاط الصندوق",
+    "activityTitle": "نشاط الصندوق الأخير",
+    "activityEmpty": "لا توجد حركات صندوق بعد.",
+    "colWhen": "الوقت",
+    "colType": "النوع",
+    "colMethod": "الوسيلة",
+    "colEffect": "أثر الصندوق",
+    "colNote": "ملاحظة",
+    "fieldMethod": "وسيلة الدفع",
+    "fieldAmount": "المبلغ",
+    "fieldNoteOptional": "ملاحظة (اختياري)",
+    "confirmAdd": "إيداع",
+    "confirmWithdraw": "سحب",
+    "withdrawAvailable": "المتاح لهذه الوسيلة: {{amount}}",
+    "validationAmount": "أدخل مبلغاً صالحاً (على الأقل 0.01).",
+    "toastDeposited": "تمت الإضافة للصندوق",
+    "toastWithdrawn": "تم تسجيل السحب",
+    "toastError": "حدث خطأ",
+    "loadError": "تعذر تحميل أرصدة الصندوق.",
+    "ledgerPartyName": "الصندوق"
   },
   "reports": {
     "title": "التقارير",

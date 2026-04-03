@@ -6,6 +6,7 @@ import {
   ShoppingCart,
   SlidersHorizontal,
   Users,
+  Wallet,
   Warehouse,
 } from 'lucide-react'
 
@@ -23,6 +24,7 @@ const INVENTORY_PATHS = [
 
 const ORDERS_PREFIX = '/orders'
 const PAYMENTS_PREFIX = '/payments'
+const REGISTER_PATH = '/register'
 
 function pathMatchesOrders(pathname: string): boolean {
   return pathname === ORDERS_PREFIX || pathname.startsWith(`${ORDERS_PREFIX}/`)
@@ -32,6 +34,10 @@ function pathMatchesPayments(pathname: string): boolean {
   return (
     pathname === PAYMENTS_PREFIX || pathname.startsWith(`${PAYMENTS_PREFIX}/`)
   )
+}
+
+function pathMatchesRegister(pathname: string): boolean {
+  return pathname === REGISTER_PATH
 }
 
 const afterInventoryNav = [
@@ -68,6 +74,7 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
   const showPaymentsNav = useFeatureEnabled('sidebar.payments')
+  const showRegisterNav = useFeatureEnabled('sidebar.register')
 
   const content = (
     <>
@@ -141,6 +148,22 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
           >
             <Banknote className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t('nav.payments')}</span>
+          </NavLink>
+        )}
+
+        {showRegisterNav && (
+          <NavLink
+            to={REGISTER_PATH}
+            end
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              linkClass({
+                isActive: isActive || pathMatchesRegister(pathname),
+              })
+            }
+          >
+            <Wallet className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.register')}</span>
           </NavLink>
         )}
       </nav>

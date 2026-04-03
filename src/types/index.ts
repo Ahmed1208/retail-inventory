@@ -82,6 +82,8 @@ export type BalanceTransactionType =
   | 'payment_out'
   | 'adjustment'
   | 'wallet'
+  | 'register_deposit'
+  | 'register_withdraw'
 
 export type WalletDirection = 'in' | 'out'
 

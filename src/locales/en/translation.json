@@ -13,7 +13,8 @@
     "stockMovements": "Stock Movements",
     "reports": "Reports",
     "control": "Control",
-    "payments": "Payments"
+    "payments": "Payments",
+    "register": "Register"
   },
   "common": {
     "search": "Search",
@@ -84,7 +85,8 @@
       "purchaseOrders": "Purchase orders",
       "orders": "Sales orders",
       "reports": "Reports",
-      "paymentsApp": "Payments"
+      "paymentsApp": "Payments",
+      "register": "Register"
     },
     "sidebar": {
       "groupNav": "Sidebar links",
@@ -103,6 +105,21 @@
       "payments": {
         "title": "Payments menu",
         "desc": "Shows the Payments item in the sidebar (hub, history, and new payment)."
+      },
+      "register": {
+        "title": "Register menu",
+        "desc": "Shows the Register item for cash-drawer balances by tender and manual add/withdraw."
+      }
+    },
+    "register": {
+      "group": "Register",
+      "deposit": {
+        "title": "Add to register",
+        "desc": "Allows recording money put into the register (by tender type)."
+      },
+      "withdraw": {
+        "title": "Withdraw from register",
+        "desc": "Allows recording money taken out of the register (by tender type)."
       }
     },
     "paymentsApp": {
@@ -655,6 +672,8 @@
     "balanceExplanationNegative": "You owe {{name}} {{amount}}",
     "balanceExplanationZero": "Settled",
     "txWallet": "Wallet",
+    "txRegisterDeposit": "Register deposit",
+    "txRegisterWithdraw": "Register withdrawal",
     "profileOverview": "Overview",
     "profileOrders": "Orders",
     "profilePurchaseOrders": "Purchase Orders",
@@ -766,6 +785,35 @@
     "operationNoteReadOnly": "Editing payment notes is turned off in Control settings.",
     "notePreview": "Preview",
     "operationNoteLinkHint": "Order and PO references like O-12 or PO-3 link when the note ends with a document marker from the system."
+  },
+  "register": {
+    "title": "Register",
+    "subtitle": "Running balance by tender (cash, card, cheque, InstaPay) from sales and purchases, plus manual movements.",
+    "disclaimer": "Sales or purchase payments that were stored on the ledger without a payment method are counted toward Cash in the register. Split-tender orders use each method as recorded.",
+    "balancesTitle": "Balance by payment method",
+    "totalInRegister": "Total in register",
+    "addToRegister": "Add to register",
+    "withdrawFromRegister": "Withdraw from register",
+    "viewActivity": "Register activity",
+    "activityTitle": "Recent register activity",
+    "activityEmpty": "No register movements yet.",
+    "colWhen": "When",
+    "colType": "Type",
+    "colMethod": "Method",
+    "colEffect": "Register effect",
+    "colNote": "Note",
+    "fieldMethod": "Payment method",
+    "fieldAmount": "Amount",
+    "fieldNoteOptional": "Note (optional)",
+    "confirmAdd": "Add",
+    "confirmWithdraw": "Withdraw",
+    "withdrawAvailable": "Available for this method: {{amount}}",
+    "validationAmount": "Enter a valid amount (at least 0.01).",
+    "toastDeposited": "Added to register",
+    "toastWithdrawn": "Withdrawal recorded",
+    "toastError": "Something went wrong",
+    "loadError": "Could not load register balances.",
+    "ledgerPartyName": "Register"
   },
   "reports": {
     "title": "Reports",

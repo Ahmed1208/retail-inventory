@@ -15,6 +15,9 @@ export const FEATURE_CONTROL_IDS = [
   'sidebar.orders',
   'sidebar.people',
   'sidebar.payments',
+  'sidebar.register',
+  'register.deposit',
+  'register.withdraw',
   'payments.list',
   'payments.editLedgerNote',
   'payments.reverseLedgerOperation',
@@ -104,6 +107,34 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.sidebar.payments.title',
             descriptionKey: 'control.sidebar.payments.desc',
+          },
+          {
+            id: 'sidebar.register',
+            defaultEnabled: true,
+            titleKey: 'control.sidebar.register.title',
+            descriptionKey: 'control.sidebar.register.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    titleKey: 'control.area.register',
+    groups: [
+      {
+        titleKey: 'control.register.group',
+        items: [
+          {
+            id: 'register.deposit',
+            defaultEnabled: true,
+            titleKey: 'control.register.deposit.title',
+            descriptionKey: 'control.register.deposit.desc',
+          },
+          {
+            id: 'register.withdraw',
+            defaultEnabled: true,
+            titleKey: 'control.register.withdraw.title',
+            descriptionKey: 'control.register.withdraw.desc',
           },
         ],
       },

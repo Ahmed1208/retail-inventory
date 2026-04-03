@@ -119,6 +119,8 @@ function txTypeLabel(
     payment_out: 'people.txPaymentOut',
     adjustment: 'people.txAdjustment',
     wallet: 'people.txWallet',
+    register_deposit: 'people.txRegisterDeposit',
+    register_withdraw: 'people.txRegisterWithdraw',
   }
   return t(m[type])
 }

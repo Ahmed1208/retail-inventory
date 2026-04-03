@@ -1197,7 +1197,13 @@ export async function listBalanceTransactionsWithPeople(filters: {
   } else if (tf === 'payment_out') {
     q = q.eq('type', 'payment_out')
   } else if (tf === 'payments_both') {
-    q = q.in('type', ['payment_in', 'payment_out', 'wallet'])
+    q = q.in('type', [
+      'payment_in',
+      'payment_out',
+      'wallet',
+      'register_deposit',
+      'register_withdraw',
+    ])
   }
 
   const { data, error } = await q

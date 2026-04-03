@@ -98,6 +98,8 @@ function balanceImpactDisplay(
       return roundMoney(row.amount + totalTenderAmount(row.paymentLines))
     }
   }
+  if (row.type === 'register_deposit') return roundMoney(row.amount)
+  if (row.type === 'register_withdraw') return roundMoney(-row.amount)
   return row.amount
 }
 
@@ -112,6 +114,8 @@ function txTypeLabel(
     payment_out: 'people.txPaymentOut',
     adjustment: 'people.txAdjustment',
     wallet: 'people.txWallet',
+    register_deposit: 'people.txRegisterDeposit',
+    register_withdraw: 'people.txRegisterWithdraw',
   }
   return t(m[type])
 }
@@ -281,6 +285,8 @@ export function PaymentsList() {
       return t('payments.reversedDetailsHint')
     }
     if (row.type === 'wallet') return t('people.txWallet')
+    if (row.type === 'register_deposit') return t('people.txRegisterDeposit')
+    if (row.type === 'register_withdraw') return t('people.txRegisterWithdraw')
     if (row.type === 'adjustment') return t('people.emDash')
     const residual = row.paymentLines.filter(
       (l) => l.payment_method != null && !isPaymentMethod(l.payment_method)
@@ -322,9 +328,12 @@ export function PaymentsList() {
     const docTotal = documentTotalValue(row)
     const impact = balanceImpactDisplay(row, fullLedger)
     const personLabel =
-      row.person_id == null
-        ? t('payments.walkInCustomer')
-        : row.person.name
+      row.person_id == null &&
+      (row.type === 'register_deposit' || row.type === 'register_withdraw')
+        ? t('register.ledgerPartyName')
+        : row.person_id == null
+          ? t('payments.walkInCustomer')
+          : row.person.name
     const strikeTender = row.reversed && !fullLedger
     const poCancelled =
       row.type === 'purchase_order' &&
