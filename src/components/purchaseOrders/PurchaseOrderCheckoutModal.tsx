@@ -5,7 +5,7 @@ import type { PaymentMethod } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
 import {
   Dialog,
   DialogContent,
@@ -183,13 +183,16 @@ export function PurchaseOrderCheckoutModal({
 
           <div>
             <Label htmlFor="po-checkout-note">{t('orders.note')}</Label>
-            <Textarea
+            <NoteMentionEditor
               id="po-checkout-note"
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={setNote}
               rows={3}
-              className="mt-1 resize-none"
+              className="mt-1"
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t('notes.mentionHint')}
+            </p>
           </div>
         </div>
 

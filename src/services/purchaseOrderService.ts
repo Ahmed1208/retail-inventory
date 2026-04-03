@@ -227,6 +227,21 @@ export async function getPurchaseOrderById(
   return applyPaidRemainingFromPayments(order)
 }
 
+export async function updatePurchaseOrderNote(
+  id: string,
+  note: string
+): Promise<void> {
+  const trimmed = note.trim()
+  const { error } = await supabase
+    .from(PURCHASE_ORDERS)
+    .update({
+      note: trimmed || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function getPurchaseOrdersByPersonId(
   personId: string
 ): Promise<PurchaseOrderWithItems[]> {

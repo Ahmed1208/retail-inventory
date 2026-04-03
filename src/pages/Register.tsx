@@ -23,11 +23,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
 import {
   depositToRegister,
   getRegisterBalances,
@@ -424,12 +424,15 @@ export function Register() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="reg-add-note">{t('register.fieldNoteOptional')}</Label>
-              <Textarea
+              <NoteMentionEditor
                 id="reg-add-note"
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={setNote}
                 rows={2}
               />
+              <p className="text-[11px] text-muted-foreground">
+                {t('notes.mentionHint')}
+              </p>
             </div>
           </div>
           <DialogFooter>
@@ -499,12 +502,15 @@ export function Register() {
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="reg-wd-note">{t('register.fieldNoteOptional')}</Label>
-              <Textarea
+              <NoteMentionEditor
                 id="reg-wd-note"
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
+                onChange={setNote}
                 rows={2}
               />
+              <p className="text-[11px] text-muted-foreground">
+                {t('notes.mentionHint')}
+              </p>
             </div>
           </div>
           <DialogFooter>

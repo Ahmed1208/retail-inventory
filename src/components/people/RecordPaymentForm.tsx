@@ -5,6 +5,7 @@ import { recordPayment, roundMoney, supabaseErrorMessage } from '@/services/peop
 import type { PaymentMethod, Person } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
 import { Label } from '@/components/ui/label'
 import { DialogFooter } from '@/components/ui/dialog'
 import { PAYMENT_METHODS, paymentLabel } from '@/components/orders/ordersShared'
@@ -187,12 +188,17 @@ export function RecordPaymentForm({
         </p>
       </div>
       <div>
-        <Label>{t('people.paymentNote')}</Label>
-        <Input
+        <Label htmlFor="record-payment-note">{t('people.paymentNote')}</Label>
+        <NoteMentionEditor
+          id="record-payment-note"
           className="mt-1"
           value={note}
-          onChange={(e) => setNote(e.target.value)}
+          onChange={setNote}
+          rows={2}
         />
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {t('notes.mentionHint')}
+        </p>
       </div>
       {validPayment && (
         <p className="text-sm">

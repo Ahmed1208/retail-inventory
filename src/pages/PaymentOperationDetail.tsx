@@ -23,8 +23,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
@@ -32,7 +30,7 @@ import type { PaymentMethod } from '@/types'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { ledgerPaymentRelatedDocumentHref } from '@/utils/ledgerLinks'
-import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 
 function isPaymentMethod(m: unknown): m is PaymentMethod {
   return typeof m === 'string' && PAYMENT_METHODS.includes(m as PaymentMethod)
@@ -50,7 +48,6 @@ export function PaymentOperationDetail() {
   const canEditNote = useFeatureEnabled('payments.editLedgerNote')
   const canReverse = useFeatureEnabled('payments.reverseLedgerOperation')
 
-  const [noteDraft, setNoteDraft] = useState('')
   const [reverseOpen, setReverseOpen] = useState(false)
 
   const {
@@ -62,11 +59,6 @@ export function PaymentOperationDetail() {
     queryFn: () => getLedgerPaymentOperation(id!),
     enabled: !!id && canList,
   })
-
-  useEffect(() => {
-    if (op?.note != null) setNoteDraft(op.note)
-    else setNoteDraft('')
-  }, [op?.note, op?.operation_route_id])
 
   useEffect(() => {
     if (op?.reference_number) {
@@ -367,62 +359,28 @@ export function PaymentOperationDetail() {
         )}
 
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <Label htmlFor="op-note">{t('payments.operationNote')}</Label>
-          {noteLocked || op.reversed ? (
-            <div
-              id="op-note"
-              className="min-h-[4rem] rounded-md border border-input bg-muted/30 px-3 py-2"
-            >
-              <NoteWithDocLinks note={noteDraft} />
-            </div>
-          ) : (
-            <Textarea
-              id="op-note"
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              readOnly={false}
-              disabled={noteMut.isPending}
-              rows={3}
-              placeholder={t('payments.operationNotePlaceholder')}
-              className="resize-y min-h-[4rem]"
-            />
-          )}
-          {!noteLocked && !op.reversed && (
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">
-                {t('payments.notePreview')}
-              </p>
-              <div className="rounded-md border border-border/60 bg-muted/15 px-2 py-1.5">
-                <NoteWithDocLinks note={noteDraft} />
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                {t('payments.operationNoteLinkHint')}
-              </p>
-            </div>
-          )}
-          {!noteLocked ? (
-            <Button
-              type="button"
-              disabled={
-                noteMut.isPending ||
-                op.reversed ||
-                noteDraft.trim() === (op.note ?? '').trim()
-              }
-              onClick={() => noteMut.mutate(noteDraft)}
-            >
-              {noteMut.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                t('payments.saveOperationNote')
-              )}
-            </Button>
-          ) : (
+          <EditableNoteCard
+            label={t('payments.operationNote')}
+            value={op.note ?? ''}
+            canEdit={canEditNote && !op.reversed}
+            isPending={noteMut.isPending}
+            fieldId="op-note"
+            emptyPlaceholder={t('payments.operationNotePlaceholder')}
+            onSave={async (text) => {
+              await noteMut.mutateAsync(text || '')
+            }}
+          />
+          {canEditNote && !op.reversed ? (
+            <p className="text-[11px] text-muted-foreground">
+              {t('payments.operationNoteLinkHint')}
+            </p>
+          ) : noteLocked ? (
             <p className="text-xs text-muted-foreground">
               {op.reversed
                 ? t('payments.operationNoteNoEditReversed')
                 : t('payments.operationNoteReadOnly')}
             </p>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -58,6 +58,7 @@ export const FEATURE_CONTROL_IDS = [
   'purchaseOrders.create',
   'purchaseOrders.confirmReceive',
   'purchaseOrders.cancel',
+  'purchaseOrders.editNote',
   // Orders / POS
   'orders.hubList',
   'orders.hubNew',
@@ -482,6 +483,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.purchaseOrders.cancel.title',
             descriptionKey: 'control.purchaseOrders.cancel.desc',
+          },
+          {
+            id: 'purchaseOrders.editNote',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.editNote.title',
+            descriptionKey: 'control.purchaseOrders.editNote.desc',
           },
         ],
       },

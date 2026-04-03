@@ -38,6 +38,19 @@
     "yes": "نعم",
     "no": "لا"
   },
+  "notes": {
+    "editNote": "تعديل الملاحظة",
+    "saveNote": "حفظ",
+    "cancelEdit": "إلغاء",
+    "mentionHint": "اكتب @ لربط طلب أو أمر شراء أو دفعة أو شخص.",
+    "emptyNotePlaceholder": "لا توجد ملاحظة بعد.",
+    "editorPlaceholder": "اكتب ملاحظة…",
+    "editorAria": "ملاحظة",
+    "mentionKindOrder": "طلب",
+    "mentionKindPO": "أمر شراء",
+    "mentionKindPayment": "دفعة",
+    "mentionKindPerson": "شخص"
+  },
   "dashboard": {
     "title": "لوحة التحكم",
     "mainDashboard": "لوحة التحكم الرئيسية",
@@ -306,6 +319,10 @@
       "cancel": {
         "title": "إلغاء أمر شراء",
         "desc": "إظهار إلغاء الأوامر المستلمة في صفحة التفاصيل."
+      },
+      "editNote": {
+        "title": "تعديل ملاحظة أمر الشراء",
+        "desc": "السماح بتعديل الملاحظة المحفوظة في صفحة تفاصيل أمر الشراء (أيقونة القلم والحفظ)."
       }
     },
     "orders": {

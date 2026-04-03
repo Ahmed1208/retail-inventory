@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
   Eye,
@@ -22,6 +22,7 @@ import {
   countCustomerOrdersForPerson,
   countSupplierPOsForPerson,
   getPersonDeleteBlockMessage,
+  getPersonById,
   roundMoney,
 } from '@/services/peopleService'
 import {
@@ -43,6 +44,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
+import { NoteRichText } from '@/components/common/NoteWithDocLinks'
 import {
   Dialog,
   DialogContent,
@@ -145,6 +148,8 @@ export function People() {
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const personFromUrl = searchParams.get('person')
 
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
@@ -168,6 +173,46 @@ export function People() {
       document.title = 'StockPilot'
     }
   }, [])
+
+  useEffect(() => {
+    if (!personFromUrl) return
+    if (!canViewProfile) {
+      setSearchParams(
+        (prev) => {
+          const n = new URLSearchParams(prev)
+          n.delete('person')
+          return n
+        },
+        { replace: true }
+      )
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const full = await getPersonById(personFromUrl)
+        if (cancelled) return
+        const { transactions: _tx, ...rest } = full
+        setProfilePerson(rest)
+      } catch {
+        /* invalid id */
+      } finally {
+        if (!cancelled) {
+          setSearchParams(
+            (prev) => {
+              const n = new URLSearchParams(prev)
+              n.delete('person')
+              return n
+            },
+            { replace: true }
+          )
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [personFromUrl, canViewProfile, setSearchParams])
 
   const roleParam: PersonRole | undefined =
     roleFilter === 'customers'
@@ -642,8 +687,19 @@ function PersonFormDialog({
             <Textarea className="mt-1" {...form.register('address')} />
           </div>
           <div>
-            <Label>{t('people.notes')}</Label>
-            <Textarea className="mt-1" {...form.register('notes')} />
+            <Label htmlFor="person-form-notes">{t('people.notes')}</Label>
+            <NoteMentionEditor
+              id="person-form-notes"
+              className="mt-1"
+              value={form.watch('notes') ?? ''}
+              onChange={(v) =>
+                form.setValue('notes', v, { shouldDirty: true, shouldValidate: true })
+              }
+              rows={3}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {t('notes.mentionHint')}
+            </p>
           </div>
           <div>
             <Label className="mb-2 block">{t('people.roles')}</Label>
@@ -939,9 +995,11 @@ function PersonProfileDialog({
                     ? formatCurrency(person.credit_limit)
                     : t('people.noLimit')}
                 </p>
-                {person.notes && (
-                  <p className="text-muted-foreground whitespace-pre-wrap">{person.notes}</p>
-                )}
+                {person.notes ? (
+                  <div className="text-muted-foreground">
+                    <NoteRichText note={person.notes} />
+                  </div>
+                ) : null}
               </div>
             </div>
           )}

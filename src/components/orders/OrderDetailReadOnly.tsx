@@ -1,10 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Printer } from 'lucide-react'
 
 import type { OrderWithItemsAndPayments, Person } from '@/types'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import {
   paymentLabel,
@@ -12,7 +10,7 @@ import {
   statusFlowLabel,
   type TFn,
 } from '@/components/orders/ordersShared'
-import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 
 export function OrderDetailReadOnly({
   order,
@@ -41,15 +39,10 @@ export function OrderDetailReadOnly({
   onPrint: () => void
   onCancel: () => void
   noteMut: {
-    mutate: (p: { id: string; text: string }) => void
+    mutateAsync: (p: { id: string; text: string }) => Promise<unknown>
     isPending: boolean
   }
 }) {
-  const [localNote, setLocalNote] = useState(order.note ?? '')
-  useEffect(() => {
-    setLocalNote(order.note ?? '')
-  }, [order.id, order.note])
-
   const person = order.person_id
     ? people.find((p) => p.id === order.person_id)
     : null
@@ -222,34 +215,16 @@ export function OrderDetailReadOnly({
           </div>
         </div>
         <div>
-          <Label>{t('orders.note')}</Label>
-          {!canEditNote ? (
-            <div className="min-h-[5rem] rounded-md border border-input bg-muted/30 px-3 py-2 text-sm">
-              <NoteWithDocLinks note={localNote} />
-            </div>
-          ) : (
-            <>
-              <Textarea
-                value={localNote}
-                onChange={(e) => setLocalNote(e.target.value)}
-                onBlur={() => {
-                  if (localNote !== (order.note ?? '')) {
-                    noteMut.mutate({ id: order.id, text: localNote })
-                  }
-                }}
-                rows={4}
-                disabled={noteMut.isPending}
-              />
-              <div className="mt-2 space-y-1">
-                <p className="text-xs text-muted-foreground">
-                  {t('payments.notePreview')}
-                </p>
-                <div className="rounded-md border border-border/60 bg-muted/15 px-2 py-1.5">
-                  <NoteWithDocLinks note={localNote} />
-                </div>
-              </div>
-            </>
-          )}
+          <EditableNoteCard
+            label={t('orders.note')}
+            value={order.note ?? ''}
+            canEdit={canEditNote}
+            isPending={noteMut.isPending}
+            fieldId={`order-note-${order.id}`}
+            onSave={async (text) => {
+              await noteMut.mutateAsync({ id: order.id, text })
+            }}
+          />
         </div>
       </div>
     </div>

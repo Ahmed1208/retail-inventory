@@ -247,7 +247,7 @@ export function OrderDetail() {
             setCancelOpen(true)
           }}
           noteMut={{
-            mutate: (p) => noteMut.mutate(p),
+            mutateAsync: (p) => noteMut.mutateAsync(p),
             isPending: noteMut.isPending,
           }}
         />

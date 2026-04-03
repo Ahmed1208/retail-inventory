@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
@@ -10,10 +10,12 @@ import {
   confirmPurchaseOrder,
   type CancelPurchaseOrderSettlement,
   getPurchaseOrderById,
+  updatePurchaseOrderNote,
 } from '@/services/purchaseOrderService'
 import {
   getLedgerPaymentOperationRouteIdForPo,
   roundMoney,
+  supabaseErrorMessage,
 } from '@/services/peopleService'
 import type { PaymentMethod, PurchaseOrderPayment } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -34,7 +36,7 @@ import {
   POStatusBadge,
   paymentLabelPO,
 } from '@/components/purchaseOrders/purchaseOrderShared'
-import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 import { PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
 
@@ -49,6 +51,7 @@ export function PurchaseOrderDetail() {
   const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
   const canCreatePo = useFeatureEnabled('purchaseOrders.create')
   const canConfirmReceive = useFeatureEnabled('purchaseOrders.confirmReceive')
+  const canEditPoNote = useFeatureEnabled('purchaseOrders.editNote')
   const canListPayments = useFeatureEnabled('payments.list')
 
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -139,6 +142,16 @@ export function PurchaseOrderDetail() {
     qc.invalidateQueries({ queryKey: ['dashboardStats'] })
     qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
   }
+
+  const noteMut = useMutation({
+    mutationFn: (text: string) => updatePurchaseOrderNote(id!, text),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchaseOrder', id] })
+      invalidatePO()
+    },
+    onError: (e: unknown) =>
+      toast.error(supabaseErrorMessage(e) || t('purchaseOrders.toastError')),
+  })
 
   const openConfirmDraft = () => {
     if (!po || po.status !== 'draft') return
@@ -327,14 +340,18 @@ export function PurchaseOrderDetail() {
               )}
             </p>
           )}
-          {po.note && (
-            <p className="sm:col-span-2">
-              <span className="text-muted-foreground">
-                {t('purchaseOrders.note')}:
-              </span>{' '}
-              <NoteWithDocLinks note={po.note} />
-            </p>
-          )}
+          <div className="sm:col-span-2">
+            <EditableNoteCard
+              label={t('purchaseOrders.note')}
+              value={po.note ?? ''}
+              canEdit={canEditPoNote}
+              isPending={noteMut.isPending}
+              fieldId={`po-note-${po.id}`}
+              onSave={async (text) => {
+                await noteMut.mutateAsync(text)
+              }}
+            />
+          </div>
         </div>
 
         <div className="rounded-lg border border-border overflow-hidden">

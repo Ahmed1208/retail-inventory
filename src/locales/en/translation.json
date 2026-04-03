@@ -38,6 +38,19 @@
     "yes": "Yes",
     "no": "No"
   },
+  "notes": {
+    "editNote": "Edit note",
+    "saveNote": "Save",
+    "cancelEdit": "Cancel",
+    "mentionHint": "Type @ to link an order, purchase order, payment, or person.",
+    "emptyNotePlaceholder": "No note yet.",
+    "editorPlaceholder": "Write a note…",
+    "editorAria": "Note",
+    "mentionKindOrder": "Order",
+    "mentionKindPO": "PO",
+    "mentionKindPayment": "Payment",
+    "mentionKindPerson": "Person"
+  },
   "dashboard": {
     "title": "Dashboard",
     "mainDashboard": "Main Dashboard",
@@ -306,6 +319,10 @@
       "cancel": {
         "title": "Cancel purchase order",
         "desc": "Shows the cancel action on received purchase orders (detail page)."
+      },
+      "editNote": {
+        "title": "Edit purchase order note",
+        "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
       }
     },
     "orders": {
