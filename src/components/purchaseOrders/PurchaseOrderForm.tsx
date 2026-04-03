@@ -9,14 +9,18 @@ import {
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { AlertTriangle, ChevronDown } from 'lucide-react'
+import { AlertTriangle, ChevronDown, Loader2 } from 'lucide-react'
 
 import { createPurchaseOrder } from '@/services/purchaseOrderService'
 import { getAllProducts } from '@/services/productService'
 import { getAllCategories } from '@/services/categoryService'
-import { getAllPeople, roundMoney } from '@/services/peopleService'
+import {
+  getAllPeople,
+  roundMoney,
+  supabaseErrorMessage,
+} from '@/services/peopleService'
 import type { PaymentMethod, Person, ProductWithRelations } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -29,6 +33,7 @@ import {
   findProductByInput,
   PAYMENT_METHODS,
 } from '@/components/orders/ordersShared'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PoLineRow } from '@/components/purchaseOrders/PoLineRow'
 import {
   type POLineRow,
@@ -39,6 +44,12 @@ import {
   poLineTotal,
 } from '@/components/purchaseOrders/poLineShared'
 
+function isPurchaseOrderDraftStatusConstraintError(err: unknown): boolean {
+  return supabaseErrorMessage(err)
+    .toLowerCase()
+    .includes('purchase_orders_status_check')
+}
+
 export function PurchaseOrderForm() {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
@@ -46,6 +57,8 @@ export function PurchaseOrderForm() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const fc = useCallback((n: number) => formatCurrency(n, lang), [lang])
+  const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
+  const canCheckout = useFeatureEnabled('orders.posCheckout')
 
   const [selectedSupplier, setSelectedSupplier] = useState<Person | null>(null)
   const [supplierBrowserOpen, setSupplierBrowserOpen] = useState(false)
@@ -139,33 +152,6 @@ export function PurchaseOrderForm() {
       })
     }
   }, [lines.length, focusCellPos.row])
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'F1') return
-      if (supplierBrowserOpen || productBrowserOpen || checkoutOpen) return
-      e.preventDefault()
-      const target = e.target
-      const inSupplierZone =
-        target instanceof Element &&
-        Boolean(target.closest('[data-po-supplier-zone]'))
-      if (inSupplierZone) {
-        setSupplierBrowserOpen(true)
-        return
-      }
-      const lineKey = lines[focusCellPos.row]?.key ?? lines.at(-1)?.key
-      if (lineKey) setBrowserTargetLineKey(lineKey)
-      setProductBrowserOpen(true)
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [
-    supplierBrowserOpen,
-    productBrowserOpen,
-    checkoutOpen,
-    lines,
-    focusCellPos.row,
-  ])
 
   const applyProductToLine = useCallback(
     (lineKey: string, p: ProductWithRelations) => {
@@ -490,33 +476,10 @@ export function PurchaseOrderForm() {
     queryClient.invalidateQueries({ queryKey: ['people'] })
   }
 
-  const openCheckout = () => {
-    if (!hasValidLines) {
-      toast.error(t('purchaseOrders.validationAtLeastOne'))
-      return
-    }
-    if (!selectedSupplier) {
-      toast.error(t('purchaseOrders.validationSupplierRequired'))
-      return
-    }
-    if (!validateLines()) return
-    setCheckoutOpen(true)
-  }
-
-  const handleSaveDraft = async () => {
-    if (!hasValidLines) {
-      toast.error(t('purchaseOrders.validationAtLeastOne'))
-      return
-    }
-    if (!selectedSupplier) {
-      toast.error(t('purchaseOrders.validationSupplierRequired'))
-      return
-    }
-    if (!validateLines()) return
-    setSubmitting(true)
-    try {
+  const saveDraftMut = useMutation({
+    mutationFn: async () => {
       const items = lines.filter((l) => l.product_id)
-      const created = await createPurchaseOrder({
+      return createPurchaseOrder({
         supplier_name: selectedSupplier?.name,
         person_id: selectedSupplier?.id,
         note: note.trim() || undefined,
@@ -528,20 +491,85 @@ export function PurchaseOrderForm() {
           update_default_cost_price: l.updateDefaultCostPrice,
         })),
       })
+    },
+    onSuccess: (created) => {
       invalidatePO()
       toast.success(t('purchaseOrders.toastDraftSaved'))
       navigate(`/purchase-orders/${created.id}`)
-    } catch (err) {
+    },
+    onError: (e: unknown) => {
+      if (isPurchaseOrderDraftStatusConstraintError(e)) {
+        toast.error(t('purchaseOrders.errorDraftStatusNotAllowed'))
+        return
+      }
       const message =
-        err instanceof Error
-          ? err.message
-          : typeof (err as { message?: string })?.message === 'string'
-            ? (err as { message: string }).message
+        e instanceof Error
+          ? e.message
+          : typeof (e as { message?: string })?.message === 'string'
+            ? (e as { message: string }).message
             : undefined
       toast.error(message || t('purchaseOrders.toastError'))
-    } finally {
-      setSubmitting(false)
+    },
+  })
+
+  const onSaveDraftClick = () => {
+    if (!hasValidLines) {
+      toast.error(t('purchaseOrders.validationAtLeastOne'))
+      return
     }
+    if (!selectedSupplier) {
+      toast.error(t('purchaseOrders.validationSupplierRequired'))
+      return
+    }
+    if (!validateLines()) return
+    saveDraftMut.mutate()
+  }
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'F1') return
+      if (
+        supplierBrowserOpen ||
+        productBrowserOpen ||
+        checkoutOpen ||
+        saveDraftMut.isPending
+      )
+        return
+      e.preventDefault()
+      const target = e.target
+      const inSupplierZone =
+        target instanceof Element &&
+        Boolean(target.closest('[data-po-supplier-zone]'))
+      if (inSupplierZone) {
+        setSupplierBrowserOpen(true)
+        return
+      }
+      const lineKey = lines[focusCellPos.row]?.key ?? lines.at(-1)?.key
+      if (lineKey) setBrowserTargetLineKey(lineKey)
+      setProductBrowserOpen(true)
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [
+    supplierBrowserOpen,
+    productBrowserOpen,
+    checkoutOpen,
+    lines,
+    focusCellPos.row,
+    saveDraftMut.isPending,
+  ])
+
+  const openCheckout = () => {
+    if (!hasValidLines) {
+      toast.error(t('purchaseOrders.validationAtLeastOne'))
+      return
+    }
+    if (!selectedSupplier) {
+      toast.error(t('purchaseOrders.validationSupplierRequired'))
+      return
+    }
+    if (!validateLines()) return
+    setCheckoutOpen(true)
   }
 
   const handleConfirmCreate = async () => {
@@ -585,7 +613,7 @@ export function PurchaseOrderForm() {
   return (
     <div
       className={cn(
-        'flex min-h-0 flex-1 flex-col overflow-hidden',
+        'flex max-h-[calc(100dvh-8.5rem)] min-h-0 flex-1 flex-col',
         isRTL && 'rtl'
       )}
       dir={isRTL ? 'rtl' : 'ltr'}
@@ -633,14 +661,37 @@ export function PurchaseOrderForm() {
         onConfirm={handleConfirmCreate}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      <header className="flex shrink-0 flex-wrap items-center gap-1.5 border-b bg-background px-2 py-1.5">
+        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100 sm:text-xs">
+          {t('orders.draft')}
+        </span>
+        {canSaveDraft && (
+          <div className="ms-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 text-xs"
+              disabled={!hasValidLines || saveDraftMut.isPending}
+              onClick={onSaveDraftClick}
+            >
+              {saveDraftMut.isPending && (
+                <Loader2 className="me-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              {t('orders.saveDraft')}
+            </Button>
+          </div>
+        )}
+      </header>
+
+      <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-1.5 border-b bg-background px-2 py-1.5">
         <div
           data-po-supplier-zone
-          className="shrink-0 border-b bg-background px-2 py-2 sm:px-3"
+          className="flex min-w-[140px] max-w-full flex-1 flex-col gap-0.5 sm:min-w-[200px]"
         >
           <Label
             htmlFor="po-supplier-picker"
-            className="mb-1 block text-[10px] font-medium text-muted-foreground sm:text-xs"
+            className="text-[10px] font-medium text-muted-foreground sm:text-xs"
           >
             {t('purchaseOrders.selectSupplier')}
           </Label>
@@ -648,14 +699,19 @@ export function PurchaseOrderForm() {
             id="po-supplier-picker"
             type="button"
             className={cn(
-              'flex h-9 w-full max-w-md items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-sm ring-offset-background',
+              'flex h-8 w-full max-w-md items-center justify-between rounded-md border border-input bg-background px-2 py-1 text-xs ring-offset-background',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1'
             )}
             onClick={() => setSupplierBrowserOpen(true)}
             onKeyDown={(ke) => {
               if (ke.key !== 'F1') return
               ke.preventDefault()
-              if (supplierBrowserOpen || productBrowserOpen || checkoutOpen)
+              if (
+                supplierBrowserOpen ||
+                productBrowserOpen ||
+                checkoutOpen ||
+                saveDraftMut.isPending
+              )
                 return
               setSupplierBrowserOpen(true)
             }}
@@ -665,60 +721,64 @@ export function PurchaseOrderForm() {
                 ? selectedSupplier.name
                 : t('purchaseOrders.noLinkedSupplier')}
             </span>
-            <ChevronDown className="h-4 w-4 shrink-0 opacity-50" aria-hidden />
+            <ChevronDown
+              className="h-3.5 w-3.5 shrink-0 opacity-50"
+              aria-hidden
+            />
           </button>
-          {selectedSupplier && (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t('purchaseOrders.supplierBalance')}:{' '}
-              <span className="font-medium tabular-nums text-foreground">
-                {fc(selectedSupplier.balance)}
-              </span>
-            </p>
-          )}
         </div>
-
-        <div className="flex min-h-0 flex-1 flex-col px-2 py-2 sm:px-3">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <Label className="text-sm font-medium">
-              {t('purchaseOrders.orderLines')}
-            </Label>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={openProductBrowser}
-            >
-              {t('purchaseOrders.addProducts')}
-            </Button>
-          </div>
-          <p className="mb-2 text-[10px] text-muted-foreground sm:text-xs">
-            {t('purchaseOrders.pressF1Products')}
+        {selectedSupplier && (
+          <p className="text-[10px] text-muted-foreground sm:text-xs">
+            {t('purchaseOrders.supplierBalance')}:{' '}
+            <span className="font-medium tabular-nums text-foreground">
+              {fc(selectedSupplier.balance)}
+            </span>
           </p>
+        )}
+      </div>
 
-          {showDupBanner && (
-            <div className="mb-2 flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span>{t('orders.duplicateProduct')}</span>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={mergeDuplicates}
-              >
-                {t('orders.mergeRows')}
-              </Button>
-            </div>
-          )}
-
-          <div
-            className={cn(
-              'flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-card',
-              'min-w-[min(100%,52rem)]'
-            )}
-            dir={isRTL ? 'rtl' : 'ltr'}
+      {showDupBanner && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span>{t('orders.duplicateProduct')}</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs"
+            onClick={mergeDuplicates}
           >
+            {t('orders.mergeRows')}
+          </Button>
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-1 pt-1">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1">
+          <Label className="text-sm font-medium">
+            {t('purchaseOrders.orderLines')}
+          </Label>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={openProductBrowser}
+          >
+            {t('purchaseOrders.addProducts')}
+          </Button>
+        </div>
+        <p className="mb-2 px-1 text-[10px] text-muted-foreground sm:text-xs">
+          {t('purchaseOrders.pressF1Products')}
+        </p>
+
+        <div
+          className={cn(
+            'flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-card',
+            'min-w-[min(100%,52rem)]'
+          )}
+          dir={isRTL ? 'rtl' : 'ltr'}
+        >
             <div
               className={cn(
                 'grid shrink-0 gap-1 border-b bg-muted/50 px-2 py-1.5 text-[10px] font-medium uppercase text-muted-foreground sm:text-xs',
@@ -768,43 +828,34 @@ export function PurchaseOrderForm() {
               ))}
             </div>
           </div>
-          <p className="mt-1 text-[10px] text-muted-foreground sm:text-xs">
-            {t('orders.pressF1')}
+        <p className="shrink-0 py-0.5 text-[10px] text-muted-foreground sm:text-xs">
+          {t('orders.pressF1')}
+        </p>
+        {Object.keys(lineErrors).length > 0 && (
+          <p className="mt-1 px-1 text-sm text-destructive">
+            {Object.values(lineErrors)[0]}
           </p>
-          {Object.keys(lineErrors).length > 0 && (
-            <p className="mt-2 text-sm text-destructive">
-              {Object.values(lineErrors)[0]}
-            </p>
+        )}
+      </div>
+
+      <footer className="shrink-0 border-t bg-background/95 py-2 ps-2 pe-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs tabular-nums sm:text-sm">
+            <span className="font-semibold">{t('orders.totalAmount')}</span>
+            <span className="font-semibold">{fc(runningTotal)}</span>
+          </div>
+          {canCheckout && (
+            <Button
+              type="button"
+              className="h-9 shrink-0"
+              disabled={!hasValidLines || submitting}
+              onClick={openCheckout}
+            >
+              {t('orders.checkout')}
+            </Button>
           )}
         </div>
-
-        <footer className="shrink-0 border-t bg-background/95 px-2 py-3 backdrop-blur sm:px-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm font-semibold tabular-nums">
-              {t('purchaseOrders.runningTotal')}: {fc(runningTotal)}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={!hasValidLines || !supplierPersonId || submitting}
-                className="min-w-[120px]"
-                onClick={handleSaveDraft}
-              >
-                {t('purchaseOrders.saveDraft')}
-              </Button>
-              <Button
-                type="button"
-                disabled={!hasValidLines || submitting}
-                className="min-w-[140px]"
-                onClick={openCheckout}
-              >
-                {t('purchaseOrders.createSubmit')}
-              </Button>
-            </div>
-          </div>
-        </footer>
-      </div>
+      </footer>
     </div>
   )
 }

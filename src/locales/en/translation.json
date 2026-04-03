@@ -576,6 +576,7 @@
     "validationSupplierRequired": "Select a supplier from your directory before checkout.",
     "validationQuantityMin": "Quantity must be at least 1",
     "validationCostPriceMin": "Cost price must be 0 or greater",
+    "errorDraftStatusNotAllowed": "Saving drafts requires a database update: apply migration 016 (purchase order draft status) to your Supabase project, then try again.",
     "toastCreated": "Purchase order created successfully",
     "toastCancelled": "Purchase order cancelled. Stock restored.",
     "toastError": "Something went wrong",

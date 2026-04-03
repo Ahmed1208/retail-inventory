@@ -576,6 +576,7 @@
     "validationSupplierRequired": "اختر مورداً من الدليل قبل إتمام الشراء.",
     "validationQuantityMin": "الكمية يجب أن تكون 1 على الأقل",
     "validationCostPriceMin": "سعر التكلفة يجب أن يكون 0 أو أكثر",
+    "errorDraftStatusNotAllowed": "حفظ المسودات يتطلب تحديث قاعدة البيانات: طبّق الهجرة 016 (حالة مسودة أمر الشراء) على مشروع Supabase ثم أعد المحاولة.",
     "toastCreated": "تم إنشاء أمر الشراء بنجاح",
     "toastCancelled": "تم إلغاء أمر الشراء. تم استعادة المخزون.",
     "toastError": "حدث خطأ ما",
