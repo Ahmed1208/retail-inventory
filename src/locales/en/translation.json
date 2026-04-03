@@ -523,6 +523,8 @@
     "stockWarning": "Exceeds available stock",
     "productBrowser": "Product Browser",
     "customerBrowser": "Customer browser",
+    "quickCreateCustomer": "New customer",
+    "quickCreateCustomerTitle": "Create customer",
     "searchCustomers": "Search by name or phone...",
     "pressF1Customer": "Arrow keys and Enter to choose · Esc to close",
     "walkInBrowserHint": "No linked account or balance",
@@ -603,9 +605,7 @@
     "availableCredit": "Available credit",
     "creditBlocked": "This order exceeds the customer's credit limit.",
     "subtotal": "Subtotal",
-    "discountedTotal": "After discount",
-    "quickCreateCustomer": "عميل جديد",
-    "quickCreateCustomerTitle": "إنشاء عميل"
+    "discountedTotal": "After discount"
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
@@ -616,6 +616,8 @@
     "backToPurchaseOrders": "Back to purchase orders",
     "backToList": "Back to list",
     "supplierBrowser": "Choose supplier",
+    "quickCreateSupplier": "New supplier",
+    "quickCreateSupplierTitle": "Create supplier",
     "searchSuppliers": "Search suppliers by name or phone...",
     "pressF1Supplier": "Press F1 while the supplier field is focused to open this list. Arrow keys and Enter to select.",
     "pressF1Products": "Press F1 (or Add products) to browse catalog by category and brand. Shows cost price.",
@@ -689,9 +691,7 @@
     "cancelSettlementRetain": "Keep total paid as supplier wallet credit (one ledger line)",
     "emptyOrders": "No purchase orders match your filters.",
     "selectSupplier": "Supplier",
-    "supplierBalance": "Supplier balance",
-    "quickCreateSupplier": "مورد جديد",
-    "quickCreateSupplierTitle": "إنشاء مورد"
+    "supplierBalance": "Supplier balance"
   },
   "people": {
     "title": "People",

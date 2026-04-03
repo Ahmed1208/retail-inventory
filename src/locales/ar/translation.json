@@ -523,6 +523,8 @@
     "stockWarning": "يتجاوز المخزون المتاح",
     "productBrowser": "متصفح المنتجات",
     "customerBrowser": "متصفح العملاء",
+    "quickCreateCustomer": "عميل جديد",
+    "quickCreateCustomerTitle": "إنشاء عميل",
     "searchCustomers": "بحث بالاسم أو الهاتف...",
     "pressF1Customer": "الأسهم و Enter للاختيار · Esc للإغلاق",
     "walkInBrowserHint": "بدون حساب مرتبط أو رصيد",
@@ -603,9 +605,7 @@
     "availableCredit": "الائتمان المتاح",
     "creditBlocked": "هذا الطلب يتجاوز حد الائتمان للعميل.",
     "subtotal": "المجموع الفرعي",
-    "discountedTotal": "بعد الخصم",
-    "quickCreateCustomer": "عميل جديد",
-    "quickCreateCustomerTitle": "إنشاء عميل"
+    "discountedTotal": "بعد الخصم"
   },
   "purchaseOrders": {
     "title": "أوامر الشراء",
@@ -616,6 +616,8 @@
     "backToPurchaseOrders": "رجوع لأوامر الشراء",
     "backToList": "رجوع للقائمة",
     "supplierBrowser": "اختر مورداً",
+    "quickCreateSupplier": "مورد جديد",
+    "quickCreateSupplierTitle": "إنشاء مورد",
     "searchSuppliers": "بحث الموردين بالاسم أو الهاتف...",
     "pressF1Supplier": "اضغط F1 عند التركيز على حقل المورد لفتح القائمة. الأسهم و Enter للاختيار.",
     "pressF1Products": "اضغط F1 (أو إضافة منتجات) لتصفح الكتالوج حسب الفئة والعلامة. يعرض سعر التكلفة.",
@@ -689,9 +691,7 @@
     "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للمورد (سطر واحد في الدفتر)",
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
     "selectSupplier": "مورد",
-    "supplierBalance": "رصيد المورد",
-    "quickCreateSupplier": "مورد جديد",
-    "quickCreateSupplierTitle": "إنشاء مورد"
+    "supplierBalance": "رصيد المورد"
   },
   "people": {
     "title": "الأشخاص",
