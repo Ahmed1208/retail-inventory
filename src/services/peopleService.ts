@@ -589,6 +589,9 @@ function ledgerOperationRouteIdFromRows(
   rows: BalanceTransactionListItem[]
 ): string | null {
   const t = rows[0]?.type
+  if (t === 'register_deposit' || t === 'register_withdraw') {
+    return rows[0].id
+  }
   if (t !== 'payment_in' && t !== 'payment_out') return null
   return rows[0].payment_group_id ?? rows[0].id
 }
@@ -1322,7 +1325,7 @@ export type LedgerPaymentOperationLine = {
 
 export type LedgerPaymentOperation = {
   operation_route_id: string
-  type: 'payment_in' | 'payment_out'
+  type: 'payment_in' | 'payment_out' | 'register_deposit' | 'register_withdraw'
   reference_number: string | null
   reference_id: string | null
   person_id: string | null
@@ -1412,7 +1415,8 @@ function clusterTouchesAnchor(
 }
 
 /**
- * Load one logical payment_in / payment_out operation for `/payments/operations/:id`.
+ * Load one logical payment_in / payment_out operation for `/payments/operations/:id`,
+ * or a single register_deposit / register_withdraw row (operation id = row id).
  * `operationId` is a balance_transactions.id or a shared payment_group_id.
  */
 export async function getLedgerPaymentOperation(
@@ -1426,6 +1430,36 @@ export async function getLedgerPaymentOperation(
     .eq('id', operationId)
     .maybeSingle()
   if (e1) throw e1
+  if (byId) {
+    const direct = mapTxRow(byId as Record<string, unknown>)
+    if (
+      direct.type === 'register_deposit' ||
+      direct.type === 'register_withdraw'
+    ) {
+      const rev =
+        direct.reversed_at != null && String(direct.reversed_at).trim() !== ''
+      return {
+        operation_route_id: direct.id,
+        type: direct.type,
+        reference_number: direct.reference_number,
+        reference_id: direct.reference_id,
+        person_id: null,
+        person: null,
+        created_at: direct.created_at,
+        lines: [
+          {
+            id: direct.id,
+            payment_method: direct.payment_method,
+            amount: direct.amount,
+            note: direct.note,
+          },
+        ],
+        walletLines: [],
+        reversed: rev,
+        note: direct.note,
+      }
+    }
+  }
   const byIdType = byId ? String((byId as { type: string }).type) : ''
   if (byId && (byIdType === 'payment_in' || byIdType === 'payment_out')) {
     anchor = mapTxRow(byId as Record<string, unknown>)
@@ -1534,7 +1568,7 @@ export async function getLedgerPaymentOperation(
 
   return {
     operation_route_id,
-    type: anchor.type as 'payment_in' | 'payment_out',
+    type: anchor.type as LedgerPaymentOperation['type'],
     reference_number: anchor.reference_number,
     reference_id: anchor.reference_id,
     person_id: anchor.person_id,

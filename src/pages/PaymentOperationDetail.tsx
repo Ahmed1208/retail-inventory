@@ -87,6 +87,8 @@ export function PaymentOperationDetail() {
       qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
       qc.invalidateQueries({ queryKey: ['personTxs'] })
       qc.invalidateQueries({ queryKey: ['people'] })
+      qc.invalidateQueries({ queryKey: ['registerBalances'] })
+      qc.invalidateQueries({ queryKey: ['registerActivity'] })
       toast.success(t('payments.toastOperationNoteSaved'))
     },
     onError: (e: unknown) =>
@@ -105,6 +107,8 @@ export function PaymentOperationDetail() {
       qc.invalidateQueries({ queryKey: ['order'] })
       qc.invalidateQueries({ queryKey: ['purchaseOrders'] })
       qc.invalidateQueries({ queryKey: ['purchaseOrder'] })
+      qc.invalidateQueries({ queryKey: ['registerBalances'] })
+      qc.invalidateQueries({ queryKey: ['registerActivity'] })
       toast.success(t('payments.toastOperationReversed'))
     },
     onError: (e: unknown) =>
@@ -151,6 +155,16 @@ export function PaymentOperationDetail() {
   const relatedHref = ledgerPaymentRelatedDocumentHref(op)
   const relatedIsPo = op.type === 'payment_out' && relatedHref
   const noteLocked = op.reversed || !canEditNote
+  const isRegisterOp =
+    op.type === 'register_deposit' || op.type === 'register_withdraw'
+  const opTypeLabel =
+    op.type === 'register_deposit'
+      ? t('people.txRegisterDeposit')
+      : op.type === 'register_withdraw'
+        ? t('people.txRegisterWithdraw')
+        : op.type === 'payment_in'
+          ? t('people.txPaymentIn')
+          : t('people.txPaymentOut')
 
   return (
     <div
@@ -190,7 +204,19 @@ export function PaymentOperationDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="flex items-center gap-2 border-b bg-background px-2 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-b bg-background px-2 py-2">
+        {isRegisterOp && (
+          <Link
+            to="/register"
+            className={cn(
+              buttonVariants({ variant: 'ghost', size: 'sm' }),
+              'gap-2'
+            )}
+          >
+            <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
+            {t('register.backToRegister')}
+          </Link>
+        )}
         <Link
           to="/payments/list"
           className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-2')}
@@ -212,9 +238,7 @@ export function PaymentOperationDetail() {
             {op.reference_number ?? t('payments.paymentOperationUntitled')}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {op.type === 'payment_in'
-              ? t('people.txPaymentIn')
-              : t('people.txPaymentOut')}
+            {opTypeLabel}
             {' · '}
             {new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
               dateStyle: 'medium',
@@ -227,7 +251,11 @@ export function PaymentOperationDetail() {
           <h2 className="text-sm font-medium text-muted-foreground">
             {t('payments.person')}
           </h2>
-          {op.person ? (
+          {isRegisterOp ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t('register.ledgerPartyName')}
+            </p>
+          ) : op.person ? (
             <div className="mt-2">
               <p className="font-medium">{op.person.name}</p>
               {op.person.phone && (

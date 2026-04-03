@@ -30,6 +30,11 @@ export function isRetainedFromCancelledDocumentNote(
  * Route path for reference column: payment operations, orders, or purchase orders.
  */
 export function ledgerReferenceHref(row: LedgerLinkRow): string | null {
+  if (row.type === 'register_deposit' || row.type === 'register_withdraw') {
+    const op = row.ledger_operation_route_id
+    if (op) return `/payments/operations/${op}`
+    return null
+  }
   if (row.type === 'payment_in' || row.type === 'payment_out') {
     const op = row.ledger_operation_route_id
     if (op) return `/payments/operations/${op}`
@@ -87,10 +92,17 @@ export function ledgerReferenceHref(row: LedgerLinkRow): string | null {
 
 /** Order or PO linked to a payment_in / payment_out row, or from retained note ` · doc:{uuid}` suffix. */
 export function ledgerPaymentRelatedDocumentHref(row: {
-  type: 'payment_in' | 'payment_out'
+  type:
+    | 'payment_in'
+    | 'payment_out'
+    | 'register_deposit'
+    | 'register_withdraw'
   reference_id: string | null
   note?: string | null
 }): string | null {
+  if (row.type === 'register_deposit' || row.type === 'register_withdraw') {
+    return null
+  }
   if (row.reference_id) {
     if (row.type === 'payment_out') return `/purchase-orders/${row.reference_id}`
     return `/orders/${row.reference_id}`

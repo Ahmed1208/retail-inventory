@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { ListOrdered, MinusCircle, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -26,10 +27,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
+import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 import {
   depositToRegister,
   getRegisterBalances,
+  ledgerPaymentOperationRouteId,
   listRegisterActivity,
+  type RegisterActivityRow,
   withdrawFromRegister,
 } from '@/services/registerService'
 import type { PaymentMethod } from '@/types'
@@ -37,9 +41,70 @@ import { formatCurrency } from '@/utils/currency'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { cn } from '@/lib/utils'
 
+function RegisterActivityLinks({ row }: { row: RegisterActivityRow }) {
+  const { t } = useTranslation()
+  const links: ReactNode[] = []
+
+  if (row.type === 'payment_in' || row.type === 'payment_out') {
+    const refNum = row.reference_number ?? ''
+    const refId = row.reference_id
+    if (refId && /^O-/i.test(refNum)) {
+      links.push(
+        <Link
+          key="order"
+          to={`/orders/${refId}`}
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {t('register.activityLinkOrder', { ref: refNum })}
+        </Link>
+      )
+    }
+    if (refId && /^PO-/i.test(refNum)) {
+      links.push(
+        <Link
+          key="po"
+          to={`/purchase-orders/${refId}`}
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
+          {t('register.activityLinkPO', { ref: refNum })}
+        </Link>
+      )
+    }
+    const payId = ledgerPaymentOperationRouteId(row)
+    links.push(
+      <Link
+        key="pay"
+        to={`/payments/operations/${payId}`}
+        className="font-medium text-primary underline-offset-4 hover:underline"
+      >
+        {t('register.activityLinkPayment')}
+      </Link>
+    )
+  }
+
+  if (row.type === 'register_deposit' || row.type === 'register_withdraw') {
+    links.push(
+      <Link
+        key="reg"
+        to={`/payments/operations/${row.id}`}
+        className="font-medium text-primary underline-offset-4 hover:underline"
+      >
+        {t('register.activityLinkRegister')}
+      </Link>
+    )
+  }
+
+  if (links.length === 0) return null
+
+  return (
+    <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs">{links}</div>
+  )
+}
+
 export function Register() {
   const { t, i18n } = useTranslation()
   const { isRTL } = useLanguage()
+  const navigate = useNavigate()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const qc = useQueryClient()
   const activityRef = useRef<HTMLDivElement>(null)
@@ -88,8 +153,13 @@ export function Register() {
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
       }),
-    onSuccess: () => {
-      toast.success(t('register.toastDeposited'))
+    onSuccess: (data) => {
+      toast.success(t('register.toastDeposited'), {
+        action: {
+          label: t('register.viewPayment'),
+          onClick: () => navigate(`/payments/operations/${data.id}`),
+        },
+      })
       qc.invalidateQueries({ queryKey: ['registerBalances'] })
       qc.invalidateQueries({ queryKey: ['registerActivity'] })
       qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
@@ -106,8 +176,13 @@ export function Register() {
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
       }),
-    onSuccess: () => {
-      toast.success(t('register.toastWithdrawn'))
+    onSuccess: (data) => {
+      toast.success(t('register.toastWithdrawn'), {
+        action: {
+          label: t('register.viewPayment'),
+          onClick: () => navigate(`/payments/operations/${data.id}`),
+        },
+      })
       qc.invalidateQueries({ queryKey: ['registerBalances'] })
       qc.invalidateQueries({ queryKey: ['registerActivity'] })
       qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
@@ -279,8 +354,13 @@ export function Register() {
                         {row.registerEffect > 0 ? '+' : ''}
                         {fc(row.registerEffect)}
                       </td>
-                      <td className="max-w-[200px] truncate px-3 py-2 text-muted-foreground">
-                        {row.note ?? '—'}
+                      <td className="max-w-[min(24rem,55vw)] min-w-[10rem] px-3 py-2 align-top text-muted-foreground">
+                        <div className="space-y-1 whitespace-normal break-words">
+                          {row.note ? (
+                            <NoteWithDocLinks note={row.note} />
+                          ) : null}
+                          <RegisterActivityLinks row={row} />
+                        </div>
                       </td>
                     </tr>
                   ))

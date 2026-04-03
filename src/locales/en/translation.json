@@ -813,7 +813,13 @@
     "toastWithdrawn": "Withdrawal recorded",
     "toastError": "Something went wrong",
     "loadError": "Could not load register balances.",
-    "ledgerPartyName": "Register"
+    "ledgerPartyName": "Register",
+    "backToRegister": "Back to register",
+    "viewPayment": "View payment",
+    "activityLinkOrder": "Order {{ref}}",
+    "activityLinkPO": "{{ref}}",
+    "activityLinkPayment": "Payment",
+    "activityLinkRegister": "Register movement"
   },
   "reports": {
     "title": "Reports",

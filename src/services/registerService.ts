@@ -6,6 +6,35 @@ import {
 } from '@/services/peopleService'
 import type { BalanceTransaction, PaymentMethod } from '@/types'
 
+/** Route id for `/payments/operations/:id` from a register activity row. */
+export function ledgerPaymentOperationRouteId(
+  tx: Pick<BalanceTransaction, 'type' | 'id' | 'payment_group_id'>
+): string {
+  if (tx.type === 'register_deposit' || tx.type === 'register_withdraw') {
+    return tx.id
+  }
+  if (tx.type === 'payment_in' || tx.type === 'payment_out') {
+    return tx.payment_group_id ?? tx.id
+  }
+  return tx.id
+}
+
+async function fetchBalanceTxIdByReferenceNumber(
+  referenceNumber: string
+): Promise<string> {
+  const { data, error } = await supabase
+    .from(BALANCE_TX)
+    .select('id')
+    .eq('reference_number', referenceNumber)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  const id = (data as { id?: string } | null)?.id
+  if (!id) throw new Error('Could not resolve register transaction')
+  return String(id)
+}
+
 const BALANCE_TX = 'balance_transactions'
 
 /** Per-method running register balance (tender in drawer / accounts). */
@@ -130,28 +159,31 @@ export async function depositToRegister(data: {
   payment_method: PaymentMethod
   amount: number
   note?: string
-}): Promise<void> {
+}): Promise<{ id: string }> {
   const amt = roundMoney(data.amount)
   if (amt < 0.01) throw new Error('Amount must be at least 0.01')
 
+  const ref = nextRegisterRef()
   await insertBalanceTransactionRow({
     person_id: null,
     type: 'register_deposit',
     amount: amt,
     reference_id: null,
-    reference_number: nextRegisterRef(),
+    reference_number: ref,
     note: data.note?.trim() || null,
     payment_method: data.payment_method,
     payment_group_id: null,
     wallet_direction: null,
   })
+  const id = await fetchBalanceTxIdByReferenceNumber(ref)
+  return { id }
 }
 
 export async function withdrawFromRegister(data: {
   payment_method: PaymentMethod
   amount: number
   note?: string
-}): Promise<void> {
+}): Promise<{ id: string }> {
   const amt = roundMoney(data.amount)
   if (amt < 0.01) throw new Error('Amount must be at least 0.01')
 
@@ -163,17 +195,20 @@ export async function withdrawFromRegister(data: {
     )
   }
 
+  const ref = nextRegisterRef()
   await insertBalanceTransactionRow({
     person_id: null,
     type: 'register_withdraw',
     amount: amt,
     reference_id: null,
-    reference_number: nextRegisterRef(),
+    reference_number: ref,
     note: data.note?.trim() || null,
     payment_method: data.payment_method,
     payment_group_id: null,
     wallet_direction: null,
   })
+  const id = await fetchBalanceTxIdByReferenceNumber(ref)
+  return { id }
 }
 
 export type RegisterActivityRow = BalanceTransaction & {

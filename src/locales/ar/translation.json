@@ -813,7 +813,13 @@
     "toastWithdrawn": "تم تسجيل السحب",
     "toastError": "حدث خطأ",
     "loadError": "تعذر تحميل أرصدة الصندوق.",
-    "ledgerPartyName": "الصندوق"
+    "ledgerPartyName": "الصندوق",
+    "backToRegister": "العودة للصندوق",
+    "viewPayment": "عرض الدفعة",
+    "activityLinkOrder": "طلب {{ref}}",
+    "activityLinkPO": "{{ref}}",
+    "activityLinkPayment": "دفعة",
+    "activityLinkRegister": "حركة صندوق"
   },
   "reports": {
     "title": "التقارير",
