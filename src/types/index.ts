@@ -48,6 +48,16 @@ export interface ProductWithRelations extends Omit<Product, 'brand_id' | 'catego
   category: Category | null
 }
 
+/** Append-only snapshot of catalog prices after a change (see product_price_history). */
+export interface ProductPriceHistory {
+  id: string
+  product_id: string
+  recorded_at: string
+  customer_price: number
+  business_price: number
+  cost_price: number
+}
+
 export interface DashboardStats {
   totalProducts: number
   totalValue: number

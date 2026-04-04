@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase'
-import { getPeopleBalanceAggregates } from '@/services/peopleService'
+import { getPeopleBalanceAggregates, roundMoney } from '@/services/peopleService'
 import type {
   Product,
+  ProductPriceHistory,
   ProductWithRelations,
   DashboardStats,
   StockMovementType,
@@ -11,6 +12,54 @@ import type {
 
 const PRODUCTS = 'products'
 const STOCK_MOVEMENTS = 'stock_movements'
+const PRODUCT_PRICE_HISTORY = 'product_price_history'
+
+type PriceTriple = {
+  customer_price: number
+  business_price: number
+  cost_price: number
+}
+
+function pricesDiffer(a: PriceTriple, b: PriceTriple): boolean {
+  return (
+    roundMoney(a.customer_price) !== roundMoney(b.customer_price) ||
+    roundMoney(a.business_price) !== roundMoney(b.business_price) ||
+    roundMoney(a.cost_price) !== roundMoney(b.cost_price)
+  )
+}
+
+async function recordProductPriceSnapshot(
+  productId: string,
+  prices: PriceTriple
+): Promise<void> {
+  const { error } = await supabase.from(PRODUCT_PRICE_HISTORY).insert({
+    product_id: productId,
+    customer_price: prices.customer_price,
+    business_price: prices.business_price,
+    cost_price: prices.cost_price,
+  })
+  if (error) throw error
+}
+
+export async function getProductPriceHistory(
+  productId: string
+): Promise<ProductPriceHistory[]> {
+  const { data, error } = await supabase
+    .from(PRODUCT_PRICE_HISTORY)
+    .select('*')
+    .eq('product_id', productId)
+    .order('recorded_at', { ascending: false })
+
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    product_id: row.product_id as string,
+    recorded_at: String(row.recorded_at),
+    customer_price: Number(row.customer_price),
+    business_price: Number(row.business_price),
+    cost_price: Number(row.cost_price ?? 0),
+  }))
+}
 
 /** Human-readable id when the user leaves the field empty on create. */
 export function generateProductCode(): string {
@@ -134,13 +183,33 @@ export async function createProduct(
     .single()
 
   if (error) throwProductError(error)
-  return inserted as Product
+  const product = inserted as Product
+  await recordProductPriceSnapshot(product.id, {
+    customer_price: Number(product.customer_price),
+    business_price: Number(product.business_price),
+    cost_price: Number(product.cost_price ?? 0),
+  })
+  return product
 }
 
 export async function updateProduct(
   id: string,
   data: Partial<Omit<Product, 'id' | 'created_at'>>
 ): Promise<Product> {
+  const { data: beforeRow, error: beforeErr } = await supabase
+    .from(PRODUCTS)
+    .select('customer_price, business_price, cost_price')
+    .eq('id', id)
+    .single()
+
+  if (beforeErr) throwProductError(beforeErr)
+
+  const beforePrices: PriceTriple = {
+    customer_price: Number(beforeRow.customer_price),
+    business_price: Number(beforeRow.business_price),
+    cost_price: Number(beforeRow.cost_price ?? 0),
+  }
+
   const payload: Record<string, unknown> = {
     ...data,
     updated_at: new Date().toISOString(),
@@ -159,7 +228,16 @@ export async function updateProduct(
     .single()
 
   if (error) throwProductError(error)
-  return updated as Product
+  const product = updated as Product
+  const afterPrices: PriceTriple = {
+    customer_price: Number(product.customer_price),
+    business_price: Number(product.business_price),
+    cost_price: Number(product.cost_price ?? 0),
+  }
+  if (pricesDiffer(beforePrices, afterPrices)) {
+    await recordProductPriceSnapshot(id, afterPrices)
+  }
+  return product
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -254,6 +332,10 @@ export type StockMovementFilters = {
   from?: string
   to?: string
   search?: string
+  /** When set, only movements for this product */
+  productId?: string
+  /** Max rows (applied after filters); omit for no limit */
+  limit?: number
 }
 
 function toMovementWithDetails(row: {
@@ -291,6 +373,9 @@ export async function getStockMovements(
   if (filters?.type) {
     query = query.eq('type', filters.type)
   }
+  if (filters?.productId) {
+    query = query.eq('product_id', filters.productId)
+  }
   if (filters?.from) {
     query = query.gte('created_at', filters.from)
   }
@@ -298,6 +383,9 @@ export async function getStockMovements(
     const toEnd = new Date(filters.to)
     toEnd.setHours(23, 59, 59, 999)
     query = query.lte('created_at', toEnd.toISOString())
+  }
+  if (filters?.limit != null && filters.limit > 0) {
+    query = query.limit(filters.limit)
   }
 
   const { data, error } = await query

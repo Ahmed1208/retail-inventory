@@ -6,6 +6,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { FeatureControlProvider } from '@/context/FeatureControlContext'
 import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
+import { ProductDetail } from '@/pages/ProductDetail'
 import { StockMovements } from '@/pages/StockMovements'
 import { Orders } from '@/pages/Orders'
 import { OrdersHome } from '@/pages/OrdersHome'
@@ -41,6 +42,7 @@ function App() {
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/inventory" element={<InventoryHub />} />
+            <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/products" element={<Products />} />
             <Route
               path="/movements"
