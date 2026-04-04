@@ -62,6 +62,10 @@ function toPurchaseOrderWithItems(row: {
     total_price: number
     previous_cost_price: number | null
     cost_price_updated: boolean
+    catalog_customer_price?: number | null
+    catalog_business_price?: number | null
+    previous_customer_price?: number | null
+    previous_business_price?: number | null
     created_at: string
     product: Product
   }>
@@ -89,6 +93,22 @@ function toPurchaseOrderWithItems(row: {
       total_price: poi.total_price,
       previous_cost_price: poi.previous_cost_price,
       cost_price_updated: poi.cost_price_updated,
+      catalog_customer_price:
+        poi.catalog_customer_price != null
+          ? Number(poi.catalog_customer_price)
+          : null,
+      catalog_business_price:
+        poi.catalog_business_price != null
+          ? Number(poi.catalog_business_price)
+          : null,
+      previous_customer_price:
+        poi.previous_customer_price != null
+          ? Number(poi.previous_customer_price)
+          : null,
+      previous_business_price:
+        poi.previous_business_price != null
+          ? Number(poi.previous_business_price)
+          : null,
       created_at: poi.created_at,
       product: poi.product,
     })
@@ -306,6 +326,9 @@ export async function createPurchaseOrder(data: {
     quantity: number
     cost_price: number
     update_default_cost_price: boolean
+    /** When set with catalog_business_price, receive updates retail + wholesale + cost on the product. */
+    catalog_customer_price?: number | null
+    catalog_business_price?: number | null
   }[]
   /** Save as draft: no stock, ledger, or payments until confirmed. */
   asDraft?: boolean
@@ -334,12 +357,22 @@ export async function createPurchaseOrder(data: {
     throw new Error('Selected person must have the supplier role')
   }
 
-  // 1. For each item, fetch current product cost_price as previous_cost_price
-  const productCosts = new Map<string, number>()
+  // 1. Snapshot catalog prices per product (for previous_* on lines and rollback)
+  type ProductPriceSnap = {
+    cost: number
+    customer: number
+    business: number
+  }
+  const productSnap = new Map<string, ProductPriceSnap>()
   for (const item of data.items) {
+    if (productSnap.has(item.product_id)) continue
     const product = await getProductById(item.product_id)
     if (!product) throw new Error(`Product not found: ${item.product_id}`)
-    productCosts.set(item.product_id, product.cost_price)
+    productSnap.set(item.product_id, {
+      cost: product.cost_price,
+      customer: product.customer_price,
+      business: product.business_price,
+    })
   }
 
   // 2. Calculate total_amount
@@ -434,15 +467,30 @@ export async function createPurchaseOrder(data: {
     total_price: number
     previous_cost_price: number | null
     cost_price_updated: boolean
-  }> = data.items.map((item) => ({
-    purchase_order_id: orderId,
-    product_id: item.product_id,
-    quantity: item.quantity,
-    cost_price: item.cost_price,
-    total_price: item.quantity * item.cost_price,
-    previous_cost_price: productCosts.get(item.product_id) ?? null,
-    cost_price_updated: item.update_default_cost_price,
-  }))
+    catalog_customer_price: number | null
+    catalog_business_price: number | null
+    previous_customer_price: number | null
+    previous_business_price: number | null
+  }> = data.items.map((item) => {
+    const snap = productSnap.get(item.product_id)!
+    const fullCatalog =
+      item.update_default_cost_price &&
+      item.catalog_customer_price != null &&
+      item.catalog_business_price != null
+    return {
+      purchase_order_id: orderId,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      total_price: item.quantity * item.cost_price,
+      previous_cost_price: snap.cost,
+      previous_customer_price: snap.customer,
+      previous_business_price: snap.business,
+      cost_price_updated: item.update_default_cost_price,
+      catalog_customer_price: fullCatalog ? item.catalog_customer_price! : null,
+      catalog_business_price: fullCatalog ? item.catalog_business_price! : null,
+    }
+  })
 
   const { error: itemsError } = await supabase
     .from(PURCHASE_ORDER_ITEMS)
@@ -458,7 +506,19 @@ export async function createPurchaseOrder(data: {
 
     for (const item of data.items) {
       if (item.update_default_cost_price) {
-        await updateProduct(item.product_id, { cost_price: item.cost_price })
+        const full =
+          item.catalog_customer_price != null &&
+          item.catalog_business_price != null
+        await updateProduct(
+          item.product_id,
+          full
+            ? {
+                cost_price: item.cost_price,
+                customer_price: item.catalog_customer_price!,
+                business_price: item.catalog_business_price!,
+              }
+            : { cost_price: item.cost_price }
+        )
       }
     }
 
@@ -548,7 +608,19 @@ export async function confirmPurchaseOrder(
 
   for (const item of order.items) {
     if (item.cost_price_updated) {
-      await updateProduct(item.product_id, { cost_price: item.cost_price })
+      const full =
+        item.catalog_customer_price != null &&
+        item.catalog_business_price != null
+      await updateProduct(
+        item.product_id,
+        full
+          ? {
+              cost_price: item.cost_price,
+              customer_price: item.catalog_customer_price!,
+              business_price: item.catalog_business_price!,
+            }
+          : { cost_price: item.cost_price }
+      )
     }
   }
 
@@ -760,7 +832,19 @@ export async function cancelPurchaseOrder(
   }
 
   for (const item of order.items) {
-    if (item.cost_price_updated && item.previous_cost_price != null) {
+    if (!item.cost_price_updated || item.previous_cost_price == null) continue
+    const full =
+      item.catalog_customer_price != null &&
+      item.catalog_business_price != null &&
+      item.previous_customer_price != null &&
+      item.previous_business_price != null
+    if (full) {
+      await updateProduct(item.product_id, {
+        cost_price: item.previous_cost_price,
+        customer_price: item.previous_customer_price!,
+        business_price: item.previous_business_price!,
+      })
+    } else {
       await updateProduct(item.product_id, {
         cost_price: item.previous_cost_price,
       })

@@ -59,6 +59,7 @@ export const FEATURE_CONTROL_IDS = [
   // Purchase orders
   'purchaseOrders.hubList',
   'purchaseOrders.create',
+  'purchaseOrders.costOverridePriceDialog',
   'purchaseOrders.confirmReceive',
   'purchaseOrders.cancel',
   'purchaseOrders.editNote',
@@ -492,6 +493,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.purchaseOrders.create.title',
             descriptionKey: 'control.purchaseOrders.create.desc',
+          },
+          {
+            id: 'purchaseOrders.costOverridePriceDialog',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.costOverridePriceDialog.title',
+            descriptionKey: 'control.purchaseOrders.costOverridePriceDialog.desc',
           },
           {
             id: 'purchaseOrders.confirmReceive',

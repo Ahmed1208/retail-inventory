@@ -3,6 +3,8 @@ import type { ProductWithRelations } from '@/types'
 
 const PRICE_EPS = 0.005
 
+export type PoCostOverrideChoice = 'unset' | 'once' | 'catalog'
+
 /** Purchase order line — same grid model as POS (minus line discount %). */
 export type POLineRow = {
   key: string
@@ -14,10 +16,17 @@ export type POLineRow = {
   costPrice: number
   /** Product catalog cost_price when line was resolved */
   listCostPrice: number
+  listCustomerPrice: number
+  listBusinessPrice: number
   costOverridden: boolean
   stock: number
-  /** When cost differs from catalog, optionally update product default cost on save */
+  /** When cost differs from catalog, optionally update product default cost on save (legacy checkbox path) */
   updateDefaultCostPrice: boolean
+  /** When feature dialog is on: user must choose once vs catalog before submit */
+  costOverrideChoice: PoCostOverrideChoice
+  /** Target catalog retail/wholesale when choice === 'catalog' */
+  catalogCustomerPrice: number | null
+  catalogBusinessPrice: number | null
   lookupInvalid?: boolean
 }
 
@@ -30,9 +39,14 @@ export function emptyPOLine(): POLineRow {
     qty: 1,
     costPrice: 0,
     listCostPrice: 0,
+    listCustomerPrice: 0,
+    listBusinessPrice: 0,
     costOverridden: false,
     stock: 0,
     updateDefaultCostPrice: false,
+    costOverrideChoice: 'unset',
+    catalogCustomerPrice: null,
+    catalogBusinessPrice: null,
   }
 }
 
@@ -48,7 +62,19 @@ export function costDiffersFromList(line: POLineRow): boolean {
   )
 }
 
-/** Focusable cells: id, name, stock, qty, cost, line total (6) */
+/** Amber cost warning: hide when user chose full catalog update (prices apply on PO receive). */
+export function costCellShowsDiffWarning(
+  line: POLineRow,
+  useCostOverrideDialog: boolean
+): boolean {
+  if (!costDiffersFromList(line)) return false
+  if (useCostOverrideDialog && line.costOverrideChoice === 'catalog') {
+    return false
+  }
+  return true
+}
+
+/** Focusable cells: id, name, stock, qty, cost+btn, line total (6) */
 export const PO_LINE_CELL_COLS = 6 as const
 
 /** Grid: # · ID · name · stock · qty · cost+btn · total · delete */
@@ -64,10 +90,15 @@ export function applyProductCostDefaults(
   | 'name'
   | 'costPrice'
   | 'listCostPrice'
+  | 'listCustomerPrice'
+  | 'listBusinessPrice'
   | 'costOverridden'
   | 'stock'
   | 'lookupInvalid'
   | 'updateDefaultCostPrice'
+  | 'costOverrideChoice'
+  | 'catalogCustomerPrice'
+  | 'catalogBusinessPrice'
 > {
   const c = p.cost_price
   return {
@@ -76,9 +107,48 @@ export function applyProductCostDefaults(
     name: p.name,
     costPrice: c,
     listCostPrice: c,
+    listCustomerPrice: p.customer_price,
+    listBusinessPrice: p.business_price,
     costOverridden: false,
     stock: p.quantity,
     lookupInvalid: false,
     updateDefaultCostPrice: false,
+    costOverrideChoice: 'unset',
+    catalogCustomerPrice: null,
+    catalogBusinessPrice: null,
+  }
+}
+
+/** Partial patch applied when clearing product from line (lookup empty / not found). */
+export function clearedProductLinePatch(): Pick<
+  POLineRow,
+  | 'product_id'
+  | 'name'
+  | 'costPrice'
+  | 'listCostPrice'
+  | 'listCustomerPrice'
+  | 'listBusinessPrice'
+  | 'costOverridden'
+  | 'stock'
+  | 'lookupInvalid'
+  | 'updateDefaultCostPrice'
+  | 'costOverrideChoice'
+  | 'catalogCustomerPrice'
+  | 'catalogBusinessPrice'
+> {
+  return {
+    product_id: '',
+    name: '',
+    costPrice: 0,
+    listCostPrice: 0,
+    listCustomerPrice: 0,
+    listBusinessPrice: 0,
+    costOverridden: false,
+    stock: 0,
+    lookupInvalid: false,
+    updateDefaultCostPrice: false,
+    costOverrideChoice: 'unset',
+    catalogCustomerPrice: null,
+    catalogBusinessPrice: null,
   }
 }

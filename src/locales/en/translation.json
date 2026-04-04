@@ -329,6 +329,10 @@
         "title": "Create purchase order",
         "desc": "Shows the new purchase order shortcut and enables the full-page create flow (supplier picker, product browser, lines, payments)."
       },
+      "costOverridePriceDialog": {
+        "title": "Cost override confirmation (new PO)",
+        "desc": "When a line cost differs from the catalog default, shows a dialog to choose “allow once” or update catalog prices (cost, retail, wholesale). When off, uses the inline checkbox to update default cost only."
+      },
       "confirmReceive": {
         "title": "Confirm / receive draft PO",
         "desc": "Shows the button on a draft purchase order to confirm receipt, enter supplier payments, and post stock."
@@ -717,6 +721,16 @@
     "remove": "Remove",
     "costPriceDiffWarning": "Cost price differs from default (default: {{default}}). Update default price?",
     "updateDefaultCostPrice": "Yes, update default cost price for this product",
+    "costOverrideTitle": "Cost differs from catalog",
+    "costOverrideBody": "Line \"{{name}}\" uses a unit cost that differs from the catalog default ({{listCost}}). Use this cost for this purchase order only, or update catalog prices (cost, customer, and business).",
+    "costOverrideAllowOnce": "Allow once",
+    "costOverrideUpdateCatalog": "Update catalog prices",
+    "costOverrideBlurHint": "Leave the cost field (blur) to choose how to handle the difference, or restore the catalog cost.",
+    "costOverrideUnsetError": "For each line where cost differs from catalog, leave the cost field or choose “Allow once” or “Update catalog prices”.",
+    "catalogPricesTitle": "Update catalog prices",
+    "catalogPricesHint": "These values will be saved on the product when the purchase order is received.",
+    "catalogPricesBack": "Back",
+    "originalPriceDisabledCatalog": "Restore is disabled: you chose to update catalog prices when this purchase order is received.",
     "runningTotal": "Total",
     "validationAtLeastOne": "Add at least one product",
     "validationSupplierRequired": "Select a supplier from your directory before checkout.",

@@ -36,11 +36,18 @@ import {
 } from '@/components/orders/ordersShared'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PoLineRow } from '@/components/purchaseOrders/PoLineRow'
+import { PoCostOverrideDialog } from '@/components/purchaseOrders/PoCostOverrideDialog'
+import {
+  PoCatalogPricesDialog,
+  type PoCatalogPricesValues,
+} from '@/components/purchaseOrders/PoCatalogPricesDialog'
 import {
   type POLineRow,
   PO_LINE_CELL_COLS,
   PO_TABLE_GRID,
   applyProductCostDefaults,
+  clearedProductLinePatch,
+  costDiffersFromList,
   emptyPOLine,
   poLineTotal,
 } from '@/components/purchaseOrders/poLineShared'
@@ -61,6 +68,9 @@ export function PurchaseOrderForm() {
   const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
   const canCheckout = useFeatureEnabled('orders.posCheckout')
   const canAddPerson = useFeatureEnabled('people.addPerson')
+  const useCostOverrideDialog = useFeatureEnabled(
+    'purchaseOrders.costOverridePriceDialog'
+  )
 
   const [selectedSupplier, setSelectedSupplier] = useState<Person | null>(null)
   const [supplierBrowserOpen, setSupplierBrowserOpen] = useState(false)
@@ -71,6 +81,12 @@ export function PurchaseOrderForm() {
     string | null
   >(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [costOverrideLineKey, setCostOverrideLineKey] = useState<string | null>(
+    null
+  )
+  const [catalogPricesLineKey, setCatalogPricesLineKey] = useState<
+    string | null
+  >(null)
   const [note, setNote] = useState('')
   const [payUse, setPayUse] = useState<Record<PaymentMethod, boolean>>({
     cash: false,
@@ -178,14 +194,8 @@ export function PurchaseOrderForm() {
             r.key === lineKey
               ? {
                   ...r,
-                  product_id: '',
-                  name: '',
-                  costPrice: 0,
-                  listCostPrice: 0,
-                  costOverridden: false,
-                  stock: 0,
+                  ...clearedProductLinePatch(),
                   lookupInvalid: false,
-                  updateDefaultCostPrice: false,
                 }
               : r
           )
@@ -211,14 +221,8 @@ export function PurchaseOrderForm() {
           r.key === lineKey
             ? {
                 ...r,
-                product_id: '',
-                name: '',
-                costPrice: 0,
-                listCostPrice: 0,
-                costOverridden: false,
-                stock: 0,
+                ...clearedProductLinePatch(),
                 lookupInvalid: true,
-                updateDefaultCostPrice: false,
               }
             : r
         )
@@ -237,6 +241,8 @@ export function PurchaseOrderForm() {
         return {
           ...l,
           listCostPrice: list,
+          listCustomerPrice: p.customer_price,
+          listBusinessPrice: p.business_price,
           stock: p.quantity,
           costPrice: l.costOverridden ? l.costPrice : list,
         }
@@ -291,6 +297,8 @@ export function PurchaseOrderForm() {
   )
 
   const removeLine = useCallback((key: string, rowIndex: number) => {
+    setCostOverrideLineKey((k) => (k === key ? null : k))
+    setCatalogPricesLineKey((k) => (k === key ? null : k))
     setLines((prev) => {
       if (prev.length <= 1) return [emptyPOLine()]
       const next = prev.filter((r) => r.key !== key)
@@ -300,6 +308,123 @@ export function PurchaseOrderForm() {
       rowIndex > 0 ? { row: rowIndex - 1, col: 0 } : { row: 0, col: 0 }
     )
   }, [])
+
+  const linesToApiItems = useCallback(() => {
+    return lines
+      .filter((l) => l.product_id)
+      .map((l) => {
+        const updateCatalog = useCostOverrideDialog
+          ? l.costOverrideChoice === 'catalog'
+          : l.updateDefaultCostPrice
+        const base = {
+          product_id: l.product_id,
+          quantity: l.qty,
+          cost_price: l.costPrice,
+          update_default_cost_price: updateCatalog,
+        }
+        if (
+          useCostOverrideDialog &&
+          l.costOverrideChoice === 'catalog' &&
+          l.catalogCustomerPrice != null &&
+          l.catalogBusinessPrice != null
+        ) {
+          return {
+            ...base,
+            catalog_customer_price: l.catalogCustomerPrice,
+            catalog_business_price: l.catalogBusinessPrice,
+          }
+        }
+        return base
+      })
+  }, [lines, useCostOverrideDialog])
+
+  const hasUnsetCostOverride = useMemo(
+    () =>
+      useCostOverrideDialog &&
+      lines.some(
+        (l) =>
+          Boolean(l.product_id) &&
+          costDiffersFromList(l) &&
+          l.costOverrideChoice === 'unset'
+      ),
+    [lines, useCostOverrideDialog]
+  )
+
+  const costOverrideLine = useMemo(
+    () => lines.find((l) => l.key === costOverrideLineKey) ?? null,
+    [lines, costOverrideLineKey]
+  )
+
+  const catalogPricesLine = useMemo(
+    () => lines.find((l) => l.key === catalogPricesLineKey) ?? null,
+    [lines, catalogPricesLineKey]
+  )
+
+  const handleAllowCostOnce = useCallback(() => {
+    if (!costOverrideLineKey) return
+    const rowIndex = lines.findIndex((l) => l.key === costOverrideLineKey)
+    flushSync(() => {
+      setLines((prev) =>
+        prev.map((r) =>
+          r.key === costOverrideLineKey
+            ? {
+                ...r,
+                costOverrideChoice: 'once',
+                updateDefaultCostPrice: false,
+                catalogCustomerPrice: null,
+                catalogBusinessPrice: null,
+              }
+            : r
+        )
+      )
+      setCostOverrideLineKey(null)
+    })
+    if (rowIndex >= 0) {
+      setFocusCellPos({ row: rowIndex, col: 5 })
+    }
+  }, [costOverrideLineKey, lines])
+
+  const handleOpenCatalogFromChoice = useCallback(() => {
+    if (!costOverrideLineKey) return
+    setCatalogPricesLineKey(costOverrideLineKey)
+    setCostOverrideLineKey(null)
+  }, [costOverrideLineKey])
+
+  const handleCatalogPricesConfirm = useCallback(
+    (v: PoCatalogPricesValues) => {
+      if (!catalogPricesLineKey) return
+      const rowIndex = lines.findIndex((l) => l.key === catalogPricesLineKey)
+      flushSync(() => {
+        setLines((prev) =>
+          prev.map((r) =>
+            r.key === catalogPricesLineKey
+              ? {
+                  ...r,
+                  costPrice: v.costPrice,
+                  costOverridden:
+                    Math.abs(v.costPrice - r.listCostPrice) > 0.005,
+                  costOverrideChoice: 'catalog',
+                  updateDefaultCostPrice: true,
+                  catalogCustomerPrice: v.customerPrice,
+                  catalogBusinessPrice: v.businessPrice,
+                }
+              : r
+          )
+        )
+        setCatalogPricesLineKey(null)
+      })
+      if (rowIndex >= 0) {
+        setFocusCellPos({ row: rowIndex, col: 5 })
+      }
+    },
+    [catalogPricesLineKey, lines]
+  )
+
+  const handleCatalogPricesBack = useCallback(() => {
+    if (!catalogPricesLineKey) return
+    setCostOverrideLineKey(catalogPricesLineKey)
+    setCatalogPricesLineKey(null)
+  }, [catalogPricesLineKey])
 
   const duplicateProductIds = useMemo(() => {
     const m = new Map<string, number>()
@@ -482,18 +607,12 @@ export function PurchaseOrderForm() {
 
   const saveDraftMut = useMutation({
     mutationFn: async () => {
-      const items = lines.filter((l) => l.product_id)
       return createPurchaseOrder({
         supplier_name: selectedSupplier?.name,
         person_id: selectedSupplier?.id,
         note: note.trim() || undefined,
         asDraft: true,
-        items: items.map((l) => ({
-          product_id: l.product_id,
-          quantity: l.qty,
-          cost_price: l.costPrice,
-          update_default_cost_price: l.updateDefaultCostPrice,
-        })),
+        items: linesToApiItems(),
       })
     },
     onSuccess: (created) => {
@@ -525,6 +644,10 @@ export function PurchaseOrderForm() {
       toast.error(t('purchaseOrders.validationSupplierRequired'))
       return
     }
+    if (hasUnsetCostOverride) {
+      toast.error(t('purchaseOrders.costOverrideUnsetError'))
+      return
+    }
     if (!validateLines()) return
     saveDraftMut.mutate()
   }
@@ -536,7 +659,9 @@ export function PurchaseOrderForm() {
         supplierBrowserOpen ||
         productBrowserOpen ||
         checkoutOpen ||
-        saveDraftMut.isPending
+        saveDraftMut.isPending ||
+        costOverrideLineKey ||
+        catalogPricesLineKey
       )
         return
       e.preventDefault()
@@ -561,6 +686,8 @@ export function PurchaseOrderForm() {
     lines,
     focusCellPos.row,
     saveDraftMut.isPending,
+    costOverrideLineKey,
+    catalogPricesLineKey,
   ])
 
   const openCheckout = () => {
@@ -572,6 +699,10 @@ export function PurchaseOrderForm() {
       toast.error(t('purchaseOrders.validationSupplierRequired'))
       return
     }
+    if (hasUnsetCostOverride) {
+      toast.error(t('purchaseOrders.costOverrideUnsetError'))
+      return
+    }
     if (!validateLines()) return
     setCheckoutOpen(true)
   }
@@ -581,19 +712,13 @@ export function PurchaseOrderForm() {
     setSubmitting(true)
     try {
       const payments = buildPaymentsPayload()
-      const items = lines.filter((l) => l.product_id)
       const created = await createPurchaseOrder({
         supplier_name: selectedSupplier?.name,
         person_id: selectedSupplier?.id,
         note: note.trim() || undefined,
         allow_remaining_on_account: allowRemaining,
         payments,
-        items: items.map((l) => ({
-          product_id: l.product_id,
-          quantity: l.qty,
-          cost_price: l.costPrice,
-          update_default_cost_price: l.updateDefaultCostPrice,
-        })),
+        items: linesToApiItems(),
       })
       invalidatePO()
       toast.success(t('purchaseOrders.toastCreated'))
@@ -622,6 +747,34 @@ export function PurchaseOrderForm() {
       )}
       dir={isRTL ? 'rtl' : 'ltr'}
     >
+      <PoCostOverrideDialog
+        open={Boolean(costOverrideLineKey && costOverrideLine)}
+        onOpenChange={(open) => {
+          if (!open) setCostOverrideLineKey(null)
+        }}
+        productName={costOverrideLine?.name ?? ''}
+        listCostLabel={costOverrideLine ? fc(costOverrideLine.listCostPrice) : ''}
+        onAllowOnce={handleAllowCostOnce}
+        onUpdateCatalog={handleOpenCatalogFromChoice}
+      />
+      <PoCatalogPricesDialog
+        open={Boolean(catalogPricesLineKey && catalogPricesLine)}
+        onOpenChange={(open) => {
+          if (!open) setCatalogPricesLineKey(null)
+        }}
+        initial={
+          catalogPricesLine
+            ? {
+                costPrice: catalogPricesLine.costPrice,
+                customerPrice: catalogPricesLine.listCustomerPrice,
+                businessPrice: catalogPricesLine.listBusinessPrice,
+              }
+            : { costPrice: 0, customerPrice: 0, businessPrice: 0 }
+        }
+        onConfirm={handleCatalogPricesConfirm}
+        onBack={handleCatalogPricesBack}
+      />
+
       <SupplierBrowserModal
         open={supplierBrowserOpen}
         onOpenChange={setSupplierBrowserOpen}
@@ -725,7 +878,9 @@ export function PurchaseOrderForm() {
                 supplierBrowserOpen ||
                 productBrowserOpen ||
                 checkoutOpen ||
-                saveDraftMut.isPending
+                saveDraftMut.isPending ||
+                costOverrideLineKey ||
+                catalogPricesLineKey
               )
                 return
               setSupplierBrowserOpen(true)
@@ -839,6 +994,10 @@ export function PurchaseOrderForm() {
                   }}
                   onBackspaceEmpty={() => removeLine(line.key, idx)}
                   onFocusCell={(col) => setFocusCellPos({ row: idx, col })}
+                  useCostOverrideDialog={useCostOverrideDialog}
+                  onRequestCostOverride={(lineKey) =>
+                    setCostOverrideLineKey(lineKey)
+                  }
                 />
               ))}
             </div>

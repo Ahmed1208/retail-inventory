@@ -37,6 +37,8 @@ import { getAllBrands as getBrands } from '@/services/brandService'
 import { ProductFormDialog } from '@/components/products/ProductFormDialog'
 import { ProductStockAdjustDialog } from '@/components/products/ProductStockAdjustDialog'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { PRODUCT_PRICE_CHART_STROKES } from '@/constants/productPriceChart'
+import { useDocumentDarkClass } from '@/hooks/useDocumentDarkClass'
 function priceRowDelta(
   current: number,
   older: number | undefined,
@@ -89,6 +91,10 @@ export function ProductDetail() {
   const { isRTL } = useLanguage()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const fc = (n: number) => formatCurrency(n, lang)
+  const isDark = useDocumentDarkClass()
+  const businessStroke = isDark
+    ? PRODUCT_PRICE_CHART_STROKES.businessDark
+    : PRODUCT_PRICE_CHART_STROKES.businessLight
   const [dateRange, setDateRange] = useState(defaultDateRange)
   const [editOpen, setEditOpen] = useState(false)
   const [stockOpen, setStockOpen] = useState(false)
@@ -360,7 +366,10 @@ export function ProductDetail() {
                   />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
-                    formatter={(value) => fc(Number(value ?? 0))}
+                    formatter={(value, name) => [
+                      fc(Number(value ?? 0)),
+                      name,
+                    ]}
                     labelFormatter={(_, payload) =>
                       payload?.[0]?.payload?.at
                         ? new Intl.DateTimeFormat(
@@ -373,17 +382,9 @@ export function ProductDetail() {
                   <Legend />
                   <Line
                     type="monotone"
-                    dataKey="customer"
-                    name={t('products.legendCustomerPrice')}
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                  <Line
-                    type="monotone"
                     dataKey="business"
                     name={t('products.legendBusinessPrice')}
-                    stroke="hsl(199 89% 48%)"
+                    stroke={businessStroke}
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />
@@ -391,7 +392,15 @@ export function ProductDetail() {
                     type="monotone"
                     dataKey="cost"
                     name={t('products.legendCostPrice')}
-                    stroke="hsl(142 76% 36%)"
+                    stroke={PRODUCT_PRICE_CHART_STROKES.cost}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="customer"
+                    name={t('products.legendCustomerPrice')}
+                    stroke={PRODUCT_PRICE_CHART_STROKES.customer}
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />

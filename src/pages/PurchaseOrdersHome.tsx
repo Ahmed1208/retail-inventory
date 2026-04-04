@@ -5,6 +5,7 @@ import { List, Plus } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
 
 export function PurchaseOrdersHome() {
   const { t } = useTranslation()
@@ -48,6 +49,7 @@ export function PurchaseOrdersHome() {
 
   return (
     <div className="space-y-6">
+      <BackToInventoryLink />
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
           {t('purchaseOrders.title')}

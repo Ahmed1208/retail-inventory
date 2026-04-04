@@ -227,6 +227,12 @@ export interface PurchaseOrderItem {
   total_price: number
   previous_cost_price: number | null
   cost_price_updated: boolean
+  /** When set with catalog_business_price and cost_price_updated, receive updates all three catalog prices. */
+  catalog_customer_price: number | null
+  catalog_business_price: number | null
+  /** Product snapshot at PO line insert for cancel rollback. */
+  previous_customer_price: number | null
+  previous_business_price: number | null
   created_at: string
 }
 

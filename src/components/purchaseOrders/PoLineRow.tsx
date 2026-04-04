@@ -10,6 +10,8 @@ import {
   PO_TABLE_GRID,
   poLineTotal,
   costDiffersFromList,
+  costCellShowsDiffWarning,
+  clearedProductLinePatch,
 } from '@/components/purchaseOrders/poLineShared'
 import type { TFn } from '@/components/orders/ordersShared'
 
@@ -40,6 +42,9 @@ type Props = {
   onOpenBrowser: () => void
   onBackspaceEmpty: () => void
   onFocusCell: (col: number) => void
+  /** When true, cost blur may open override dialog; inline checkbox row hidden. */
+  useCostOverrideDialog: boolean
+  onRequestCostOverride: (lineKey: string) => void
 }
 
 export function PoLineRow({
@@ -58,6 +63,8 @@ export function PoLineRow({
   onOpenBrowser,
   onBackspaceEmpty,
   onFocusCell,
+  useCostOverrideDialog,
+  onRequestCostOverride,
 }: Props) {
   const debouncedInput = useDebouncedValue(line.productIdInput, 300)
 
@@ -76,6 +83,9 @@ export function PoLineRow({
     dup && 'bg-amber-50/80 dark:bg-amber-950/20',
     isRowFocused && 'bg-sky-50/60 dark:bg-sky-950/20'
   )
+
+  const clearPatch = clearedProductLinePatch()
+  const showCostWarning = costCellShowsDiffWarning(line, useCostOverrideDialog)
 
   return (
     <>
@@ -96,14 +106,8 @@ export function PoLineRow({
             onChange={(e) =>
               onChange({
                 productIdInput: e.target.value,
-                product_id: '',
-                name: '',
-                costPrice: 0,
-                listCostPrice: 0,
-                costOverridden: false,
-                stock: 0,
+                ...clearPatch,
                 lookupInvalid: false,
-                updateDefaultCostPrice: false,
               })
             }
             onFocus={() => onFocusCell(0)}
@@ -180,14 +184,12 @@ export function PoLineRow({
             min={0}
             step="0.01"
             title={
-              costDiffersFromList(line)
-                ? t('orders.priceModifiedWarning')
-                : undefined
+              showCostWarning ? t('orders.priceModifiedWarning') : undefined
             }
             className={cn(
               focusRing(focusedCol === 4),
               'min-w-0 flex-1 px-1',
-              costDiffersFromList(line) &&
+              showCostWarning &&
                 'border-amber-500/80 ring-1 ring-amber-500/40'
             )}
             value={line.costPrice}
@@ -199,10 +201,23 @@ export function PoLineRow({
               onChange({
                 costPrice: v,
                 costOverridden: overridden,
-                updateDefaultCostPrice: overridden
-                  ? line.updateDefaultCostPrice
-                  : false,
+                costOverrideChoice: 'unset',
+                catalogCustomerPrice: null,
+                catalogBusinessPrice: null,
+                updateDefaultCostPrice:
+                  overridden && !useCostOverrideDialog
+                    ? line.updateDefaultCostPrice
+                    : false,
               })
+            }}
+            onBlur={() => {
+              if (
+                useCostOverrideDialog &&
+                costDiffersFromList(line) &&
+                line.costOverrideChoice === 'unset'
+              ) {
+                onRequestCostOverride(line.key)
+              }
             }}
             onFocus={() => onFocusCell(4)}
             onKeyDown={(e) => onGridKeyDown(e, rowIndex, 4, line.key)}
@@ -213,13 +228,24 @@ export function PoLineRow({
             size="sm"
             tabIndex={-1}
             className="h-7 shrink-0 px-1 py-0 text-[10px] font-normal leading-tight"
-            disabled={!line.product_id || !costDiffersFromList(line)}
-            title={t('orders.restoreCatalogPrice')}
+            disabled={
+              !line.product_id ||
+              !costDiffersFromList(line) ||
+              (useCostOverrideDialog && line.costOverrideChoice === 'catalog')
+            }
+            title={
+              useCostOverrideDialog && line.costOverrideChoice === 'catalog'
+                ? t('purchaseOrders.originalPriceDisabledCatalog')
+                : t('orders.restoreCatalogPrice')
+            }
             onClick={() =>
               onChange({
                 costPrice: line.listCostPrice,
                 costOverridden: false,
                 updateDefaultCostPrice: false,
+                costOverrideChoice: 'unset',
+                catalogCustomerPrice: null,
+                catalogBusinessPrice: null,
               })
             }
           >
@@ -249,7 +275,7 @@ export function PoLineRow({
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
-      {costDiffersFromList(line) && (
+      {costDiffersFromList(line) && !useCostOverrideDialog && (
         <div
           className={cn(
             'grid border-b border-border/50 bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/20 dark:text-amber-200 sm:px-3',
@@ -276,6 +302,20 @@ export function PoLineRow({
           </div>
         </div>
       )}
+      {useCostOverrideDialog &&
+        costDiffersFromList(line) &&
+        line.costOverrideChoice === 'unset' && (
+          <div
+            className={cn(
+              'grid border-b border-border/50 bg-amber-50/80 px-2 py-1 text-[11px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100 sm:px-3',
+              PO_TABLE_GRID
+            )}
+          >
+            <div className="col-span-full">
+              {t('purchaseOrders.costOverrideBlurHint')}
+            </div>
+          </div>
+        )}
     </>
   )
 }
