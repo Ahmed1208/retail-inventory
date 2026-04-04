@@ -146,8 +146,8 @@ export function Products() {
         header: t('categories.title'),
       },
       {
-        accessorKey: 'customer_price',
-        header: t('products.customerPrice'),
+        accessorKey: 'cost_price',
+        header: t('products.costPrice'),
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
@@ -156,8 +156,8 @@ export function Products() {
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
-        accessorKey: 'cost_price',
-        header: t('products.costPrice'),
+        accessorKey: 'customer_price',
+        header: t('products.customerPrice'),
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
