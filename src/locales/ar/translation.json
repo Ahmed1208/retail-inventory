@@ -472,7 +472,15 @@
     "priceHistoryColCostShort": "تكلفة",
     "legendCustomerPrice": "سعر التجزئة",
     "legendBusinessPrice": "سعر الجملة",
-    "legendCostPrice": "سعر التكلفة"
+    "legendCostPrice": "سعر التكلفة",
+    "averageUnitCost": "متوسط تكلفة الوحدة (متوسط مرجح)",
+    "averageUnitCostHint": "متوسط مرجح لتكاليف استلام المخزون. يُحدَّث عند استلام أمر شراء أو إدخال مخزون بسعر التكلفة في الكتالوج.",
+    "grossMarginRetail": "ربح إجمالي (مبيعات تجزئة)",
+    "grossMarginWholesale": "ربح إجمالي (مبيعات جملة)",
+    "grossProfitSoldHint": "من الطلبات المكتملة فقط: إيراد السطور ناقص الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). يُستخدم WAC الحالي كتقريب لتكلفة البضاعة المباعة.",
+    "detailPricingTableTitle": "التسعير والهوامش",
+    "totalProfitFromSales": "ربح إجمالي (المبيعات)",
+    "totalProfitFromSalesHint": "جميع الطلبات المكتملة (تجزئة + جملة): إجمالي إيراد السطور ناقص إجمالي الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). نفس منطق صفوف الجدول؛ WAC تقدير لتكلفة البضاعة."
   },
   "categories": {
     "title": "الفئات",

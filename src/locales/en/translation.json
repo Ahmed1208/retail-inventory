@@ -472,7 +472,15 @@
     "priceHistoryColCostShort": "Cost",
     "legendCustomerPrice": "Customer price",
     "legendBusinessPrice": "Business price",
-    "legendCostPrice": "Cost price"
+    "legendCostPrice": "Cost price",
+    "averageUnitCost": "Average unit cost (WAC)",
+    "averageUnitCostHint": "Weighted average of purchase line costs for on-hand stock. Updates when you receive stock on a purchase order (or stock in using catalog cost).",
+    "grossMarginRetail": "Gross profit (retail sales)",
+    "grossMarginWholesale": "Gross profit (wholesale sales)",
+    "grossProfitSoldHint": "From completed orders only: line revenue minus units sold × current average unit cost (WAC). Uses today’s WAC as an estimate of cost of goods sold.",
+    "detailPricingTableTitle": "Pricing & margins",
+    "totalProfitFromSales": "Gross profit (sales)",
+    "totalProfitFromSalesHint": "All completed orders (retail + wholesale): total line revenue minus total units sold × current average unit cost (WAC). Same method as the table rows; WAC is an estimate of COGS."
   },
   "categories": {
     "title": "Categories",

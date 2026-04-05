@@ -53,7 +53,15 @@ export function ProductStockAdjustDialog({
       return
     }
     try {
-      await adjustStock(product.id, type, quantity, note || undefined)
+      await adjustStock(
+        product.id,
+        type,
+        quantity,
+        note || undefined,
+        type === 'in'
+          ? { inboundUnitCost: product.cost_price }
+          : undefined
+      )
       onSuccess()
     } catch {
       onError()

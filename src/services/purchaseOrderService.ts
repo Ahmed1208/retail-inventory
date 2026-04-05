@@ -501,7 +501,9 @@ export async function createPurchaseOrder(data: {
   if (!asDraft) {
     const note = `Purchase Order #${order_number}`
     for (const item of data.items) {
-      await adjustStock(item.product_id, 'in', item.quantity, note)
+      await adjustStock(item.product_id, 'in', item.quantity, note, {
+        inboundUnitCost: item.cost_price,
+      })
     }
 
     for (const item of data.items) {
@@ -603,7 +605,9 @@ export async function confirmPurchaseOrder(
 
   const stockNote = `Purchase Order #${order.order_number}`
   for (const item of order.items) {
-    await adjustStock(item.product_id, 'in', item.quantity, stockNote)
+    await adjustStock(item.product_id, 'in', item.quantity, stockNote, {
+      inboundUnitCost: item.cost_price,
+    })
   }
 
   for (const item of order.items) {

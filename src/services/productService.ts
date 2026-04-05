@@ -69,7 +69,7 @@ export function generateProductCode(): string {
 
 export type ProductCreateInput = Omit<
   Product,
-  'id' | 'created_at' | 'updated_at' | 'product_code'
+  'id' | 'created_at' | 'updated_at' | 'product_code' | 'average_unit_cost'
 > & { product_code?: string | null }
 
 /**
@@ -107,6 +107,7 @@ function toProductWithRelations(row: {
   customer_price: number
   business_price: number
   cost_price: number
+  average_unit_cost?: number | null
   quantity: number
   low_stock_threshold: number
   unit: string
@@ -121,9 +122,13 @@ function toProductWithRelations(row: {
     rest.product_code != null && String(rest.product_code).trim() !== ''
       ? String(rest.product_code).trim()
       : ''
+  const ac = rest.average_unit_cost
+  const average_unit_cost =
+    ac != null && Number.isFinite(Number(ac)) ? Number(ac) : null
   return {
     ...rest,
     product_code,
+    average_unit_cost,
     brand: (brand as ProductWithRelations['brand']) ?? null,
     category: (category as ProductWithRelations['category']) ?? null,
   }
@@ -245,22 +250,33 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error
 }
 
+export type AdjustStockOptions = {
+  /** On stock-in, blend this unit cost into `average_unit_cost` (weighted average). */
+  inboundUnitCost?: number
+}
+
 export async function adjustStock(
   productId: string,
   type: StockMovementType,
   quantity: number,
-  note?: string
+  note?: string,
+  opts?: AdjustStockOptions
 ): Promise<void> {
   const { data: product, error: fetchError } = await supabase
     .from(PRODUCTS)
-    .select('quantity')
+    .select('quantity, average_unit_cost, cost_price')
     .eq('id', productId)
     .single()
 
   if (fetchError) throw fetchError
   if (!product) throw new Error('Product not found')
 
-  const currentQty = product.quantity as number
+  const currentQty = Number(product.quantity)
+  const acRaw = product.average_unit_cost
+  const currentAvg =
+    acRaw != null && Number.isFinite(Number(acRaw)) ? Number(acRaw) : null
+  const costPrice = Number(product.cost_price ?? 0)
+
   let newQuantity: number
 
   switch (type) {
@@ -293,12 +309,36 @@ export async function adjustStock(
 
   if (insertError) throw insertError
 
+  const updatePayload: Record<string, unknown> = {
+    quantity: newQuantity,
+    updated_at: new Date().toISOString(),
+  }
+
+  // When no stock remains, clear WAC so the next receipt starts fresh.
+  if (newQuantity === 0) {
+    updatePayload.average_unit_cost = null
+  } else if (
+    type === 'in' &&
+    opts?.inboundUnitCost !== undefined &&
+    !Number.isNaN(Number(opts.inboundUnitCost))
+  ) {
+    const unitCost = roundMoney(Number(opts.inboundUnitCost))
+    const qtyIn = quantity
+    let newAvg: number
+    if (currentQty <= 0) {
+      newAvg = unitCost
+    } else {
+      const avgForBlend = currentAvg != null ? currentAvg : costPrice
+      newAvg = roundMoney(
+        (currentQty * avgForBlend + qtyIn * unitCost) / (currentQty + qtyIn)
+      )
+    }
+    updatePayload.average_unit_cost = newAvg
+  }
+
   const { error: updateError } = await supabase
     .from(PRODUCTS)
-    .update({
-      quantity: newQuantity,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', productId)
 
   if (updateError) throw updateError

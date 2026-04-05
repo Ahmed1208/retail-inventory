@@ -10,6 +10,8 @@ export interface Product {
   customer_price: number
   business_price: number
   cost_price: number
+  /** Moving weighted average cost for on-hand qty; null when qty is 0 or never valued via receipt. */
+  average_unit_cost: number | null
   quantity: number
   low_stock_threshold: number
   unit: string

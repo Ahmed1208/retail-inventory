@@ -15,7 +15,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { ArrowLeft, AlertTriangle, Loader2, Pencil, ArrowLeftRight } from 'lucide-react'
+import {
+  ArrowLeft,
+  AlertTriangle,
+  CircleDollarSign,
+  Loader2,
+  Pencil,
+  ArrowLeftRight,
+} from 'lucide-react'
 
 import {
   getProductById,
@@ -140,6 +147,16 @@ export function ProductDetail() {
     enabled: !!id && !!product,
   })
 
+  /** All completed order lines (no date filter) — for realized gross profit vs WAC. */
+  const {
+    data: saleLinesLifetime = [],
+    isPending: lifetimeSalesPending,
+  } = useQuery({
+    queryKey: ['productSalesLifetime', id],
+    queryFn: () => getProductSalesAnalytics(id!),
+    enabled: !!id && !!product,
+  })
+
   const { data: movements = [], isLoading: movLoading } = useQuery({
     queryKey: ['productMovements', id],
     queryFn: () =>
@@ -171,6 +188,7 @@ export function ProductDetail() {
     queryClient.invalidateQueries({ queryKey: ['product', id] })
     queryClient.invalidateQueries({ queryKey: ['productPriceHistory', id] })
     queryClient.invalidateQueries({ queryKey: ['productMovements', id] })
+    queryClient.invalidateQueries({ queryKey: ['productSalesLifetime', id] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
@@ -191,6 +209,52 @@ export function ProductDetail() {
       wholesaleLines: wholesale,
     }
   }, [saleLines])
+
+  /** Revenue from completed orders minus units sold × current WAC (approx. COGS). */
+  const realizedFromSales = useMemo(() => {
+    const wacVal = product?.average_unit_cost
+    if (wacVal == null || !Number.isFinite(Number(wacVal))) {
+      return {
+        hasWac: false,
+        retailProfit: null as number | null,
+        retailPct: null as number | null,
+        wholesaleProfit: null as number | null,
+        wholesalePct: null as number | null,
+        totalProfit: null as number | null,
+      }
+    }
+    const w = Number(wacVal)
+    let revR = 0
+    let qtyR = 0
+    let revW = 0
+    let qtyW = 0
+    for (const l of saleLinesLifetime) {
+      if (l.orderType === 'retail') {
+        revR = roundMoney(revR + l.lineTotal)
+        qtyR += l.quantity
+      } else if (l.orderType === 'wholesale') {
+        revW = roundMoney(revW + l.lineTotal)
+        qtyW += l.quantity
+      }
+    }
+    const profitR = roundMoney(revR - qtyR * w)
+    const pctR =
+      revR > 0.005 ? Math.round((profitR / revR) * 1000) / 10 : null
+    const profitW = roundMoney(revW - qtyW * w)
+    const pctW =
+      revW > 0.005 ? Math.round((profitW / revW) * 1000) / 10 : null
+    const totalRev = roundMoney(revR + revW)
+    const totalQty = qtyR + qtyW
+    const totalProfit = roundMoney(totalRev - totalQty * w)
+    return {
+      hasWac: true,
+      retailProfit: profitR,
+      retailPct: pctR,
+      wholesaleProfit: profitW,
+      wholesalePct: pctW,
+      totalProfit,
+    }
+  }, [saleLinesLifetime, product?.average_unit_cost])
 
   useEffect(() => {
     if (product?.name) {
@@ -235,6 +299,8 @@ export function ProductDetail() {
 
   const isLow = product.quantity <= product.low_stock_threshold
 
+  const wac = product.average_unit_cost
+
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
       <Link
@@ -255,6 +321,34 @@ export function ProductDetail() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {realizedFromSales.hasWac && (
+            <span
+              className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2.5 py-1.5 text-sm shadow-sm"
+              title={t('products.totalProfitFromSalesHint')}
+            >
+              <CircleDollarSign
+                className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                aria-hidden
+              />
+              <span className="hidden min-[380px]:inline text-muted-foreground text-xs">
+                {t('products.totalProfitFromSales')}
+              </span>
+              {lifetimeSalesPending ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <span
+                  className={cn(
+                    'font-semibold tabular-nums',
+                    (realizedFromSales.totalProfit ?? 0) >= 0
+                      ? 'text-green-700 dark:text-green-400'
+                      : 'text-red-600 dark:text-red-400'
+                  )}
+                >
+                  {fc(realizedFromSales.totalProfit ?? 0)}
+                </span>
+              )}
+            </span>
+          )}
           {canEditProduct && (
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
               <Pencil className="h-4 w-4 me-1.5" aria-hidden />
@@ -307,18 +401,6 @@ export function ProductDetail() {
               {product.low_stock_threshold}
             </dd>
           </div>
-          <div>
-            <dt className="text-muted-foreground">{t('products.customerPrice')}</dt>
-            <dd className="font-medium tabular-nums">{fc(product.customer_price)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">{t('products.businessPrice')}</dt>
-            <dd className="font-medium tabular-nums">{fc(product.business_price)}</dd>
-          </div>
-          <div>
-            <dt className="text-muted-foreground">{t('products.costPrice')}</dt>
-            <dd className="font-medium tabular-nums">{fc(product.cost_price)}</dd>
-          </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <dt className="text-muted-foreground">{t('common.description')}</dt>
             <dd className="font-medium whitespace-pre-wrap">
@@ -335,6 +417,135 @@ export function ProductDetail() {
             </dd>
           </div>
         </dl>
+
+        <h3 className="mb-3 mt-6 text-base font-semibold">
+          {t('products.detailPricingTableTitle')}
+        </h3>
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <tbody>
+              <tr className="border-b border-border bg-muted/20">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  {t('products.customerPrice')}
+                </th>
+                <td className="px-3 py-2.5 text-end font-medium tabular-nums">
+                  {fc(product.customer_price)}
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  {t('products.businessPrice')}
+                </th>
+                <td className="px-3 py-2.5 text-end font-medium tabular-nums">
+                  {fc(product.business_price)}
+                </td>
+              </tr>
+              <tr className="border-b border-border bg-muted/20">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  {t('products.costPrice')}
+                </th>
+                <td className="px-3 py-2.5 text-end font-medium tabular-nums">
+                  {fc(product.cost_price)}
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  {t('products.averageUnitCost')}
+                </th>
+                <td
+                  className="px-3 py-2.5 text-end font-medium tabular-nums"
+                  title={t('products.averageUnitCostHint')}
+                >
+                  {wac != null ? fc(wac) : '—'}
+                </td>
+              </tr>
+              <tr className="border-b border-border bg-muted/20">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  <span title={t('products.grossProfitSoldHint')}>
+                    {t('products.grossMarginRetail')}
+                  </span>
+                </th>
+                <td
+                  className={cn(
+                    'px-3 py-2.5 text-end font-medium tabular-nums',
+                    realizedFromSales.hasWac &&
+                      realizedFromSales.retailProfit != null &&
+                      (realizedFromSales.retailProfit >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600')
+                  )}
+                >
+                  {!realizedFromSales.hasWac ? (
+                    '—'
+                  ) : lifetimeSalesPending ? (
+                    <Loader2 className="ms-auto h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      {fc(realizedFromSales.retailProfit ?? 0)}
+                      {realizedFromSales.retailPct != null && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          ({realizedFromSales.retailPct}%)
+                        </span>
+                      )}
+                    </>
+                  )}
+                </td>
+              </tr>
+              <tr className="bg-muted/20">
+                <th
+                  scope="row"
+                  className="px-3 py-2.5 text-start font-medium text-muted-foreground"
+                >
+                  <span title={t('products.grossProfitSoldHint')}>
+                    {t('products.grossMarginWholesale')}
+                  </span>
+                </th>
+                <td
+                  className={cn(
+                    'px-3 py-2.5 text-end font-medium tabular-nums',
+                    realizedFromSales.hasWac &&
+                      realizedFromSales.wholesaleProfit != null &&
+                      (realizedFromSales.wholesaleProfit >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600')
+                  )}
+                >
+                  {!realizedFromSales.hasWac ? (
+                    '—'
+                  ) : lifetimeSalesPending ? (
+                    <Loader2 className="ms-auto h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <>
+                      {fc(realizedFromSales.wholesaleProfit ?? 0)}
+                      {realizedFromSales.wholesalePct != null && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          ({realizedFromSales.wholesalePct}%)
+                        </span>
+                      )}
+                    </>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section className="rounded-xl border border-border bg-card/40 p-4 md:p-6">
