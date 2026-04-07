@@ -13,6 +13,7 @@ import { OrdersHome } from '@/pages/OrdersHome'
 import { NewOrder } from '@/pages/NewOrder'
 import { OrderDetail } from '@/pages/OrderDetail'
 import { People } from '@/pages/People'
+import { PersonDetail } from '@/pages/PersonDetail'
 import { Categories } from '@/pages/Categories'
 import { Brands } from '@/pages/Brands'
 import { PurchaseOrdersHome } from '@/pages/PurchaseOrdersHome'
@@ -52,6 +53,7 @@ function App() {
             <Route path="/orders/new" element={<NewOrder />} />
             <Route path="/orders/:id" element={<OrderDetail />} />
             <Route path="/orders" element={<OrdersHome />} />
+            <Route path="/people/:id" element={<PersonDetail />} />
             <Route path="/people" element={<People />} />
             <Route path="/payments/list" element={<PaymentsList />} />
             <Route

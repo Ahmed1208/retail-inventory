@@ -76,7 +76,7 @@ function totalTenderAmount(
   return roundMoney(lines.reduce((s, l) => s + l.amount, 0))
 }
 
-/** Consolidated view: remaining receivable/payable on order/PO row; full ledger uses raw signed amount. */
+/** Consolidated view: order = customer-centric (negative = still owes / balance down, positive = credit or overpay); PO = signed payable remainder; full ledger uses raw signed amount. */
 function balanceImpactDisplay(
   row: PaymentGroupedListItem,
   fullLedger: boolean
@@ -84,12 +84,8 @@ function balanceImpactDisplay(
   if (fullLedger) return row.amount
   if (row.reversed) return 0
   if (row.type === 'order') {
-    const hasKnownTender = row.paymentLines.some((l) =>
-      isPaymentMethod(l.payment_method)
-    )
-    if (hasKnownTender) {
-      return roundMoney(row.amount - totalTenderAmount(row.paymentLines))
-    }
+    const tender = totalTenderAmount(row.paymentLines)
+    return roundMoney(tender - row.amount)
   }
   if (row.type === 'purchase_order') {
     const hasKnownTender = row.paymentLines.some((l) =>
@@ -102,6 +98,53 @@ function balanceImpactDisplay(
   if (row.type === 'register_deposit') return roundMoney(row.amount)
   if (row.type === 'register_withdraw') return roundMoney(-row.amount)
   return row.amount
+}
+
+/**
+ * Signed person-ledger total for green/red on Balance impact. The displayed number can differ
+ * (e.g. remaining on document for orders/POs); color follows actual balance movement when a person is linked.
+ */
+function personBalanceDeltaForStyle(
+  row: PaymentGroupedListItem,
+  fullLedger: boolean
+): number {
+  if (row.type === 'register_deposit' || row.type === 'register_withdraw') {
+    return 0
+  }
+  if (!fullLedger && row.reversed) return 0
+  if (!fullLedger && row.person_id == null) return 0
+  if (!fullLedger && row.type === 'order') {
+    return roundMoney(
+      totalTenderAmount(row.paymentLines) - row.amount
+    )
+  }
+  return row.amount
+}
+
+/**
+ * Net register (drawer / tender) effect aligned with `registerEffectForRow`: payment lines use `-amount`,
+ * deposits positive, withdraws negative; order/PO use tender totals when attached to the row.
+ */
+function registerImpactValue(
+  row: PaymentGroupedListItem,
+  fullLedger: boolean
+): number | null {
+  if (!fullLedger && row.reversed) return 0
+  const t = row.type
+  if (t === 'payment_in' || t === 'payment_out') {
+    return roundMoney(-row.amount)
+  }
+  if (t === 'register_deposit') return roundMoney(row.amount)
+  if (t === 'register_withdraw') return roundMoney(-row.amount)
+  if (t === 'order') {
+    const tender = totalTenderAmount(row.paymentLines)
+    return Math.abs(tender) < MONEY_EPS ? null : roundMoney(tender)
+  }
+  if (t === 'purchase_order') {
+    const tender = totalTenderAmount(row.paymentLines)
+    return Math.abs(tender) < MONEY_EPS ? null : roundMoney(-tender)
+  }
+  return null
 }
 
 function txTypeLabel(
@@ -221,6 +264,9 @@ export function PaymentsList() {
         doc != null ? `${doc} ${fc(doc)}`.toLowerCase() : ''
       const impact = balanceImpactDisplay(r, effectiveFullLedger)
       const impactStr = `${impact} ${fc(impact)}`.toLowerCase()
+      const reg = registerImpactValue(r, effectiveFullLedger)
+      const regStr =
+        reg == null ? '' : `${reg} ${fc(reg)}`.toLowerCase()
       const meth = r.paymentLines
         .map((l) => {
           const label = l.payment_method
@@ -243,6 +289,7 @@ export function PaymentsList() {
         methodCols.includes(q) ||
         docStr.includes(q) ||
         impactStr.includes(q) ||
+        regStr.includes(q) ||
         r.id.toLowerCase().includes(q) ||
         (r.reversed && reversedBadgeStr.includes(q)) ||
         (r.reversed && reversedHintStr.includes(q)) ||
@@ -339,6 +386,11 @@ export function PaymentsList() {
     const sums = aggregateTenderByMethod(row.paymentLines)
     const docTotal = documentTotalValue(row)
     const impact = balanceImpactDisplay(row, effectiveFullLedger)
+    const balanceStyleDelta = personBalanceDeltaForStyle(
+      row,
+      effectiveFullLedger
+    )
+    const registerImpact = registerImpactValue(row, effectiveFullLedger)
     const personLabel =
       row.person_id == null &&
       (row.type === 'register_deposit' || row.type === 'register_withdraw')
@@ -499,9 +551,9 @@ export function PaymentsList() {
         <td
           className={cn(
             'px-3 py-2 text-end tabular-nums font-medium',
-            impact > 0
+            balanceStyleDelta > 0
               ? 'text-green-600 dark:text-green-400'
-              : impact < 0
+              : balanceStyleDelta < 0
                 ? 'text-red-600 dark:text-red-400'
                 : ''
           )}
@@ -513,6 +565,31 @@ export function PaymentsList() {
         >
           {impact > 0 ? '+' : ''}
           {fc(impact)}
+        </td>
+        <td
+          className={cn(
+            'px-3 py-2 text-end tabular-nums font-medium whitespace-nowrap',
+            registerImpact != null &&
+              (registerImpact > 0
+                ? 'text-green-600 dark:text-green-400'
+                : registerImpact < 0
+                  ? 'text-red-600 dark:text-red-400'
+                  : '')
+          )}
+          title={t('payments.listRegisterImpactHint')}
+        >
+          <span
+            className={cn(strikeTender && 'line-through opacity-80')}
+          >
+            {registerImpact == null ? (
+              t('people.emDash')
+            ) : (
+              <>
+                {registerImpact > 0 ? '+' : ''}
+                {fc(registerImpact)}
+              </>
+            )}
+          </span>
         </td>
       </tr>
     )
@@ -670,7 +747,7 @@ export function PaymentsList() {
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="p-4">
-            <LoadingSkeleton rows={8} columns={12} />
+            <LoadingSkeleton rows={8} columns={13} />
           </div>
         ) : isError ? (
           <p className="px-4 py-12 text-center text-sm text-destructive">
@@ -722,6 +799,12 @@ export function PaymentsList() {
                     title={t('payments.listBalanceImpactHint')}
                   >
                     {t('payments.listBalanceImpact')}
+                  </th>
+                  <th
+                    className="px-3 py-2.5 text-end font-medium text-muted-foreground whitespace-nowrap"
+                    title={t('payments.listRegisterImpactHint')}
+                  >
+                    {t('payments.listRegisterImpact')}
                   </th>
                 </tr>
               </thead>

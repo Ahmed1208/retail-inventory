@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import { getOrdersByPersonId } from '@/services/orderService'
@@ -95,6 +95,7 @@ export function PersonProfileDialog({
   >('overview')
   const [txType, setTxType] = useState<BalanceTransactionType | 'all'>('all')
   const canEditPerson = useFeatureEnabled('people.editPerson')
+  const canOpenPersonPage = useFeatureEnabled('people.viewProfile')
 
   useEffect(() => {
     if (person) setTab('overview')
@@ -178,6 +179,15 @@ export function PersonProfileDialog({
               </span>
             )}
           </DialogTitle>
+          {canOpenPersonPage ? (
+            <Link
+              to={`/people/${person.id}`}
+              className="text-sm font-normal text-primary hover:underline"
+              onClick={() => onOpenChange(false)}
+            >
+              {t('people.openFullProfile')}
+            </Link>
+          ) : null}
         </DialogHeader>
         <div className="space-y-4">
           <div className="flex flex-wrap justify-between gap-4">

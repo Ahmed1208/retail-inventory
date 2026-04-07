@@ -358,6 +358,84 @@ export async function getProductSalesAnalytics(
   return out
 }
 
+/** Completed-order line for one customer (person detail gross profit & sales analytics). */
+export type PersonSaleLine = ProductSaleLine & { productId: string }
+
+/**
+ * Sales lines for one person from **completed** orders only.
+ * Same shape as product analytics plus `productId` for per-line WAC.
+ */
+export async function getPersonSalesAnalytics(
+  personId: string,
+  filters?: ProductSalesAnalyticsFilters
+): Promise<PersonSaleLine[]> {
+  const { data, error } = await supabase
+    .from(ORDER_ITEMS)
+    .select(
+      `
+      id,
+      quantity,
+      unit_price,
+      total_price,
+      product_id,
+      orders!inner (
+        id,
+        person_id,
+        order_number,
+        created_at,
+        status_flow,
+        type
+      )
+    `
+    )
+    .eq('orders.person_id', personId)
+
+  if (error) throw error
+
+  type OrderEmbed = {
+    id: string
+    person_id: string | null
+    order_number: number
+    created_at: string
+    status_flow: string
+    type: string
+  }
+  type RawRow = {
+    id: string
+    quantity: number
+    unit_price: number
+    total_price: number
+    product_id: string
+    orders: OrderEmbed | OrderEmbed[] | null
+  }
+
+  const rows = (data ?? []) as RawRow[]
+  const out: PersonSaleLine[] = []
+
+  for (const r of rows) {
+    const o = Array.isArray(r.orders) ? r.orders[0] ?? null : r.orders
+    if (!o || o.status_flow !== 'completed') continue
+
+    const day = o.created_at.slice(0, 10)
+    if (filters?.from && day < filters.from) continue
+    if (filters?.to && day > filters.to) continue
+
+    out.push({
+      lineId: r.id,
+      productId: String(r.product_id),
+      quantity: Number(r.quantity),
+      unitPrice: Number(r.unit_price),
+      lineTotal: Number(r.total_price),
+      orderId: o.id,
+      orderNumber: Number(o.order_number),
+      orderCreatedAt: o.created_at,
+      orderType: o.type as OrderType,
+    })
+  }
+
+  return out
+}
+
 export async function getOrderById(
   id: string
 ): Promise<OrderWithItemsAndPayments | null> {

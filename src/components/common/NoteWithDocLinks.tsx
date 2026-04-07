@@ -11,7 +11,7 @@ type Props = {
 /**
  * Renders note text with:
  * - `@[pay:id]` → payment operation
- * - `@[person:uuid]` → people with `?person=`
+ * - `@[person:uuid]` → `/people/{uuid}` person page
  * - `O-#` / `PO-#` linked when ` · doc:{uuid}` suffix is present (ledger pattern)
  */
 export function NoteRichText({ note, className }: Props) {

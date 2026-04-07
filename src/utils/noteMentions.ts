@@ -3,7 +3,7 @@
  *
  * - `@[pay:{operationRouteId}]` — ledger payment operation (`balance_transactions.id` or
  *   `payment_group_id`). Renders as a link to `/payments/operations/{id}`.
- * - `@[person:{uuid}]` — person profile. Renders as `/people?person={uuid}`.
+ * - `@[person:{uuid}]` — person profile page `/people/{uuid}`.
  * - `O-{n} · doc:{orderUuid}` / `PO-{n} · doc:{poUuid}` — inline anywhere in the note (also `.` or
  *   bullets instead of `·`, and `O-{n} doc:{uuid}` with a space). Link label is only `O-{n}` /
  *   `PO-{n}`; the ` · doc:…` part is not shown as loose text.
@@ -67,7 +67,7 @@ function collectPersonRuns(body: string): NoteLinkRun[] {
     runs.push({
       from: m.index,
       to: m.index + m[0].length,
-      href: `/people?person=${encodeURIComponent(id)}`,
+      href: `/people/${encodeURIComponent(id)}`,
       label: m[0],
     })
   }

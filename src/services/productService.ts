@@ -170,6 +170,30 @@ export async function getProductById(
   return toProductWithRelations(data as Parameters<typeof toProductWithRelations>[0])
 }
 
+/** Current WAC per product id (for person-level gross profit across many products). */
+export async function getAverageUnitCostsByProductIds(
+  ids: string[]
+): Promise<Map<string, number | null>> {
+  const out = new Map<string, number | null>()
+  const uniq = [...new Set(ids.filter(Boolean))]
+  if (uniq.length === 0) return out
+
+  const { data, error } = await supabase
+    .from(PRODUCTS)
+    .select('id, average_unit_cost')
+    .in('id', uniq)
+
+  if (error) throw error
+  for (const row of data ?? []) {
+    const id = String((row as { id: string }).id)
+    const raw = (row as { average_unit_cost: number | null }).average_unit_cost
+    const v =
+      raw != null && Number.isFinite(Number(raw)) ? Number(raw) : null
+    out.set(id, v)
+  }
+  return out
+}
+
 export async function createProduct(
   data: ProductCreateInput
 ): Promise<Product> {

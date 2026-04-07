@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -12,7 +13,12 @@ import {
   getProductPriceHistory,
 } from '@/services/productService'
 import { roundMoney } from '@/services/peopleService'
-import type { ProductWithRelations } from '@/types'
+import type { Brand, Category, ProductWithRelations } from '@/types'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import {
+  QuickCreateTaxonomyDialog,
+  type QuickCreateKind,
+} from '@/components/products/QuickCreateTaxonomyDialog'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -59,6 +65,12 @@ const productSchema = z
   })
 
 export type ProductFormValues = z.infer<typeof productSchema>
+
+function sortByName<T extends { name: string }>(list: T[]): T[] {
+  return [...list].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  )
+}
 
 export const defaultProductValues: ProductFormValues = {
   product_code: '',
@@ -116,8 +128,14 @@ export function ProductFormDialog({
   priceHistoryLimit?: number
 }) {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const fc = (n: number) => formatCurrency(n, lang)
+  const canAddBrand = useFeatureEnabled('brands.addBrand')
+  const canAddCategory = useFeatureEnabled('categories.addCategory')
+  const [quickCreateKind, setQuickCreateKind] = useState<QuickCreateKind | null>(
+    null
+  )
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -156,6 +174,22 @@ export function ProductFormDialog({
       form.reset(defaultProductValues)
     }
   }, [open, initialProduct, mode, form])
+
+  const handleTaxonomyCreated = (entity: Brand | Category, kind: QuickCreateKind) => {
+    if (kind === 'brand') {
+      queryClient.setQueryData<Brand[]>(['brands'], (old) =>
+        sortByName([...(old ?? []), entity as Brand])
+      )
+      form.setValue('brand_id', entity.id)
+      queryClient.invalidateQueries({ queryKey: ['brands'] })
+    } else {
+      queryClient.setQueryData<Category[]>(['categories'], (old) =>
+        sortByName([...(old ?? []), entity as Category])
+      )
+      form.setValue('category_id', entity.id)
+      queryClient.invalidateQueries({ queryKey: ['categories'] })
+    }
+  }
 
   const onSubmit = async (values: ProductFormValues) => {
     const trimmedCode = values.product_code.trim()
@@ -250,14 +284,29 @@ export function ProductFormDialog({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>{t('brands.title')}</Label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <Label className="mb-0">{t('brands.title')}</Label>
+                {canAddBrand && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    aria-label={t('products.addNewBrand')}
+                    title={t('products.addNewBrand')}
+                    onClick={() => setQuickCreateKind('brand')}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <Select
                 value={form.watch('brand_id') ?? 'none'}
                 onValueChange={(v) =>
                   form.setValue('brand_id', v === 'none' ? null : v)
                 }
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -271,14 +320,29 @@ export function ProductFormDialog({
               </Select>
             </div>
             <div>
-              <Label>{t('categories.title')}</Label>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <Label className="mb-0">{t('categories.title')}</Label>
+                {canAddCategory && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    aria-label={t('products.addNewCategory')}
+                    title={t('products.addNewCategory')}
+                    onClick={() => setQuickCreateKind('category')}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               <Select
                 value={form.watch('category_id') ?? 'none'}
                 onValueChange={(v) =>
                   form.setValue('category_id', v === 'none' ? null : v)
                 }
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -464,6 +528,14 @@ export function ProductFormDialog({
             <Button type="submit">{t('common.save')}</Button>
           </DialogFooter>
         </form>
+        <QuickCreateTaxonomyDialog
+          kind={quickCreateKind ?? 'brand'}
+          open={quickCreateKind !== null}
+          onOpenChange={(o) => {
+            if (!o) setQuickCreateKind(null)
+          }}
+          onCreated={handleTaxonomyCreated}
+        />
       </DialogContent>
     </Dialog>
   )

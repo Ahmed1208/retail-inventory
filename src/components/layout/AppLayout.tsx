@@ -59,6 +59,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ? 'stockMovements.title'
       : pathname.startsWith('/products/')
         ? 'products.detailTitle'
+      : /^\/people\/[^/]+$/.test(pathname)
+        ? 'people.detailTitle'
       : pathname === '/orders/new'
         ? 'orders.newOrder'
         : pathname.startsWith('/orders')

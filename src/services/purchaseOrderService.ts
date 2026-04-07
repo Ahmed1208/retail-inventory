@@ -313,6 +313,93 @@ export async function getPurchaseOrdersByPersonId(
   return orders.map(applyPaidRemainingFromPayments)
 }
 
+/** One line from a **received** PO for supplier analytics on the person detail page. */
+export type SupplierPurchaseLine = {
+  lineId: string
+  productId: string
+  quantity: number
+  lineTotal: number
+  purchaseOrderId: string
+  orderNumber: number
+  createdAt: string
+}
+
+export type SupplierPurchaseAnalyticsFilters = {
+  from?: string
+  to?: string
+}
+
+/**
+ * Purchase lines for one supplier from **received** POs only (mirrors completed orders for sales).
+ */
+export async function getSupplierPurchaseLinesAnalytics(
+  personId: string,
+  filters?: SupplierPurchaseAnalyticsFilters
+): Promise<SupplierPurchaseLine[]> {
+  const { data, error } = await supabase
+    .from(PURCHASE_ORDER_ITEMS)
+    .select(
+      `
+      id,
+      quantity,
+      total_price,
+      product_id,
+      purchase_orders!inner (
+        id,
+        person_id,
+        order_number,
+        created_at,
+        status
+      )
+    `
+    )
+    .eq('purchase_orders.person_id', personId)
+    .eq('purchase_orders.status', 'received')
+
+  if (error) throw error
+
+  type PoEmbed = {
+    id: string
+    person_id: string | null
+    order_number: number
+    created_at: string
+    status: string
+  }
+  type RawRow = {
+    id: string
+    quantity: number
+    total_price: number
+    product_id: string
+    purchase_orders: PoEmbed | PoEmbed[] | null
+  }
+
+  const rows = (data ?? []) as RawRow[]
+  const out: SupplierPurchaseLine[] = []
+
+  for (const r of rows) {
+    const po = Array.isArray(r.purchase_orders)
+      ? r.purchase_orders[0] ?? null
+      : r.purchase_orders
+    if (!po) continue
+
+    const day = po.created_at.slice(0, 10)
+    if (filters?.from && day < filters.from) continue
+    if (filters?.to && day > filters.to) continue
+
+    out.push({
+      lineId: r.id,
+      productId: String(r.product_id),
+      quantity: Number(r.quantity),
+      lineTotal: Number(r.total_price),
+      purchaseOrderId: po.id,
+      orderNumber: Number(po.order_number),
+      createdAt: po.created_at,
+    })
+  }
+
+  return out
+}
+
 export async function createPurchaseOrder(data: {
   supplier_name?: string
   note?: string
