@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -27,8 +27,10 @@ import {
 import {
   getProductById,
   getProductPriceHistory,
+  getProductQuantityInWarehouse,
   getStockMovements,
 } from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import { getProductSalesAnalytics } from '@/services/orderService'
 import type { ProductSaleLine } from '@/services/orderService'
 import type { StockMovementType } from '@/types'
@@ -43,6 +45,7 @@ import { getAllCategories as getCategories } from '@/services/categoryService'
 import { getAllBrands as getBrands } from '@/services/brandService'
 import { ProductFormDialog } from '@/components/products/ProductFormDialog'
 import { ProductStockAdjustDialog } from '@/components/products/ProductStockAdjustDialog'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PRODUCT_PRICE_CHART_STROKES } from '@/constants/productPriceChart'
 import { useDocumentDarkClass } from '@/hooks/useDocumentDarkClass'
@@ -105,6 +108,8 @@ export function ProductDetail() {
   const [dateRange, setDateRange] = useState(defaultDateRange)
   const [editOpen, setEditOpen] = useState(false)
   const [stockOpen, setStockOpen] = useState(false)
+  const detailWhInitRef = useRef(false)
+  const [detailWarehouseId, setDetailWarehouseId] = useState(1)
 
   const canEditProduct = useFeatureEnabled('products.editProduct')
   const canStockAdjust = useFeatureEnabled('products.stockAdjust')
@@ -167,6 +172,25 @@ export function ProductDetail() {
     enabled: !!id && !!product,
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+    enabled: !!id && !!product,
+  })
+
+  useEffect(() => {
+    if (!product || detailWhInitRef.current || warehouses.length === 0) return
+    const d = warehouses.find((w) => w.is_default)
+    setDetailWarehouseId(d?.id ?? 1)
+    detailWhInitRef.current = true
+  }, [product, warehouses])
+
+  const { data: detailWhQty = 0 } = useQuery({
+    queryKey: ['productWhStock', id, detailWarehouseId],
+    queryFn: () => getProductQuantityInWarehouse(id!, detailWarehouseId),
+    enabled: !!id && !!product,
+  })
+
   const chartData = useMemo(() => aggregateSalesByDate(saleLines), [saleLines])
 
   const priceLineChartData = useMemo(() => {
@@ -193,6 +217,8 @@ export function ProductDetail() {
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
+    queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
+    queryClient.invalidateQueries({ queryKey: ['productWhStock', id] })
   }
 
   const kpis = useMemo(() => {
@@ -297,7 +323,7 @@ export function ProductDetail() {
     )
   }
 
-  const isLow = product.quantity <= product.low_stock_threshold
+  const isLow = detailWhQty <= product.low_stock_threshold
 
   const wac = product.average_unit_cost
 
@@ -374,6 +400,15 @@ export function ProductDetail() {
         <h2 className="mb-4 text-lg font-semibold">
           {t('products.detailSectionInfo')}
         </h2>
+        <div className="mb-4 max-w-md">
+          <WarehouseCombobox
+            id="product-detail-warehouse"
+            label={t('warehouses.title')}
+            warehouses={warehouses}
+            value={detailWarehouseId}
+            onChange={setDetailWarehouseId}
+          />
+        </div>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-sm">
           <div>
             <dt className="text-muted-foreground">{t('brands.title')}</dt>
@@ -384,9 +419,14 @@ export function ProductDetail() {
             <dd className="font-medium">{product.category?.name ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">{t('common.quantity')}</dt>
+            <dt className="text-muted-foreground">
+              {t('warehouses.quantityAtWarehouse')}
+            </dt>
             <dd className={cn('font-medium tabular-nums', isLow && 'text-red-600')}>
-              {product.quantity}
+              {detailWhQty}
+              <span className="ms-2 text-xs font-normal text-muted-foreground">
+                ({t('products.totalAcrossLocations')}: {product.quantity})
+              </span>
             </dd>
           </div>
           <div>
@@ -796,7 +836,7 @@ export function ProductDetail() {
                         formatter={(value) => [Number(value ?? 0), t('common.quantity')]}
                         labelFormatter={(l) => String(l)}
                       />
-                      <Bar dataKey="quantity" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="quantity" fill="var(--primary)" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -914,6 +954,7 @@ export function ProductDetail() {
                     {t('stockMovements.dateTime')}
                   </th>
                   <th className="px-3 py-2 text-start font-medium">{t('stockMovements.type')}</th>
+                  <th className="px-3 py-2 text-start font-medium">{t('warehouses.colId')}</th>
                   <th className="px-3 py-2 text-end font-medium">{t('stockMovements.quantity')}</th>
                   <th className="px-3 py-2 text-start font-medium">{t('stockMovements.note')}</th>
                 </tr>
@@ -928,6 +969,9 @@ export function ProductDetail() {
                       }).format(new Date(m.created_at))}
                     </td>
                     <td className="px-3 py-2">{movementTypeLabel(m.type)}</td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-muted-foreground">
+                      {m.warehouse_id}
+                    </td>
                     <td className="px-3 py-2 text-end tabular-nums font-medium">
                       {m.type === 'in' && '+'}
                       {m.type === 'out' && '-'}
@@ -966,12 +1010,16 @@ export function ProductDetail() {
         open={stockOpen}
         onOpenChange={setStockOpen}
         product={product}
+        warehouses={warehouses}
+        initialWarehouseId={detailWarehouseId}
         onSuccess={() => {
           invalidateProductQueries()
           toast.success(t('products.toastStockAdjusted'))
           setStockOpen(false)
         }}
-        onError={() => toast.error(t('products.toastError'))}
+        onError={() => {
+          toast.error(t('products.toastError'))
+        }}
       />
     </div>
   )

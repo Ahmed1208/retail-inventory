@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
+import { DEFAULT_WAREHOUSE_ID } from '@/services/warehouseService'
 import { getProductById } from '@/services/productService'
 import { updateProduct } from '@/services/productService'
 import {
@@ -51,6 +52,7 @@ function toPurchaseOrderWithItems(row: {
   remaining_amount?: number
   status: PurchaseOrderStatus
   person_id: string | null
+  warehouse_id?: number | string | null
   created_at: string
   updated_at: string
   purchase_order_items?: Array<{
@@ -77,9 +79,15 @@ function toPurchaseOrderWithItems(row: {
     orderRest.remaining_amount != null
       ? roundMoney(Number(orderRest.remaining_amount))
       : roundMoney(total - paid)
+  const whRaw = orderRest.warehouse_id
+  const warehouse_id =
+    whRaw != null && whRaw !== '' && Number.isFinite(Number(whRaw))
+      ? Number(whRaw)
+      : DEFAULT_WAREHOUSE_ID
   const order = {
     ...orderRest,
     person_id: orderRest.person_id ?? null,
+    warehouse_id,
     paid_amount: paid,
     remaining_amount,
   }
@@ -419,6 +427,7 @@ export async function createPurchaseOrder(data: {
   }[]
   /** Save as draft: no stock, ledger, or payments until confirmed. */
   asDraft?: boolean
+  warehouse_id?: number
 }): Promise<PurchaseOrderWithItems> {
   if (!data.items.length) {
     throw new Error('At least one product is required')
@@ -504,6 +513,11 @@ export async function createPurchaseOrder(data: {
 
   // 3. Insert purchase_order (omit paid_amount/remaining_amount so DBs without migration 009 still work;
   //    paid/remaining are derived from purchase_order_payments in applyPaidRemainingFromPayments.)
+  const warehouse_id =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
   const orderPayload = {
     order_number,
     supplier_name: data.supplier_name?.trim() || null,
@@ -511,6 +525,7 @@ export async function createPurchaseOrder(data: {
     total_amount: total,
     status: (asDraft ? 'draft' : 'received') as PurchaseOrderStatus,
     person_id: supplierId,
+    warehouse_id,
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -590,6 +605,7 @@ export async function createPurchaseOrder(data: {
     for (const item of data.items) {
       await adjustStock(item.product_id, 'in', item.quantity, note, {
         inboundUnitCost: item.cost_price,
+        warehouseId: warehouse_id,
       })
     }
 
@@ -690,10 +706,15 @@ export async function confirmPurchaseOrder(
     }
   }
 
+  const whId =
+    order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+      ? Math.trunc(Number(order.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
   const stockNote = `Purchase Order #${order.order_number}`
   for (const item of order.items) {
     await adjustStock(item.product_id, 'in', item.quantity, stockNote, {
       inboundUnitCost: item.cost_price,
+      warehouseId: whId,
     })
   }
 
@@ -916,10 +937,16 @@ export async function cancelPurchaseOrder(
     }
   }
 
+  const whId =
+    order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+      ? Math.trunc(Number(order.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
   const note = `Cancelled Purchase Order #${order.order_number}`
 
   for (const item of order.items) {
-    await adjustStock(item.product_id, 'out', item.quantity, note)
+    await adjustStock(item.product_id, 'out', item.quantity, note, {
+      warehouseId: whId,
+    })
   }
 
   for (const item of order.items) {

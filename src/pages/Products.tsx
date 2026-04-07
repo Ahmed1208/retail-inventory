@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
@@ -22,7 +22,9 @@ import {
 import {
   getAllProducts,
   deleteProduct,
+  getProductQuantitiesByWarehouse,
 } from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories as getCategories } from '@/services/categoryService'
 import { getAllBrands as getBrands } from '@/services/brandService'
 import type { ProductWithRelations } from '@/types'
@@ -49,6 +51,7 @@ import {
 import { ProductFormDialog } from '@/components/products/ProductFormDialog'
 import { ProductStockAdjustDialog } from '@/components/products/ProductStockAdjustDialog'
 import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
@@ -71,6 +74,8 @@ export function Products() {
   const [deleteProductState, setDeleteProductState] =
     useState<ProductWithRelations | null>(null)
   const [sorting, setSorting] = useState<SortingState>([])
+  const warehouseInitRef = useRef(false)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(1)
 
   const canAddProduct = useFeatureEnabled('products.addProduct')
   const canEditProduct = useFeatureEnabled('products.editProduct')
@@ -101,6 +106,23 @@ export function Products() {
     queryFn: getBrands,
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+
+  const { data: whStockMap = new Map<string, number>() } = useQuery({
+    queryKey: ['warehouseStock', selectedWarehouseId],
+    queryFn: () => getProductQuantitiesByWarehouse(selectedWarehouseId),
+  })
+
+  useEffect(() => {
+    if (warehouseInitRef.current || warehouses.length === 0) return
+    const d = warehouses.find((w) => w.is_default)
+    setSelectedWarehouseId(d?.id ?? 1)
+    warehouseInitRef.current = true
+  }, [warehouses])
+
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
       const q = debouncedSearch.toLowerCase()
@@ -110,10 +132,19 @@ export function Products() {
         p.product_code.toLowerCase().includes(q)
       const matchCategory = !categoryId || p.category?.id === categoryId
       const matchBrand = !brandId || p.brand?.id === brandId
-      const matchLowStock = !lowStockOnly || p.quantity <= p.low_stock_threshold
+      const whQty = whStockMap.get(p.id) ?? 0
+      const matchLowStock =
+        !lowStockOnly || whQty <= p.low_stock_threshold
       return matchSearch && matchCategory && matchBrand && matchLowStock
     })
-  }, [products, debouncedSearch, categoryId, brandId, lowStockOnly])
+  }, [
+    products,
+    debouncedSearch,
+    categoryId,
+    brandId,
+    lowStockOnly,
+    whStockMap,
+  ])
 
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
@@ -161,10 +192,11 @@ export function Products() {
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
-        accessorKey: 'quantity',
-        header: t('common.quantity'),
+        id: 'quantityWh',
+        accessorFn: (row) => whStockMap.get(row.id) ?? 0,
+        header: t('warehouses.quantityAtWarehouse'),
         cell: ({ row }) => {
-          const qty = row.original.quantity
+          const qty = whStockMap.get(row.original.id) ?? 0
           const threshold = row.original.low_stock_threshold
           const isLow = qty <= threshold
           return (
@@ -232,7 +264,14 @@ export function Products() {
           ]
         : []),
     ],
-    [t, canEditProduct, canStockAdjust, canDeleteProduct]
+    [
+      t,
+      formatCurrencyDisplay,
+      canEditProduct,
+      canStockAdjust,
+      canDeleteProduct,
+      whStockMap,
+    ]
   )
 
   const table = useReactTable({
@@ -247,6 +286,8 @@ export function Products() {
   const invalidateProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
+    queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
+    queryClient.invalidateQueries({ queryKey: ['productWhStock'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
     queryClient.invalidateQueries({ queryKey: ['productPriceHistory'] })
@@ -295,6 +336,14 @@ export function Products() {
             ))}
           </SelectContent>
         </Select>
+        <WarehouseCombobox
+          id="products-list-warehouse"
+          label={t('warehouses.title')}
+          warehouses={warehouses}
+          value={selectedWarehouseId}
+          onChange={setSelectedWarehouseId}
+          className="min-w-[220px] max-w-xs"
+        />
         {canAddProduct && (
           <Button onClick={() => setAddOpen(true)}>
             {t('products.addProduct')}
@@ -410,6 +459,8 @@ export function Products() {
           open={!!stockProduct}
           onOpenChange={(open) => !open && setStockProduct(null)}
           product={stockProduct}
+          warehouses={warehouses}
+          initialWarehouseId={selectedWarehouseId}
           onSuccess={() => {
             invalidateProducts()
             toast.success(t('products.toastStockAdjusted'))

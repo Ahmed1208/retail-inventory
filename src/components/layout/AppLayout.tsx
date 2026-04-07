@@ -29,6 +29,7 @@ const pathToTitleKey: Record<string, string> = {
   '/payments/new': 'payments.newPayment',
   '/categories': 'categories.title',
   '/brands': 'brands.title',
+  '/warehouses': 'warehouses.title',
   '/purchase-orders': 'purchaseOrders.title',
 }
 

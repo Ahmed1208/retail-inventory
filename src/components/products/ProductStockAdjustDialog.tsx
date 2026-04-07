@@ -1,12 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 
-import { adjustStock } from '@/services/productService'
+import { adjustStock, getProductQuantityInWarehouse } from '@/services/productService'
 import type { ProductWithRelations } from '@/types'
 import type { StockMovementType } from '@/types'
+import type { Warehouse } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog,
@@ -20,12 +29,16 @@ export function ProductStockAdjustDialog({
   open,
   onOpenChange,
   product,
+  warehouses,
+  initialWarehouseId,
   onSuccess,
   onError,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   product: ProductWithRelations
+  warehouses: Warehouse[]
+  initialWarehouseId: number
   onSuccess: () => void
   onError: () => void
 }) {
@@ -34,13 +47,30 @@ export function ProductStockAdjustDialog({
   const [quantity, setQuantity] = useState<number>(0)
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [warehouseId, setWarehouseId] = useState(initialWarehouseId)
+
+  useEffect(() => {
+    if (open) {
+      setWarehouseId(initialWarehouseId)
+      setType('in')
+      setQuantity(0)
+      setNote('')
+      setError(null)
+    }
+  }, [open, initialWarehouseId, product.id])
+
+  const { data: whQty = 0 } = useQuery({
+    queryKey: ['productWhStock', product.id, warehouseId],
+    queryFn: () => getProductQuantityInWarehouse(product.id, warehouseId),
+    enabled: open,
+  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (type === 'out' && quantity > product.quantity) {
+    if (type === 'out' && quantity > whQty) {
       setError(
-        t('products.validationStockOutExceeds', { current: product.quantity })
+        t('products.validationStockOutExceeds', { current: whQty })
       )
       return
     }
@@ -59,8 +89,8 @@ export function ProductStockAdjustDialog({
         quantity,
         note || undefined,
         type === 'in'
-          ? { inboundUnitCost: product.cost_price }
-          : undefined
+          ? { inboundUnitCost: product.cost_price, warehouseId }
+          : { warehouseId }
       )
       onSuccess()
     } catch {
@@ -75,11 +105,30 @@ export function ProductStockAdjustDialog({
           <DialogTitle>{t('products.stockAdjustTitle')}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          {product.name} — {t('products.currentStock')}:{' '}
-          <strong className="text-foreground">{product.quantity}</strong>{' '}
-          {product.unit}
+          {product.name} — {t('warehouses.quantityAtWarehouse')}:{' '}
+          <strong className="text-foreground">{whQty}</strong> {product.unit}{' '}
+          ({t('products.totalAcrossLocations')}: {product.quantity})
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label className="mb-2 block">{t('warehouses.title')}</Label>
+            <Select
+              value={String(warehouseId)}
+              onValueChange={(v) => setWarehouseId(Number(v))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {warehouses.map((w) => (
+                  <SelectItem key={w.id} value={String(w.id)}>
+                    {w.id} · {w.name}
+                    {w.is_default ? ` (${t('warehouses.defaultBadge')})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div>
             <Label className="mb-2 block">{t('dashboard.type')}</Label>
             <div className="flex gap-4">

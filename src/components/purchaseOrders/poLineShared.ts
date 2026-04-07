@@ -82,7 +82,8 @@ export const PO_TABLE_GRID =
   'grid-cols-[2rem_7rem_minmax(0,1fr)_3rem_3.5rem_9rem_4.5rem_2.25rem]'
 
 export function applyProductCostDefaults(
-  p: ProductWithRelations
+  p: ProductWithRelations,
+  stockAtWarehouse?: number
 ): Pick<
   POLineRow,
   | 'product_id'
@@ -110,7 +111,8 @@ export function applyProductCostDefaults(
     listCustomerPrice: p.customer_price,
     listBusinessPrice: p.business_price,
     costOverridden: false,
-    stock: p.quantity,
+    stock:
+      stockAtWarehouse !== undefined ? stockAtWarehouse : p.quantity,
     lookupInvalid: false,
     updateDefaultCostPrice: false,
     costOverrideChoice: 'unset',

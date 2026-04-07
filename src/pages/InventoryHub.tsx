@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Package, Truck, Tag, Layers } from 'lucide-react'
+import { Package, Truck, Tag, Layers, Warehouse } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -16,6 +16,12 @@ const sections = [
   },
   { to: '/categories', icon: Tag, key: 'nav.categories', feature: 'inventory.hubCategories' },
   { to: '/brands', icon: Layers, key: 'nav.brands', feature: 'inventory.hubBrands' },
+  {
+    to: '/warehouses',
+    icon: Warehouse,
+    key: 'nav.warehouses',
+    feature: 'inventory.hubWarehouses',
+  },
 ] as const
 
 type HubSection = (typeof sections)[number]
@@ -27,11 +33,13 @@ export function InventoryHub() {
   const hubPo = useFeatureEnabled('inventory.hubPurchaseOrders')
   const hubCategories = useFeatureEnabled('inventory.hubCategories')
   const hubBrands = useFeatureEnabled('inventory.hubBrands')
+  const hubWarehouses = useFeatureEnabled('inventory.hubWarehouses')
   const hubFlags: Record<HubFeatureId, boolean> = {
     'inventory.hubProducts': hubProducts,
     'inventory.hubPurchaseOrders': hubPo,
     'inventory.hubCategories': hubCategories,
     'inventory.hubBrands': hubBrands,
+    'inventory.hubWarehouses': hubWarehouses,
   }
   const visibleSections = sections.filter((s) => hubFlags[s.feature])
 

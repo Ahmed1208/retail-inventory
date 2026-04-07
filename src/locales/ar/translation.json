@@ -10,6 +10,7 @@
     "purchaseOrders": "أوامر الشراء",
     "categories": "الفئات",
     "brands": "العلامات التجارية",
+    "warehouses": "المستودعات",
     "stockMovements": "حركات المخزون",
     "reports": "التقارير",
     "control": "التحكم",
@@ -92,6 +93,7 @@
       "purchaseOrdersList": "قائمة أوامر الشراء معطّلة من إعدادات التحكم.",
       "noPurchaseOrderShortcuts": "جميع اختصارات مركز أوامر الشراء معطّلة من إعدادات التحكم.",
       "newPurchaseOrder": "إنشاء أوامر شراء جديدة معطّل من إعدادات التحكم.",
+      "warehouses": "المستودعات معطّلة من إعدادات التحكم.",
       "dashboardAllOff": "تبويبا لوحة التحكم معطّلان في التحكم. فعّل «نظرة عامة» أو «التقارير» لعرض المحتوى.",
       "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض."
     },
@@ -243,6 +245,10 @@
       "brands": {
         "title": "بطاقة العلامات",
         "desc": "رابط من مركز المخزون إلى العلامات التجارية."
+      },
+      "warehouses": {
+        "title": "بطاقة المستودعات",
+        "desc": "رابط من مركز المخزون لإدارة المستودعات والموقع الافتراضي."
       }
     },
     "people": {
@@ -443,6 +449,7 @@
     "toastStockAdjusted": "تم تحديث المخزون بنجاح",
     "toastError": "حدث خطأ ما",
     "quantityManagedByPurchaseOrders": "الكمية تُدار من خلال أوامر الشراء",
+    "totalAcrossLocations": "الإجمالي في كل المستودعات",
     "detailTitle": "المنتج",
     "backToList": "العودة إلى المنتجات",
     "detailSectionInfo": "تفاصيل المنتج",
@@ -521,6 +528,28 @@
     "toastDeleted": "تم حذف العلامة",
     "toastInUse": "العلامة قيد الاستخدام ولا يمكن حذفها",
     "toastError": "حدث خطأ ما"
+  },
+  "warehouses": {
+    "title": "المستودعات",
+    "description": "حدد مواقع التخزين. يُتتبّع المخزون لكل مستودع؛ أوامر الشراء والبيع تستهدف مستودعاً واحداً لكل مستند.",
+    "addWarehouse": "إضافة مستودع",
+    "editWarehouse": "تعديل مستودع",
+    "colId": "المعرّف",
+    "colLocation": "الموقع",
+    "colDefault": "افتراضي",
+    "setAsDefault": "تعيين كمستودع افتراضي",
+    "defaultBadge": "افتراضي",
+    "selectPlaceholder": "اختر مستودعاً…",
+    "searchByIdOrName": "بحث بالمعرّف أو الاسم…",
+    "empty": "لا توجد مستودعات.",
+    "validationIdName": "المعرّف والاسم مطلوبان.",
+    "toastCreated": "تم إنشاء المستودع",
+    "toastUpdated": "تم تحديث المستودع",
+    "toastDefaultUpdated": "تم تحديث المستودع الافتراضي",
+    "toastError": "حدث خطأ ما",
+    "quantityAtWarehouse": "الكمية (هذا المستودع)",
+    "poLabel": "الاستلام في المستودع",
+    "orderLabel": "الشحن من المستودع"
   },
   "stockMovements": {
     "title": "حركات المخزون",

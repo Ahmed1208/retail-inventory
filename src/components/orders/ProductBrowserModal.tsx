@@ -30,6 +30,8 @@ type Props = {
   orderType?: OrderType
   /** \"sale\" = customer/business price; \"purchase\" = cost price (PO). */
   purpose?: 'sale' | 'purchase'
+  /** When set, overrides `product.quantity` for the stock label (e.g. per warehouse). */
+  displayStock?: (product: ProductWithRelations) => number
   lang: 'en' | 'ar'
   isRTL: boolean
   onPick: (product: ProductWithRelations) => void
@@ -42,6 +44,7 @@ export function ProductBrowserModal({
   categories,
   orderType = 'retail',
   purpose = 'sale',
+  displayStock,
   lang,
   isRTL,
   onPick,
@@ -226,7 +229,8 @@ export function ProductBrowserModal({
                   <div className="font-medium leading-snug">{p.name}</div>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                     <span>
-                      {t('orders.availableStock')}: {p.quantity}
+                      {t('orders.availableStock')}:{' '}
+                      {displayStock ? displayStock(p) : p.quantity}
                     </span>
                     <span className="tabular-nums">
                       {purpose === 'purchase'

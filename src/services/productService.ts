@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { getPeopleBalanceAggregates, roundMoney } from '@/services/peopleService'
+import { DEFAULT_WAREHOUSE_ID } from '@/services/warehouseService'
 import type {
   Product,
   ProductPriceHistory,
@@ -12,6 +13,7 @@ import type {
 
 const PRODUCTS = 'products'
 const STOCK_MOVEMENTS = 'stock_movements'
+const PRODUCT_WAREHOUSE_STOCK = 'product_warehouse_stock'
 const PRODUCT_PRICE_HISTORY = 'product_price_history'
 
 type PriceTriple = {
@@ -277,6 +279,39 @@ export async function deleteProduct(id: string): Promise<void> {
 export type AdjustStockOptions = {
   /** On stock-in, blend this unit cost into `average_unit_cost` (weighted average). */
   inboundUnitCost?: number
+  /** Stock location; defaults to warehouse 1. */
+  warehouseId?: number
+}
+
+export async function getProductQuantitiesByWarehouse(
+  warehouseId: number
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .select('product_id, quantity')
+    .eq('warehouse_id', warehouseId)
+  if (error) throw error
+  const m = new Map<string, number>()
+  for (const row of data ?? []) {
+    const r = row as { product_id: string; quantity: number }
+    m.set(String(r.product_id), Number(r.quantity))
+  }
+  return m
+}
+
+export async function getProductQuantityInWarehouse(
+  productId: string,
+  warehouseId: number
+): Promise<number> {
+  const { data, error } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .select('quantity')
+    .eq('product_id', productId)
+    .eq('warehouse_id', warehouseId)
+    .maybeSingle()
+  if (error) throw error
+  if (!data) return 0
+  return Number((data as { quantity: number }).quantity)
 }
 
 export async function adjustStock(
@@ -286,44 +321,73 @@ export async function adjustStock(
   note?: string,
   opts?: AdjustStockOptions
 ): Promise<void> {
+  const warehouseId = opts?.warehouseId ?? DEFAULT_WAREHOUSE_ID
+  const qtyDelta = Math.trunc(Number(quantity))
+  if (!Number.isFinite(qtyDelta)) {
+    throw new Error('Invalid quantity')
+  }
+
   const { data: product, error: fetchError } = await supabase
     .from(PRODUCTS)
-    .select('quantity, average_unit_cost, cost_price')
+    .select('average_unit_cost, cost_price')
     .eq('id', productId)
     .single()
 
   if (fetchError) throw fetchError
   if (!product) throw new Error('Product not found')
 
-  const currentQty = Number(product.quantity)
   const acRaw = product.average_unit_cost
   const currentAvg =
     acRaw != null && Number.isFinite(Number(acRaw)) ? Number(acRaw) : null
   const costPrice = Number(product.cost_price ?? 0)
 
-  let newQuantity: number
+  const { data: pwsRows, error: pwsReadErr } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .select('warehouse_id, quantity')
+    .eq('product_id', productId)
 
+  if (pwsReadErr) throw pwsReadErr
+
+  const rows = (pwsRows ?? []) as { warehouse_id: number; quantity: number }[]
+  const whQty = Math.trunc(
+    Number(rows.find((r) => Number(r.warehouse_id) === warehouseId)?.quantity ?? 0)
+  )
+  const currentTotal = rows.reduce(
+    (s, r) => s + Math.trunc(Number(r.quantity)),
+    0
+  )
+
+  let newWhQty: number
   switch (type) {
     case 'in':
-      newQuantity = currentQty + quantity
+      newWhQty = whQty + qtyDelta
       break
     case 'out':
-      newQuantity = currentQty - quantity
-      if (newQuantity < 0) {
+      newWhQty = whQty - qtyDelta
+      if (newWhQty < 0) {
         throw new Error('Insufficient stock: result would be negative')
       }
       break
     case 'adjustment':
-      newQuantity = quantity
+      newWhQty = qtyDelta
+      if (newWhQty < 0) {
+        throw new Error('Adjustment quantity cannot be negative')
+      }
       break
     default:
       throw new Error(`Unknown movement type: ${type}`)
   }
 
+  const totalAfter = currentTotal + (newWhQty - whQty)
+
+  const movementQuantity =
+    type === 'adjustment' ? newWhQty : Math.abs(qtyDelta)
+
   const movementPayload = {
     product_id: productId,
+    warehouse_id: warehouseId,
     type,
-    quantity: type === 'adjustment' ? newQuantity : quantity,
+    quantity: movementQuantity,
     note: note ?? null,
   }
 
@@ -333,13 +397,23 @@ export async function adjustStock(
 
   if (insertError) throw insertError
 
-  const updatePayload: Record<string, unknown> = {
-    quantity: newQuantity,
-    updated_at: new Date().toISOString(),
-  }
+  const { error: upsertErr } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .upsert(
+      {
+        product_id: productId,
+        warehouse_id: warehouseId,
+        quantity: newWhQty,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'product_id,warehouse_id' }
+    )
 
-  // When no stock remains, clear WAC so the next receipt starts fresh.
-  if (newQuantity === 0) {
+  if (upsertErr) throw upsertErr
+
+  const updatePayload: Record<string, unknown> = {}
+
+  if (totalAfter === 0) {
     updatePayload.average_unit_cost = null
   } else if (
     type === 'in' &&
@@ -347,25 +421,28 @@ export async function adjustStock(
     !Number.isNaN(Number(opts.inboundUnitCost))
   ) {
     const unitCost = roundMoney(Number(opts.inboundUnitCost))
-    const qtyIn = quantity
+    const qtyIn = qtyDelta
     let newAvg: number
-    if (currentQty <= 0) {
+    if (currentTotal <= 0) {
       newAvg = unitCost
     } else {
       const avgForBlend = currentAvg != null ? currentAvg : costPrice
       newAvg = roundMoney(
-        (currentQty * avgForBlend + qtyIn * unitCost) / (currentQty + qtyIn)
+        (currentTotal * avgForBlend + qtyIn * unitCost) /
+          (currentTotal + qtyIn)
       )
     }
     updatePayload.average_unit_cost = newAvg
   }
 
-  const { error: updateError } = await supabase
-    .from(PRODUCTS)
-    .update(updatePayload)
-    .eq('id', productId)
-
-  if (updateError) throw updateError
+  if (Object.keys(updatePayload).length > 0) {
+    updatePayload.updated_at = new Date().toISOString()
+    const { error: updateError } = await supabase
+      .from(PRODUCTS)
+      .update(updatePayload)
+      .eq('id', productId)
+    if (updateError) throw updateError
+  }
 }
 
 export async function getLowStockProducts(): Promise<ProductWithRelations[]> {
@@ -405,15 +482,21 @@ export type StockMovementFilters = {
 function toMovementWithDetails(row: {
   id: string
   product_id: string
+  warehouse_id?: number | string | null
   type: StockMovementType
   quantity: number
   note: string | null
   created_at: string
   product: Product & { brand: { id: string; name: string; created_at: string } | null }
 }): StockMovementWithProductDetails {
-  const { product, ...rest } = row
+  const { product, warehouse_id: whRaw, ...rest } = row
+  const warehouse_id =
+    whRaw != null && whRaw !== '' && Number.isFinite(Number(whRaw))
+      ? Number(whRaw)
+      : DEFAULT_WAREHOUSE_ID
   return {
     ...rest,
+    warehouse_id,
     product: {
       ...product,
       brand: product.brand ?? null,

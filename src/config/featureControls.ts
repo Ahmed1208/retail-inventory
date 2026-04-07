@@ -43,6 +43,7 @@ export const FEATURE_CONTROL_IDS = [
   'inventory.hubMovements',
   'inventory.hubCategories',
   'inventory.hubBrands',
+  'inventory.hubWarehouses',
   // Products
   'products.addProduct',
   'products.editProduct',
@@ -331,6 +332,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.inventoryHub.brands.title',
             descriptionKey: 'control.inventoryHub.brands.desc',
+          },
+          {
+            id: 'inventory.hubWarehouses',
+            defaultEnabled: true,
+            titleKey: 'control.inventoryHub.warehouses.title',
+            descriptionKey: 'control.inventoryHub.warehouses.desc',
           },
         ],
       },

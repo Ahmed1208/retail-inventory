@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
+import { DEFAULT_WAREHOUSE_ID } from '@/services/warehouseService'
 import {
   getLedgerDocumentLineCreatedAt,
   getNextStandaloneLedgerRef,
@@ -47,7 +48,6 @@ const ORDERS = 'orders'
 const ORDER_ITEMS = 'order_items'
 const ORDER_PAYMENTS = 'order_payments'
 const PAYMENT_INSTALLMENTS = 'payment_installments'
-const PRODUCTS = 'products'
 
 const ORDER_SELECT = `
   *,
@@ -106,6 +106,11 @@ function syncStatusFromFlow(flow: OrderStatusFlow): OrderStatus {
 }
 
 function mapOrderFields(row: OrderRow): Order {
+  const whRaw = row.warehouse_id as number | string | null | undefined
+  const warehouse_id =
+    whRaw != null && whRaw !== '' && Number.isFinite(Number(whRaw))
+      ? Number(whRaw)
+      : DEFAULT_WAREHOUSE_ID
   return {
     id: row.id,
     order_number: Number(row.order_number),
@@ -122,6 +127,7 @@ function mapOrderFields(row: OrderRow): Order {
     discount_rate: Number(row.discount_rate ?? 0),
     subtotal: Number(row.subtotal ?? 0),
     allow_remaining_on_account: Boolean(row.allow_remaining_on_account),
+    warehouse_id,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   }
@@ -481,6 +487,7 @@ export async function createOrder(data: {
   /** Manual order-level discount % (0–100); overrides person rate when set */
   order_discount_rate?: number
   allow_remaining_on_account: boolean
+  warehouse_id?: number
 }): Promise<OrderWithItemsAndPayments> {
   if (!data.items.length) {
     throw new Error('Order must have at least one item')
@@ -548,6 +555,11 @@ export async function createOrder(data: {
   const payment_method: PaymentMethod | null =
     payments.length > 0 ? payments[0].payment_method : null
 
+  const warehouse_id =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
   const orderPayload = {
     order_number,
     type: data.type,
@@ -563,6 +575,7 @@ export async function createOrder(data: {
     paid_amount,
     remaining_amount,
     allow_remaining_on_account: data.allow_remaining_on_account,
+    warehouse_id,
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -812,16 +825,21 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
     }
   }
 
+  const whId =
+    order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+      ? Math.trunc(Number(order.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
   const productIds = [...new Set(order.items.map((i) => i.product_id))]
-  const { data: stockRows, error: stockErr } = await supabase
-    .from(PRODUCTS)
-    .select('id, quantity')
-    .in('id', productIds)
+  const { data: pwsRows, error: stockErr } = await supabase
+    .from('product_warehouse_stock')
+    .select('product_id, quantity')
+    .eq('warehouse_id', whId)
+    .in('product_id', productIds)
   if (stockErr) throw stockErr
   const stockMap = new Map(
-    (stockRows as { id: string; quantity: number }[]).map((r) => [
-      r.id,
-      r.quantity,
+    (pwsRows as { product_id: string; quantity: number }[]).map((r) => [
+      r.product_id,
+      Math.trunc(Number(r.quantity)),
     ])
   )
 
@@ -839,7 +857,8 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
       item.product_id,
       'out',
       item.quantity,
-      `Order #${order.order_number}`
+      `Order #${order.order_number}`,
+      { warehouseId: whId }
     )
   }
 
@@ -1146,9 +1165,15 @@ export async function cancelOrder(
     order.status_flow === 'confirmed' || order.status_flow === 'completed'
 
   if (restoreStock) {
+    const whId =
+      order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+        ? Math.trunc(Number(order.warehouse_id))
+        : DEFAULT_WAREHOUSE_ID
     const note = `Restored from cancelled order #${order.order_number}`
     for (const item of order.items) {
-      await adjustStock(item.product_id, 'in', item.quantity, note)
+      await adjustStock(item.product_id, 'in', item.quantity, note, {
+        warehouseId: whId,
+      })
     }
 
     const { error: delInstErr } = await supabase
@@ -1405,6 +1430,7 @@ export async function saveDraftOrder(
     order_discount_rate: number
     allow_remaining_on_account: boolean
     note?: string
+    warehouse_id?: number
   }
 ): Promise<OrderWithItemsAndPayments> {
   await updateOrderItems(id, data.items)
@@ -1416,6 +1442,20 @@ export async function saveDraftOrder(
   await syncDraftOrderPayments(id, data.payments)
   if (data.note !== undefined) {
     await updateOrderNote(id, data.note)
+  }
+  if (data.warehouse_id !== undefined) {
+    const wid =
+      data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+        ? Math.trunc(Number(data.warehouse_id))
+        : DEFAULT_WAREHOUSE_ID
+    const { error: whErr } = await supabase
+      .from(ORDERS)
+      .update({
+        warehouse_id: wid,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+    if (whErr) throw whErr
   }
   const o = await getOrderById(id)
   if (!o) throw new Error('Order not found')

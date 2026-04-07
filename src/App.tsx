@@ -21,6 +21,7 @@ import { PurchaseOrdersList } from '@/pages/PurchaseOrdersList'
 import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
+import { Warehouses } from '@/pages/Warehouses'
 import { Control } from '@/pages/Control'
 import { AdminSectionLayout } from '@/components/layout/AdminSectionLayout'
 import { RootRedirect } from '@/components/routing/RootRedirect'
@@ -43,6 +44,7 @@ function App() {
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/inventory" element={<InventoryHub />} />
+            <Route path="/warehouses" element={<Warehouses />} />
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/products" element={<Products />} />
             <Route

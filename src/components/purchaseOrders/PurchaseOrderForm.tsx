@@ -14,7 +14,11 @@ import { toast } from 'sonner'
 import { AlertTriangle, ChevronDown, Loader2 } from 'lucide-react'
 
 import { createPurchaseOrder } from '@/services/purchaseOrderService'
-import { getAllProducts } from '@/services/productService'
+import {
+  getAllProducts,
+  getProductQuantitiesByWarehouse,
+} from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories } from '@/services/categoryService'
 import {
   getAllPeople,
@@ -30,6 +34,7 @@ import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
 import { SupplierBrowserModal } from '@/components/purchaseOrders/SupplierBrowserModal'
 import { QuickCreatePersonDialog } from '@/components/people/QuickCreatePersonDialog'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import {
   findProductByInput,
   PAYMENT_METHODS,
@@ -102,6 +107,8 @@ export function PurchaseOrderForm() {
   })
   const [allowRemaining, setAllowRemaining] = useState(false)
   const [lines, setLines] = useState<POLineRow[]>(() => [emptyPOLine()])
+  const warehouseInitRef = useRef(false)
+  const [warehouseId, setWarehouseId] = useState(1)
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [focusCellPos, setFocusCellPos] = useState({ row: 0, col: 0 })
@@ -111,6 +118,21 @@ export function PurchaseOrderForm() {
     queryKey: ['products'],
     queryFn: getAllProducts,
   })
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+  const { data: whStockMap = new Map<string, number>() } = useQuery({
+    queryKey: ['warehouseStock', warehouseId],
+    queryFn: () => getProductQuantitiesByWarehouse(warehouseId),
+  })
+
+  useEffect(() => {
+    if (warehouseInitRef.current || warehouses.length === 0) return
+    const d = warehouses.find((w) => w.is_default)
+    setWarehouseId(d?.id ?? 1)
+    warehouseInitRef.current = true
+  }, [warehouses])
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: getAllCategories,
@@ -175,14 +197,17 @@ export function PurchaseOrderForm() {
 
   const applyProductToLine = useCallback(
     (lineKey: string, p: ProductWithRelations) => {
-      const defaults = applyProductCostDefaults(p)
+      const defaults = applyProductCostDefaults(
+        p,
+        whStockMap.get(p.id) ?? 0
+      )
       setLines((prev) =>
         prev.map((row) =>
           row.key === lineKey ? { ...row, ...defaults } : row
         )
       )
     },
-    []
+    [whStockMap]
   )
 
   const handleDebouncedLookup = useCallback(
@@ -238,17 +263,18 @@ export function PurchaseOrderForm() {
         const p = products.find((x) => x.id === l.product_id)
         if (!p) return l
         const list = p.cost_price
+        const whQty = whStockMap.get(l.product_id) ?? 0
         return {
           ...l,
           listCostPrice: list,
           listCustomerPrice: p.customer_price,
           listBusinessPrice: p.business_price,
-          stock: p.quantity,
+          stock: whQty,
           costPrice: l.costOverridden ? l.costPrice : list,
         }
       })
     )
-  }, [products])
+  }, [products, whStockMap])
 
   const setCellRef = useCallback(
     (lineKey: string, col: number, el: HTMLElement | null) => {
@@ -600,6 +626,7 @@ export function PurchaseOrderForm() {
   const invalidatePO = () => {
     queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
+    queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
     queryClient.invalidateQueries({ queryKey: ['people'] })
@@ -613,6 +640,7 @@ export function PurchaseOrderForm() {
         note: note.trim() || undefined,
         asDraft: true,
         items: linesToApiItems(),
+        warehouse_id: warehouseId,
       })
     },
     onSuccess: (created) => {
@@ -719,6 +747,7 @@ export function PurchaseOrderForm() {
         allow_remaining_on_account: allowRemaining,
         payments,
         items: linesToApiItems(),
+        warehouse_id: warehouseId,
       })
       invalidatePO()
       toast.success(t('purchaseOrders.toastCreated'))
@@ -803,6 +832,7 @@ export function PurchaseOrderForm() {
         products={products}
         categories={categories}
         purpose="purchase"
+        displayStock={(p) => whStockMap.get(p.id) ?? 0}
         lang={lang}
         isRTL={isRTL}
         onPick={onPickProduct}
@@ -853,6 +883,14 @@ export function PurchaseOrderForm() {
       </header>
 
       <div className="flex shrink-0 flex-wrap items-end gap-x-3 gap-y-1.5 border-b bg-background px-2 py-1.5">
+        <WarehouseCombobox
+          id="po-receive-warehouse"
+          label={t('warehouses.poLabel')}
+          warehouses={warehouses}
+          value={warehouseId}
+          onChange={setWarehouseId}
+          className="min-w-[200px] max-w-full flex-1"
+        />
         <div
           data-po-supplier-zone
           className="flex min-w-[140px] max-w-full flex-1 flex-col gap-0.5 sm:min-w-[200px]"

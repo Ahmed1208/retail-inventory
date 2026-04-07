@@ -32,11 +32,21 @@ export interface Brand {
   created_at: string
 }
 
+export interface Warehouse {
+  id: number
+  name: string
+  location: string | null
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
 export type StockMovementType = 'in' | 'out' | 'adjustment'
 
 export interface StockMovement {
   id: string
   product_id: string
+  warehouse_id: number
   type: StockMovementType
   quantity: number
   note: string | null
@@ -157,6 +167,7 @@ export interface Order {
   discount_rate: number
   subtotal: number
   allow_remaining_on_account: boolean
+  warehouse_id: number
   created_at: string
   updated_at: string
 }
@@ -216,6 +227,7 @@ export interface PurchaseOrder {
   remaining_amount: number
   status: PurchaseOrderStatus
   person_id: string | null
+  warehouse_id: number
   created_at: string
   updated_at: string
 }

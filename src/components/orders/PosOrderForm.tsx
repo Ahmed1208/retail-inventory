@@ -18,7 +18,11 @@ import {
   createOrder,
   saveDraftOrder,
 } from '@/services/orderService'
-import { getAllProducts } from '@/services/productService'
+import {
+  getAllProducts,
+  getProductQuantitiesByWarehouse,
+} from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories } from '@/services/categoryService'
 import { getAllPeople, roundMoney } from '@/services/peopleService'
 import type { OrderType, PaymentMethod, ProductWithRelations } from '@/types'
@@ -31,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { CustomerBrowserModal } from '@/components/orders/CustomerBrowserModal'
 import { QuickCreatePersonDialog } from '@/components/people/QuickCreatePersonDialog'
 import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { OrderCheckoutModal } from '@/components/orders/OrderCheckoutModal'
 import {
   catalogPriceForOrderType,
@@ -102,10 +107,12 @@ export function PosOrderForm({
     cheque: '',
     instapay: '',
   })
+  const [warehouseId, setWarehouseId] = useState(1)
 
   const [focusCellPos, setFocusCellPos] = useState({ row: 0, col: 0 })
   const cellRefs = useRef<Map<string, (HTMLElement | null)[]>>(new Map())
   const formSyncKey = useRef<string | null>(null)
+  const warehouseInitRef = useRef(false)
 
   const { data: products = [] } = useQuery({
     queryKey: ['products'],
@@ -119,6 +126,22 @@ export function PosOrderForm({
     queryKey: ['people'],
     queryFn: () => getAllPeople(),
   })
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+  const { data: whStockMap = new Map<string, number>() } = useQuery({
+    queryKey: ['warehouseStock', warehouseId],
+    queryFn: () => getProductQuantitiesByWarehouse(warehouseId),
+  })
+
+  useEffect(() => {
+    if (draftOrderId) return
+    if (warehouseInitRef.current || warehouses.length === 0) return
+    const d = warehouses.find((w) => w.is_default)
+    setWarehouseId(d?.id ?? 1)
+    warehouseInitRef.current = true
+  }, [warehouses, draftOrderId])
 
   const customers = useMemo(
     () => people.filter((p) => p.roles.includes('customer')),
@@ -135,6 +158,7 @@ export function PosOrderForm({
       if (formSyncKey.current === key) return
       formSyncKey.current = key
       setOrderType(o.type)
+      setWarehouseId(o.warehouse_id ?? 1)
       setPersonId(o.person_id)
       setDiscountRate(o.discount_rate)
       setAllowRemaining(o.allow_remaining_on_account)
@@ -192,6 +216,24 @@ export function PosOrderForm({
   )
 
   useEffect(() => {
+    setLines((prev) =>
+      prev.map((l) => {
+        if (!l.product_id) return l
+        const p = products.find((x) => x.id === l.product_id)
+        if (!p) return l
+        const list = catalogPriceForOrderType(p, orderType)
+        const whQty = whStockMap.get(l.product_id) ?? 0
+        return {
+          ...l,
+          listUnitPrice: list,
+          stock: whQty,
+          unitPrice: l.priceOverridden ? l.unitPrice : list,
+        }
+      })
+    )
+  }, [orderType, products, whStockMap])
+
+  useEffect(() => {
     if (!draftOrderId) {
       formSyncKey.current = null
       return
@@ -235,6 +277,8 @@ export function PosOrderForm({
     qc.invalidateQueries({ queryKey: ['orders'] })
     qc.invalidateQueries({ queryKey: ['order'] })
     qc.invalidateQueries({ queryKey: ['products'] })
+    qc.invalidateQueries({ queryKey: ['warehouses'] })
+    qc.invalidateQueries({ queryKey: ['warehouseStock'] })
     qc.invalidateQueries({ queryKey: ['people'] })
   }, [qc])
 
@@ -323,14 +367,14 @@ export function PosOrderForm({
                 unitPrice: price,
                 listUnitPrice: price,
                 priceOverridden: false,
-                stock: p.quantity,
+                stock: whStockMap.get(p.id) ?? 0,
                 lookupInvalid: false,
               }
             : row
         )
       )
     },
-    [orderType]
+    [orderType, whStockMap]
   )
 
   const handleDebouncedLookup = useCallback(
@@ -584,6 +628,7 @@ export function PosOrderForm({
           apply_person_discount: applyPersonDiscount,
           order_discount_rate: effectiveDiscount,
           allow_remaining_on_account: allowRemaining,
+          warehouse_id: warehouseId,
         })
       }
       return saveDraftOrder(draftOrderId, {
@@ -593,6 +638,7 @@ export function PosOrderForm({
         order_discount_rate: discountRate,
         allow_remaining_on_account: allowRemaining,
         note,
+        warehouse_id: warehouseId,
       })
     },
     onSuccess: (o) => {
@@ -626,6 +672,7 @@ export function PosOrderForm({
           apply_person_discount: applyPersonDiscount,
           order_discount_rate: effectiveDiscount,
           allow_remaining_on_account: allowRemaining,
+          warehouse_id: warehouseId,
         })
         id = created.id
         navigate(`/orders/${id}`, { replace: true })
@@ -637,6 +684,7 @@ export function PosOrderForm({
           order_discount_rate: discountRate,
           allow_remaining_on_account: allowRemaining,
           note,
+          warehouse_id: warehouseId,
         })
       }
       return confirmOrder(id)
@@ -648,23 +696,6 @@ export function PosOrderForm({
     },
     onError: (e: Error) => toast.error(e.message || t('orders.toastError')),
   })
-
-  useEffect(() => {
-    setLines((prev) =>
-      prev.map((l) => {
-        if (!l.product_id) return l
-        const p = products.find((x) => x.id === l.product_id)
-        if (!p) return l
-        const list = catalogPriceForOrderType(p, orderType)
-        return {
-          ...l,
-          listUnitPrice: list,
-          stock: p.quantity,
-          unitPrice: l.priceOverridden ? l.unitPrice : list,
-        }
-      })
-    )
-  }, [orderType, products])
 
   const onPickProduct = (p: ProductWithRelations) => {
     const key = browserTargetLineKey ?? lines[lines.length - 1]?.key
@@ -705,6 +736,7 @@ export function PosOrderForm({
         products={products}
         categories={categories}
         orderType={orderType}
+        displayStock={(p) => whStockMap.get(p.id) ?? 0}
         lang={lang}
         isRTL={isRTL}
         onPick={onPickProduct}
@@ -825,6 +857,14 @@ export function PosOrderForm({
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" aria-hidden />
           </button>
         </div>
+        <WarehouseCombobox
+          id="pos-order-warehouse"
+          label={t('warehouses.orderLabel')}
+          warehouses={warehouses}
+          value={warehouseId}
+          onChange={setWarehouseId}
+          className="min-w-[200px] max-w-full flex-1"
+        />
         {selectedPerson && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground sm:text-xs">
             <span>

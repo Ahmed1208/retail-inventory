@@ -10,6 +10,7 @@
     "purchaseOrders": "Purchase Orders",
     "categories": "Categories",
     "brands": "Brands",
+    "warehouses": "Warehouses",
     "stockMovements": "Stock Movements",
     "reports": "Reports",
     "control": "Control",
@@ -92,6 +93,7 @@
       "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
       "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
       "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings.",
+      "warehouses": "Warehouses are turned off in Control settings.",
       "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
       "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
     },
@@ -243,6 +245,10 @@
       "brands": {
         "title": "Brands card",
         "desc": "Link from the inventory hub to brands."
+      },
+      "warehouses": {
+        "title": "Warehouses card",
+        "desc": "Link from the inventory hub to manage warehouses and the default location."
       }
     },
     "people": {
@@ -443,6 +449,7 @@
     "toastStockAdjusted": "Stock updated successfully",
     "toastError": "Something went wrong",
     "quantityManagedByPurchaseOrders": "Quantity is managed through Purchase Orders",
+    "totalAcrossLocations": "total all warehouses",
     "detailTitle": "Product",
     "backToList": "Back to products",
     "detailSectionInfo": "Product details",
@@ -521,6 +528,28 @@
     "toastDeleted": "Brand deleted",
     "toastInUse": "Brand is in use and cannot be deleted",
     "toastError": "Something went wrong"
+  },
+  "warehouses": {
+    "title": "Warehouses",
+    "description": "Define storage locations. Stock is tracked per warehouse; purchase and sales orders target one warehouse each.",
+    "addWarehouse": "Add warehouse",
+    "editWarehouse": "Edit warehouse",
+    "colId": "ID",
+    "colLocation": "Location",
+    "colDefault": "Default",
+    "setAsDefault": "Set as default warehouse",
+    "defaultBadge": "Default",
+    "selectPlaceholder": "Select warehouse…",
+    "searchByIdOrName": "Search by ID or name…",
+    "empty": "No warehouses found.",
+    "validationIdName": "ID and name are required.",
+    "toastCreated": "Warehouse created",
+    "toastUpdated": "Warehouse updated",
+    "toastDefaultUpdated": "Default warehouse updated",
+    "toastError": "Something went wrong",
+    "quantityAtWarehouse": "Qty (this warehouse)",
+    "poLabel": "Receive into warehouse",
+    "orderLabel": "Ship from warehouse"
   },
   "stockMovements": {
     "title": "Stock Movements",
