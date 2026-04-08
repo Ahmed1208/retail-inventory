@@ -16,16 +16,20 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const pathToTitleKey: Record<string, string> = {
-  '/': 'dashboard.title',
+  '/control': 'control.title',
   '/inventory': 'nav.inventory',
   '/products': 'products.title',
-  '/movements': 'stockMovements.title',
-  '/orders': 'orders.title',
+  '/people': 'people.title',
+  '/payments': 'nav.payments',
+  '/register': 'register.title',
+  '/payments/list': 'payments.allPayments',
+  '/payments/new': 'payments.newPayment',
   '/categories': 'categories.title',
   '/brands': 'brands.title',
-  '/reports': 'reports.title',
+  '/warehouses': 'warehouses.title',
   '/purchase-orders': 'purchaseOrders.title',
 }
 
@@ -36,13 +40,41 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const isMutating = useIsMutating() > 0
+  const showLowStockBell = useFeatureEnabled('header.lowStockBell')
 
   const { data: lowStockProducts = [] } = useQuery({
     queryKey: ['lowStockProducts'],
     queryFn: getLowStockProducts,
   })
   const lowStockCount = lowStockProducts.length
-  const pageTitle = pathToTitleKey[pathname] ?? 'dashboard.title'
+  const pageTitle =
+    pathname === '/admin' || pathname === '/admin/'
+      ? 'nav.admin'
+      : pathname === '/admin/dashboard'
+        ? 'dashboard.title'
+      : pathname === '/admin/reports'
+        ? 'reports.title'
+      : pathname === '/admin/documentation'
+        ? 'documentation.title'
+      : pathname === '/admin/movements'
+        ? 'stockMovements.title'
+      : pathname.startsWith('/products/')
+        ? 'products.detailTitle'
+      : /^\/people\/[^/]+$/.test(pathname)
+        ? 'people.detailTitle'
+      : pathname === '/orders/new'
+        ? 'orders.newOrder'
+        : pathname.startsWith('/orders')
+          ? 'orders.title'
+    : pathname === '/purchase-orders/new'
+      ? 'purchaseOrders.newPurchaseOrder'
+      : pathname.startsWith('/purchase-orders')
+        ? 'purchaseOrders.title'
+        : pathname.startsWith('/payments')
+          ? (pathToTitleKey[pathname] ?? 'nav.payments')
+          : pathname === '/register'
+            ? 'register.title'
+            : (pathToTitleKey[pathname] ?? 'dashboard.title')
   const lowStockHref = '/products?lowStock=1'
 
   return (
@@ -86,20 +118,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            <div className="relative">
-              <Link
-                to={lowStockHref}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
-                aria-label={t('common.lowStock')}
-              >
-                <Bell className="h-5 w-5" />
-              </Link>
-              {lowStockCount > 0 && (
-                <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
-                  {lowStockCount > 99 ? '99+' : lowStockCount}
-                </span>
-              )}
-            </div>
+            {showLowStockBell && (
+              <div className="relative">
+                <Link
+                  to={lowStockHref}
+                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
+                  aria-label={t('common.lowStock')}
+                >
+                  <Bell className="h-5 w-5" />
+                </Link>
+                {lowStockCount > 0 && (
+                  <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
+                    {lowStockCount > 99 ? '99+' : lowStockCount}
+                  </span>
+                )}
+              </div>
+            )}
 
             <button
               type="button"

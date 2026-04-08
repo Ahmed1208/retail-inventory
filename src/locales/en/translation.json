@@ -6,11 +6,21 @@
     "dashboard": "Dashboard",
     "products": "Products",
     "orders": "Orders",
+    "people": "People",
     "purchaseOrders": "Purchase Orders",
     "categories": "Categories",
     "brands": "Brands",
+    "warehouses": "Warehouses",
+    "inventoryTransfers": "Stock transfers",
     "stockMovements": "Stock Movements",
-    "reports": "Reports"
+    "reports": "Reports",
+    "control": "Control",
+    "payments": "Payments",
+    "register": "Register",
+    "admin": "Admin",
+    "documentation": "Documentation",
+    "adminHubDescription": "Open dashboard, documentation, or reports from here.",
+    "backToAdmin": "Back to Admin"
   },
   "common": {
     "search": "Search",
@@ -34,8 +44,22 @@
     "yes": "Yes",
     "no": "No"
   },
+  "notes": {
+    "editNote": "Edit note",
+    "saveNote": "Save",
+    "cancelEdit": "Cancel",
+    "mentionHint": "Type @ to link an order, purchase order, payment, or person.",
+    "emptyNotePlaceholder": "No note yet.",
+    "editorPlaceholder": "Write a note…",
+    "editorAria": "Note",
+    "mentionKindOrder": "Order",
+    "mentionKindPO": "PO",
+    "mentionKindPayment": "Payment",
+    "mentionKindPerson": "Person"
+  },
   "dashboard": {
     "title": "Dashboard",
+    "mainDashboard": "Main Dashboard",
     "welcome": "Welcome to StockPilot",
     "totalProducts": "Total Products",
     "totalInventoryValue": "Total Inventory Value",
@@ -49,14 +73,367 @@
     "currentThreshold": "{{current}}/{{threshold}}",
     "emptyMovements": "No recent stock movements.",
     "emptyLowStock": "No low stock items. All products are well stocked.",
-    "totalPurchasesToday": "Purchase Orders Today"
+    "totalPurchasesToday": "Purchase Orders Today",
+    "totalReceivables": "Total Receivables",
+    "totalPayables": "Total Payables",
+    "controlTab": "Control"
+  },
+  "control": {
+    "title": "Control",
+    "pageTitle": "Control | StockPilot",
+    "intro": "Turn features on or off for this browser. Each item describes what it affects in the app.",
+    "securityNote": "These toggles only hide or show UI. They do not block API access. Use database policies for real enforcement.",
+    "resetDefaults": "Reset all to defaults",
+    "disabled": {
+      "newOrder": "Creating new orders is turned off in Control settings.",
+      "editDraft": "Editing draft orders is turned off in Control settings.",
+      "ordersList": "The order list is turned off in Control settings.",
+      "noOrderShortcuts": "All order hub shortcuts are turned off in Control settings.",
+      "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings.",
+      "adminHubAllOff": "All Admin shortcuts are turned off in Control settings. Enable Dashboard, Documentation, or Reports under Navigation.",
+      "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
+      "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
+      "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings.",
+      "noInventoryTransferShortcuts": "All stock transfer shortcuts are turned off in Control settings.",
+      "newInventoryTransfer": "Creating new stock transfers is turned off in Control settings.",
+      "inventoryTransfersList": "The stock transfer list is turned off in Control settings.",
+      "warehouses": "Warehouses are turned off in Control settings.",
+      "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
+      "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
+    },
+    "area": {
+      "sidebar": "Navigation",
+      "header": "Top bar",
+      "dashboard": "Dashboard (home)",
+      "inventoryHub": "Inventory hub",
+      "people": "People",
+      "products": "Products",
+      "categories": "Categories",
+      "brands": "Brands",
+      "purchaseOrders": "Purchase orders",
+      "inventoryTransfers": "Stock transfers",
+      "orders": "Sales orders",
+      "reports": "Reports",
+      "paymentsApp": "Payments",
+      "register": "Register"
+    },
+    "sidebar": {
+      "groupNav": "Sidebar links",
+      "dashboard": {
+        "title": "Dashboard menu",
+        "desc": "Shows the Dashboard item under the Admin group in the sidebar (home / overview)."
+      },
+      "control": {
+        "title": "Control menu",
+        "desc": "Shows the Control link to open this feature settings page."
+      },
+      "inventory": {
+        "title": "Inventory menu",
+        "desc": "Shows the Inventory item in the sidebar (hub and sub-routes)."
+      },
+      "orders": {
+        "title": "Orders menu",
+        "desc": "Shows the Orders item in the sidebar."
+      },
+      "people": {
+        "title": "People menu",
+        "desc": "Shows the People item in the sidebar."
+      },
+      "payments": {
+        "title": "Payments menu",
+        "desc": "Shows the Payments item in the sidebar (hub, history, and new payment)."
+      },
+      "register": {
+        "title": "Register menu",
+        "desc": "Shows the Register item for cash-drawer balances by tender and manual add/withdraw."
+      },
+      "admin": {
+        "title": "Admin menu",
+        "desc": "Shows the Admin link in the sidebar; opens the Admin hub with shortcuts to Dashboard, Documentation, and Reports."
+      },
+      "documentation": {
+        "title": "Documentation page",
+        "desc": "Shows the Documentation link under Admin and enables the /admin/documentation user guide route."
+      },
+      "reports": {
+        "title": "Reports shortcut (sidebar)",
+        "desc": "Shows the Reports link under Admin (opens the dashboard Reports tab)."
+      }
+    },
+    "header": {
+      "group": "Header",
+      "lowStockBell": {
+        "title": "Low stock alerts (bell)",
+        "desc": "Shows the bell icon and badge linking to low-stock products."
+      }
+    },
+    "dashboard": {
+      "groupTabs": "Dashboard tabs",
+      "groupOverview": "Overview tab — sections",
+      "overviewTab": {
+        "title": "Overview tab",
+        "desc": "Shows the main dashboard tab (stats and activity widgets)."
+      },
+      "reportsTab": {
+        "title": "Reports tab",
+        "desc": "Shows the Reports tab on the home page and allows opening sales/inventory reports there."
+      },
+      "statsCards": {
+        "title": "Top stat cards",
+        "desc": "Product count, inventory value, low-stock count, movements today, and purchases today."
+      },
+      "financialSnapshot": {
+        "title": "Receivables & payables",
+        "desc": "The two cards for total receivables and total payables."
+      },
+      "recentMovements": {
+        "title": "Recent stock movements",
+        "desc": "The table of latest stock in/out/adjustments on the overview."
+      },
+      "lowStockPanel": {
+        "title": "Low stock list",
+        "desc": "The low-stock products panel on the overview."
+      }
+    },
+    "register": {
+      "group": "Register",
+      "deposit": {
+        "title": "Add to register",
+        "desc": "Allows recording money put into the register (by tender type)."
+      },
+      "withdraw": {
+        "title": "Withdraw from register",
+        "desc": "Allows recording money taken out of the register (by tender type)."
+      },
+      "viewActivity": {
+        "title": "Register activity",
+        "desc": "Shows the recent activity table and the “View activity” shortcut on the Register page."
+      }
+    },
+    "paymentsApp": {
+      "group": "Payments",
+      "list": {
+        "title": "Transaction log",
+        "desc": "Opens the full balance ledger: orders, purchase orders, payments, wallet, and adjustments."
+      },
+      "editLedgerNote": {
+        "title": "Edit payment notes",
+        "desc": "Allow changing the note on recorded payment-in / payment-out operations from the payment detail page."
+      },
+      "reverseLedgerOperation": {
+        "title": "Reverse recorded payments",
+        "desc": "Allow undoing a payment-in / payment-out, or a register deposit/withdraw, from the payment detail page (ledger, balance, and linked order/PO rows when applicable)."
+      },
+      "fullLedgerView": {
+        "title": "Full ledger mode (transaction log)",
+        "desc": "Shows the “Show full ledger” option on the payments list to expand reversed rows and see raw balance impact."
+      }
+    },
+    "inventoryHub": {
+      "groupLinks": "Hub shortcuts",
+      "products": {
+        "title": "Products card",
+        "desc": "Link from the inventory hub to the products list."
+      },
+      "po": {
+        "title": "Purchase orders card",
+        "desc": "Link from the inventory hub to purchase orders."
+      },
+      "movements": {
+        "title": "Stock movements card",
+        "desc": "Link from the inventory hub to stock movements."
+      },
+      "categories": {
+        "title": "Categories card",
+        "desc": "Link from the inventory hub to categories."
+      },
+      "brands": {
+        "title": "Brands card",
+        "desc": "Link from the inventory hub to brands."
+      },
+      "warehouses": {
+        "title": "Warehouses card",
+        "desc": "Link from the inventory hub to manage warehouses: display codes from location, optional register per site, default location, and safe register turn-off when the drawer is empty."
+      },
+      "transfers": {
+        "title": "Stock transfers card",
+        "desc": "Link from the inventory hub to move quantity between warehouses (no pricing)."
+      }
+    },
+    "people": {
+      "groupList": "List and profile",
+      "groupCreate": "Create",
+      "viewProfile": {
+        "title": "View profile",
+        "desc": "Shows the eye icon and allows opening the person profile dialog with balance and history."
+      },
+      "editPerson": {
+        "title": "Edit person",
+        "desc": "Allows editing customer or supplier details from the list and from the profile dialog."
+      },
+      "deletePerson": {
+        "title": "Delete person",
+        "desc": "Shows the delete action when allowed by business rules."
+      },
+      "recordPayment": {
+        "title": "Record payment",
+        "desc": "Allows recording balance payments from Payments → New payment (choose person)."
+      },
+      "addPerson": {
+        "title": "Add person",
+        "desc": "Shows the button to create a new customer or supplier."
+      }
+    },
+    "products": {
+      "group": "Product list",
+      "add": {
+        "title": "Add product",
+        "desc": "Shows the Add product button on the products page."
+      },
+      "edit": {
+        "title": "Edit product",
+        "desc": "Shows the edit (pencil) action for each product row."
+      },
+      "delete": {
+        "title": "Delete product",
+        "desc": "Shows the delete action for each product row."
+      },
+      "stockAdjust": {
+        "title": "Stock adjustment",
+        "desc": "Shows the stock adjust action to change quantity manually."
+      }
+    },
+    "categories": {
+      "group": "Categories",
+      "add": {
+        "title": "Add category",
+        "desc": "Shows the add category button."
+      },
+      "edit": {
+        "title": "Edit category",
+        "desc": "Shows inline edit for a category name."
+      },
+      "delete": {
+        "title": "Delete category",
+        "desc": "Shows the delete action for a category."
+      }
+    },
+    "brands": {
+      "group": "Brands",
+      "add": {
+        "title": "Add brand",
+        "desc": "Shows the add brand button."
+      },
+      "edit": {
+        "title": "Edit brand",
+        "desc": "Shows inline edit for a brand name."
+      },
+      "delete": {
+        "title": "Delete brand",
+        "desc": "Shows the delete action for a brand."
+      }
+    },
+    "purchaseOrders": {
+      "groupHub": "Purchase orders hub",
+      "hubList": {
+        "title": "All purchase orders card",
+        "desc": "Shows the shortcut to the purchase orders list on the purchase orders home page."
+      },
+      "group": "Purchase orders",
+      "create": {
+        "title": "Create purchase order",
+        "desc": "Shows the new purchase order shortcut and enables the full-page create flow (supplier picker, product browser, lines, payments)."
+      },
+      "costOverridePriceDialog": {
+        "title": "Cost override confirmation (new PO)",
+        "desc": "When a line cost differs from the catalog default, shows a dialog to choose “allow once” or update catalog prices (cost, retail, wholesale). When off, uses the inline checkbox to update default cost only."
+      },
+      "confirmReceive": {
+        "title": "Confirm / receive draft PO",
+        "desc": "Shows the button on a draft purchase order to confirm receipt, enter supplier payments, and post stock."
+      },
+      "cancel": {
+        "title": "Cancel purchase order",
+        "desc": "Shows the cancel action on received purchase orders (detail page)."
+      },
+      "editNote": {
+        "title": "Edit purchase order note",
+        "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
+      }
+    },
+    "inventoryTransfers": {
+      "group": "Stock transfers",
+      "create": {
+        "title": "Create stock transfer",
+        "desc": "Shows the new transfer shortcut and the form to move products between two warehouses (quantities only)."
+      },
+      "list": {
+        "title": "Stock transfer list",
+        "desc": "Shows the list of past transfers and links to each transfer detail."
+      }
+    },
+    "orders": {
+      "groupHub": "Orders hub",
+      "hubList": {
+        "title": "All orders card",
+        "desc": "Shows the shortcut to the orders list on the orders home page."
+      },
+      "hubNew": {
+        "title": "New order card",
+        "desc": "Shows the shortcut to create a new order and enables the new-order page."
+      },
+      "groupPos": "POS (draft / new)",
+      "editDraft": {
+        "title": "Edit draft orders",
+        "desc": "Allows opening the POS editor for draft orders from the order detail page."
+      },
+      "saveDraft": {
+        "title": "Save draft",
+        "desc": "Shows the Save draft button in the POS header."
+      },
+      "checkout": {
+        "title": "Checkout",
+        "desc": "Shows the Checkout button and checkout flow (payments and confirm)."
+      },
+      "groupConfirmed": "Confirmed / active orders",
+      "print": {
+        "title": "Print invoice",
+        "desc": "Shows print invoice on the order detail page."
+      },
+      "cancel": {
+        "title": "Cancel order",
+        "desc": "Shows cancel order on the order detail page when status allows."
+      },
+      "addPayment": {
+        "title": "Add payment (reserved)",
+        "desc": "Reserved for future use: partial payments on confirmed orders from the order screen. Checkout payments are controlled by Checkout and Record payment."
+      },
+      "editNote": {
+        "title": "Edit order note",
+        "desc": "Allows editing the order note field on the detail page."
+      }
+    },
+    "reports": {
+      "group": "Reports tab",
+      "export": {
+        "title": "Export CSV",
+        "desc": "Shows export to CSV on dashboard reports (e.g. inventory value)."
+      }
+    }
   },
   "products": {
     "title": "Products",
     "addProduct": "Add Product",
     "editProduct": "Edit Product",
     "deleteProduct": "Delete Product",
-    "searchPlaceholder": "Search by product name...",
+    "searchPlaceholder": "Search by name or product ID...",
+    "productId": "Product ID",
+    "productIdHint": "Leave empty to generate automatically (e.g. P-A1B2C3D4E5). Must be unique.",
+    "validationProductCodeMax": "Product ID must be at most 64 characters",
+    "validationProductCodeFormat": "Use only letters, numbers, dots, dashes, and underscores (no spaces)",
+    "validationProductCodeRequired": "Product ID is required",
+    "validationDuplicateCode": "This product ID is already in use",
+    "validationDuplicateName": "A product with this name already exists",
     "filterByCategory": "Category",
     "filterByBrand": "Brand",
     "allCategories": "All categories",
@@ -67,6 +444,8 @@
     "unit": "Unit",
     "lowStockThreshold": "Low Stock Threshold",
     "stockAdjust": "Stock Adjust",
+    "addNewBrand": "Add new brand",
+    "addNewCategory": "Add new category",
     "addProductTitle": "Add Product",
     "editProductTitle": "Edit Product",
     "stockAdjustTitle": "Stock Adjustment",
@@ -89,7 +468,48 @@
     "toastDeleted": "Product deleted successfully",
     "toastStockAdjusted": "Stock updated successfully",
     "toastError": "Something went wrong",
-    "quantityManagedByPurchaseOrders": "Quantity is managed through Purchase Orders"
+    "quantityManagedByPurchaseOrders": "Quantity is managed through Purchase Orders",
+    "totalAcrossLocations": "total all warehouses",
+    "detailTitle": "Product",
+    "backToList": "Back to products",
+    "detailSectionInfo": "Product details",
+    "detailUpdated": "Last updated",
+    "detailSectionSales": "Sales analytics",
+    "detailKpiUnitsSold": "Units sold",
+    "detailKpiLineRevenue": "Line revenue",
+    "detailKpiOrders": "Orders",
+    "detailKpiRetailLines": "Retail lines",
+    "detailKpiWholesaleLines": "Wholesale lines",
+    "detailChartUnitsPerDay": "Units per day",
+    "detailChartRevenuePerDay": "Revenue per day",
+    "detailNoSalesInRange": "No completed sales in this date range.",
+    "detailRecentSales": "Recent sales",
+    "detailLineTotal": "Line total",
+    "detailSectionMovements": "Stock movements",
+    "detailNoMovements": "No stock movements recorded for this product.",
+    "detailEditProduct": "Edit product",
+    "priceHistorySection": "Price history",
+    "priceHistoryChartTitle": "Prices over time",
+    "priceHistoryColDate": "Updated",
+    "priceHistoryColDeltaCustomer": "Δ retail",
+    "priceHistoryColDeltaBusiness": "Δ wholesale",
+    "priceHistoryColDeltaCost": "Δ cost",
+    "priceHistoryEmpty": "No price history yet.",
+    "priceHistoryDialogSection": "Recent price updates",
+    "priceHistoryColCustomerShort": "Retail",
+    "priceHistoryColBusinessShort": "Wholesale",
+    "priceHistoryColCostShort": "Cost",
+    "legendCustomerPrice": "Customer price",
+    "legendBusinessPrice": "Business price",
+    "legendCostPrice": "Cost price",
+    "averageUnitCost": "Average unit cost (WAC)",
+    "averageUnitCostHint": "Weighted average of purchase line costs for on-hand stock. Updates when you receive stock on a purchase order (or stock in using catalog cost).",
+    "grossMarginRetail": "Gross profit (retail sales)",
+    "grossMarginWholesale": "Gross profit (wholesale sales)",
+    "grossProfitSoldHint": "From completed orders only: line revenue minus units sold × current average unit cost (WAC). Uses today’s WAC as an estimate of cost of goods sold.",
+    "detailPricingTableTitle": "Pricing & margins",
+    "totalProfitFromSales": "Gross profit (sales)",
+    "totalProfitFromSalesHint": "All completed orders (retail + wholesale): total line revenue minus total units sold × current average unit cost (WAC). Same method as the table rows; WAC is an estimate of COGS."
   },
   "categories": {
     "title": "Categories",
@@ -129,6 +549,49 @@
     "toastInUse": "Brand is in use and cannot be deleted",
     "toastError": "Something went wrong"
   },
+  "warehouses": {
+    "title": "Warehouses",
+    "description": "Define storage locations. Stock is tracked per warehouse; purchase and sales orders target one warehouse each.",
+    "addWarehouse": "Add warehouse",
+    "editWarehouse": "Edit warehouse",
+    "colId": "ID",
+    "colCode": "Code",
+    "colInternalId": "Internal ID",
+    "colLocation": "Location",
+    "colDefault": "Default",
+    "setAsDefault": "Set as default warehouse",
+    "defaultBadge": "Default",
+    "selectPlaceholder": "Select warehouse…",
+    "searchByIdOrName": "Search by ID or name…",
+    "empty": "No warehouses found.",
+    "validationIdName": "ID and name are required.",
+    "validationName": "Name is required.",
+    "validationLocation": "Location is required.",
+    "codeAutoHint": "Location is required. A display code (e.g. NASR-CITY-01) is assigned automatically from the location text.",
+    "locationPlaceholder": "e.g. Nasr City",
+    "registerNotEmptyTitle": "Register is not empty",
+    "registerNotEmptyBody": "Withdraw or zero out every tender before turning off the register for this warehouse.",
+    "withdrawAllRegisterShortcut": "Withdraw everything from register",
+    "toastCreated": "Warehouse created",
+    "toastUpdated": "Warehouse updated",
+    "toastDefaultUpdated": "Default warehouse updated",
+    "toastDeleted": "Warehouse deleted",
+    "toastError": "Something went wrong",
+    "colHasRegister": "Register",
+    "hasRegisterLabel": "Has cash register",
+    "hasRegisterHint": "POS and register payments can only use locations with a register.",
+    "defaultMustHaveRegister": "The default warehouse always has a register.",
+    "primaryWarehouseMustHaveRegister": "The primary warehouse (ID 1) always has a register.",
+    "deleteWarehouse": "Delete warehouse",
+    "deleteWarehouseTitle": "Delete warehouse?",
+    "deleteWarehouseConfirm": "This will permanently remove the warehouse. It must have no stock and no register payment history.",
+    "deleteBlockedStock": "This location still has stock. Transfer everything out, then try again.",
+    "deleteBlockedRegister": "Payments are still attributed to this register. It cannot be removed while ledger history references it.",
+    "openTransferToEmpty": "Open transfer to move stock",
+    "quantityAtWarehouse": "Qty (this warehouse)",
+    "poLabel": "Receive into warehouse",
+    "orderLabel": "Ship from warehouse"
+  },
   "stockMovements": {
     "title": "Stock Movements",
     "in": "In",
@@ -162,8 +625,50 @@
   },
   "orders": {
     "title": "Orders",
+    "allOrders": "All Orders",
+    "subtitle": "Manage your sales orders and create new ones",
+    "allOrdersSubtitle": "View, search and manage existing orders",
+    "newOrderSubtitle": "Create a new sales order",
+    "backToOrders": "Back to Orders",
+    "fillRowBeforeAdd": "Choose a product on this row before adding another line.",
+    "priceModifiedWarning": "Unit price differs from the catalog (list) price for this order type.",
+    "originalPrice": "Original price",
+    "restoreCatalogPrice": "Restore catalog price",
+    "productNotFound": "Product not found",
+    "onlyXUnitsAvailable": "Only {{count}} units available",
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "completed": "Completed",
+    "saveDraft": "Save Draft",
+    "confirmOrder": "Confirm Order",
+    "checkout": "Checkout",
+    "checkoutTitle": "Checkout & payment",
+    "addPayment": "Add Payment",
+    "remaining": "Remaining",
+    "paid": "Paid",
+    "discount": "Discount",
+    "printInvoice": "Print Invoice",
+    "walkIn": "Walk-in Customer",
+    "addToBalance": "Add to balance",
+    "addToBalanceHint": "Select a customer to carry the remainder on their account.",
+    "mergeRows": "Merge rows?",
+    "duplicateProduct": "Product already in order",
+    "stockWarning": "Exceeds available stock",
+    "productBrowser": "Product Browser",
+    "customerBrowser": "Customer browser",
+    "quickCreateCustomer": "New customer",
+    "quickCreateCustomerTitle": "Create customer",
+    "searchCustomers": "Search by name or phone...",
+    "pressF1Customer": "Arrow keys and Enter to choose · Esc to close",
+    "walkInBrowserHint": "No linked account or balance",
+    "pressF1": "Press F1 to browse products",
+    "openCustomerBrowserHint": "Click or press F1 to search and choose a customer",
+    "productId": "Product ID",
+    "selectOrNew": "Select an order from the list or start a new order.",
+    "applyPersonDiscount": "Auto-apply customer discount rate",
+    "products": "Products",
     "newOrder": "New Order",
-    "searchPlaceholder": "Search by order number...",
+    "searchPlaceholder": "Search by order number or customer name...",
     "filterStatusAll": "All",
     "filterStatusPending": "Pending",
     "filterStatusCompleted": "Completed",
@@ -191,12 +696,14 @@
     "createOrderTitle": "Create Order",
     "orderType": "Order Type",
     "paymentCash": "Cash",
-    "paymentCard": "Card",
-    "paymentTransfer": "Transfer",
-    "paymentOther": "Other",
+    "paymentVisa": "Visa",
+    "paymentCheque": "Cheque",
+    "paymentInstapay": "Instapay",
     "paymentNone": "None",
     "paymentAmount": "Amount",
     "paymentBreakdown": "Payment breakdown",
+    "inventoryForDocument": "Inventory / warehouse",
+    "paymentRegister": "Register",
     "paymentRemaining": "Remaining",
     "validationPaymentTotal": "Payment total must equal order total ({{total}})",
     "noteOptional": "Note (optional)",
@@ -215,16 +722,60 @@
     "orderDetailTitle": "Order #{{number}}",
     "cancelConfirmTitle": "Cancel Order",
     "cancelConfirmMessage": "Cancel order #{{number}}? Stock will be restored automatically for all items.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementLegend": "How to settle recorded payments",
+    "cancelSettlementReverse": "Reverse payments on the ledger (default)",
+    "cancelSettlementRetain": "Keep total paid as customer wallet credit (one ledger line)",
+    "cancelCompletedOrderHint": "This order is completed. Cancelling will restore stock and reverse ledger entries tied to the sale.",
     "totalOrders": "Total Orders",
     "totalRevenue": "Total Revenue",
     "pendingOrders": "Pending",
     "cancelledOrders": "Cancelled",
-    "emptyOrders": "No orders match your filters."
+    "emptyOrders": "No orders match your filters.",
+    "customer": "Customer",
+    "selectCustomer": "Customer (optional)",
+    "searchPeople": "Search people...",
+    "personBalance": "Balance",
+    "applyDiscountToggle": "Apply {{pct}}% discount to this order?",
+    "availableCredit": "Available credit",
+    "creditBlocked": "This order exceeds the customer's credit limit.",
+    "subtotal": "Subtotal",
+    "discountedTotal": "After discount"
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
+    "subtitle": "Receive stock from suppliers and track payables.",
+    "allPurchaseOrders": "All purchase orders",
+    "allPurchaseOrdersSubtitle": "Search, filter, and open any PO.",
+    "newPurchaseOrderSubtitle": "Full-screen flow: supplier, products, costs, and payments.",
+    "backToPurchaseOrders": "Back to purchase orders",
+    "backToList": "Back to list",
+    "supplierBrowser": "Choose supplier",
+    "quickCreateSupplier": "New supplier",
+    "quickCreateSupplierTitle": "Create supplier",
+    "searchSuppliers": "Search suppliers by name or phone...",
+    "pressF1Supplier": "Press F1 while the supplier field is focused to open this list. Arrow keys and Enter to select.",
+    "pressF1Products": "Press F1 (or Add products) to browse catalog by category and brand. Shows cost price.",
+    "noLinkedSupplier": "No linked supplier",
+    "noLinkedSupplierHint": "Enter a name manually below, or pick a supplier from your directory.",
+    "productBrowser": "Add product to purchase",
+    "productAlreadyInPo": "This product is already on the order.",
+    "addProductsHint": "Use Add products or press F1 to pick items from the catalog.",
+    "createSubmit": "Create purchase order",
+    "saveDraft": "Save as draft",
+    "toastDraftSaved": "Draft saved. Confirm from the purchase order page when ready.",
+    "confirmReceiveDraft": "Confirm & receive",
+    "checkoutTitle": "Purchase order checkout",
+    "confirmCreatePo": "Confirm purchase order",
+    "paymentRegisterWarehouse": "Register for payments",
+    "registerPaymentGateTitle": "Where should payments be registered?",
+    "registerPaymentGateDescription": "This receiving warehouse has no cash register. Choose which register should record supplier payments. The supplier’s balance and payables are still correct; only the cash register drawer is affected.",
+    "selectRegisterWarehouse": "Register (search by ID or name)",
+    "registerPaymentGateContinue": "Continue to checkout",
+    "addToBalanceHint": "Select a supplier to carry the remainder on their account (payables).",
     "searchPlaceholder": "Search by order number...",
     "filterStatusAll": "All",
+    "filterStatusDraft": "Draft",
     "filterStatusReceived": "Received",
     "filterStatusCancelled": "Cancelled",
     "dateFrom": "From",
@@ -237,6 +788,7 @@
     "itemCount": "1 item",
     "totalAmount": "Total Amount",
     "status": "Status",
+    "statusDraft": "Draft",
     "statusReceived": "Received",
     "statusCancelled": "Cancelled",
     "date": "Date",
@@ -256,10 +808,22 @@
     "remove": "Remove",
     "costPriceDiffWarning": "Cost price differs from default (default: {{default}}). Update default price?",
     "updateDefaultCostPrice": "Yes, update default cost price for this product",
+    "costOverrideTitle": "Cost differs from catalog",
+    "costOverrideBody": "Line \"{{name}}\" uses a unit cost that differs from the catalog default ({{listCost}}). Use this cost for this purchase order only, or update catalog prices (cost, customer, and business).",
+    "costOverrideAllowOnce": "Allow once",
+    "costOverrideUpdateCatalog": "Update catalog prices",
+    "costOverrideBlurHint": "Leave the cost field (blur) to choose how to handle the difference, or restore the catalog cost.",
+    "costOverrideUnsetError": "For each line where cost differs from catalog, leave the cost field or choose “Allow once” or “Update catalog prices”.",
+    "catalogPricesTitle": "Update catalog prices",
+    "catalogPricesHint": "These values will be saved on the product when the purchase order is received.",
+    "catalogPricesBack": "Back",
+    "originalPriceDisabledCatalog": "Restore is disabled: you chose to update catalog prices when this purchase order is received.",
     "runningTotal": "Total",
     "validationAtLeastOne": "Add at least one product",
+    "validationSupplierRequired": "Select a supplier from your directory before checkout.",
     "validationQuantityMin": "Quantity must be at least 1",
     "validationCostPriceMin": "Cost price must be 0 or greater",
+    "errorDraftStatusNotAllowed": "Saving drafts requires a database update: apply migration 016 (purchase order draft status) to your Supabase project, then try again.",
     "toastCreated": "Purchase order created successfully",
     "toastCancelled": "Purchase order cancelled. Stock restored.",
     "toastError": "Something went wrong",
@@ -270,7 +834,309 @@
     "costPriceUpdated": "Default updated",
     "cancelConfirmTitle": "Cancel Purchase Order",
     "cancelConfirmMessage": "Cancel purchase order #{{number}}? Stock will be deducted for all items.",
-    "emptyOrders": "No purchase orders match your filters."
+    "cancelConfirmMessageDraft": "Cancel draft purchase order #{{number}}? Nothing has been received into stock yet.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementLegend": "How to settle recorded payments",
+    "cancelSettlementReverse": "Reverse payments on the ledger (default)",
+    "cancelSettlementRetain": "Keep total paid as supplier wallet credit (one ledger line)",
+    "emptyOrders": "No purchase orders match your filters.",
+    "selectSupplier": "Supplier",
+    "supplierBalance": "Supplier balance"
+  },
+  "inventoryTransfers": {
+    "title": "Stock transfers",
+    "subtitle": "Move products between warehouses. No prices—only quantities.",
+    "allTransfers": "All transfers",
+    "allTransfersSubtitle": "Review past moves between locations.",
+    "newTransfer": "New transfer",
+    "newTransferSubtitle": "Choose source and destination, add lines, confirm.",
+    "backToTransfers": "Back to stock transfers",
+    "backToList": "Back to list",
+    "fromWarehouse": "From warehouse",
+    "toWarehouse": "To warehouse",
+    "sameWarehouseError": "Pick two different warehouses.",
+    "note": "Note",
+    "notePlaceholder": "Optional reference for this transfer",
+    "lines": "Lines",
+    "addLine": "Add line",
+    "colProduct": "Product",
+    "colAvailable": "Available (source)",
+    "colNumber": "#",
+    "colDate": "Date",
+    "exceedsAvailable": "Exceeds available quantity at source.",
+    "submitTransfer": "Complete transfer",
+    "toastCreated": "Transfer completed",
+    "toastError": "Transfer failed",
+    "emptyList": "No transfers yet.",
+    "detailTitle": "Transfer #{{n}}",
+    "detailHeading": "Transfer #{{n}}",
+    "notFound": "Transfer not found.",
+    "print": "Print",
+    "openTransferDetail": "Open transfer number {{n}}",
+    "promptDeleteWarehouseTitle": "Delete this warehouse?",
+    "promptDeleteWarehouseDescription": "The source warehouse has no stock left. Remove it from your locations?",
+    "keepWarehouse": "Keep warehouse"
+  },
+  "people": {
+    "title": "People",
+    "searchPlaceholder": "Search by name or phone...",
+    "filterRoleAll": "All",
+    "filterRoleCustomers": "Customers",
+    "filterRoleSuppliers": "Suppliers",
+    "filterBalanceAll": "All balances",
+    "filterBalancePositive": "They owe you",
+    "filterBalanceNegative": "You owe them",
+    "filterBalanceZero": "Zero balance",
+    "filterDiscountAll": "All",
+    "filterDiscountHas": "Has discount",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "balance": "Balance",
+    "discount": "Discount Rate",
+    "creditLimit": "Credit Limit",
+    "noLimit": "No limit",
+    "owesYou": "owes you",
+    "youOwe": "you owe",
+    "settled": "Settled",
+    "recordPayment": "Record Payment",
+    "receivedPayment": "Received Payment",
+    "madePayment": "Made Payment",
+    "balanceHistory": "Balance History",
+    "addPerson": "Add Person",
+    "editPerson": "Edit Person",
+    "deletePerson": "Delete Person",
+    "viewProfile": "View Profile",
+    "detailTitle": "Person",
+    "detailBack": "Back to people",
+    "detailSectionInfo": "Profile",
+    "detailEdit": "Edit person",
+    "detailSectionSales": "Sales analytics",
+    "detailSectionPurchases": "Purchase analytics",
+    "detailGrossProfitNeedsWac": "Gross profit appears when every product on this customer's completed orders has an average unit cost (WAC).",
+    "detailPurchaseKpiUnits": "Units received",
+    "detailPurchaseKpiSpend": "Line spend",
+    "detailPurchaseKpiPos": "Purchase orders",
+    "detailChartPurchaseUnits": "Units received per day",
+    "detailChartPurchaseSpend": "Spend per day",
+    "detailNoPurchasesInRange": "No received purchase lines in this date range.",
+    "openFullProfile": "Open full profile page",
+    "detailDocumentsSection": "Orders & purchase orders",
+    "detailDocSearchLabel": "Search by number",
+    "detailDocSearchPlaceholder": "e.g. 55, O-55, PO-12…",
+    "detailSalesOrders": "Sales orders",
+    "detailPurchaseOrdersTable": "Purchase orders",
+    "detailNoDocumentsMatch": "No documents match your filters.",
+    "detailMoneyOverTime": "Document totals over time",
+    "detailMoneyOverTimeHelp": "Sum of order totals (customer) and purchase order totals (supplier) per day. Two lines when this person is both customer and supplier.",
+    "detailMoneyLineCustomer": "Sales orders (total)",
+    "detailMoneyLineSupplier": "Purchase orders (total)",
+    "detailMoneyChartEmpty": "No orders or purchase orders in this date range.",
+    "phone": "Phone",
+    "address": "Address",
+    "notes": "Notes",
+    "roles": "Roles",
+    "lastUpdated": "Last Updated",
+    "currentBalance": "Current balance",
+    "discountHelper": "Applied automatically to customer orders",
+    "creditLimitHelper": "Leave empty for no limit",
+    "creditLimitEnable": "Set credit limit",
+    "name": "Name",
+    "roleRemovalWarning": "This person has {{count}} orders linked to their customer role. Remove the customer role only after reassigning orders.",
+    "roleRemovalWarningSupplier": "This person has {{count}} purchase orders linked as supplier.",
+    "deleteBlocked": "Cannot delete: person has linked records",
+    "deleteBlockedBalance": "Cannot delete: unsettled balance of {{amount}}",
+    "deleteConfirm": "Delete {{name}}? This cannot be undone.",
+    "emptyPeople": "No people match your filters.",
+    "toastCreated": "Person created",
+    "toastUpdated": "Person updated",
+    "toastDeleted": "Person deleted",
+    "toastPayment": "Payment recorded",
+    "toastError": "Something went wrong",
+    "validationNameMin": "Name must be at least 2 characters",
+    "validationPhoneRequired": "Phone number is required.",
+    "formCreateRequiredHint": "Name and phone are required.",
+    "validationPhoneDuplicate": "This phone number is already used by another person.",
+    "validationPhoneDuplicateNamed": "This phone number is already used by {{name}}.",
+    "validationRoles": "Select at least one role",
+    "paymentAmount": "Amount",
+    "paymentNote": "Note (optional)",
+    "paymentPreview": "Balance after payment",
+    "balanceExplanationPositive": "{{name}} owes you {{amount}}",
+    "balanceExplanationNegative": "You owe {{name}} {{amount}}",
+    "balanceExplanationZero": "Settled",
+    "balanceChipOwesYou": "Owes you",
+    "balanceChipYouOwe": "You owe",
+    "balanceChipSettled": "Settled",
+    "txWallet": "Wallet",
+    "txRegisterDeposit": "Register deposit",
+    "txRegisterWithdraw": "Register withdrawal",
+    "profileOverview": "Overview",
+    "profileOrders": "Orders",
+    "profilePurchaseOrders": "Purchase Orders",
+    "totalOrders": "Total Orders",
+    "totalPurchases": "Total Purchases",
+    "totalSpent": "Total Spent (orders)",
+    "totalBought": "Total Bought (POs)",
+    "transactionType": "Type",
+    "transactionDate": "Date",
+    "reference": "Reference",
+    "amount": "Amount",
+    "runningBalance": "Running balance",
+    "summaryTotalIn": "Total in",
+    "summaryTotalOut": "Total out",
+    "summaryNet": "Net",
+    "filterTxAll": "All types",
+    "openOrder": "Open order",
+    "openPO": "Open PO",
+    "txOrder": "Order",
+    "txPurchaseOrder": "Purchase order",
+    "txPaymentIn": "Payment in",
+    "txPaymentOut": "Payment out",
+    "txAdjustment": "Adjustment",
+    "adjustBalance": "Adjust balance",
+    "adjustNote": "Adjustment note",
+    "savePayment": "Save payment",
+    "emDash": "—",
+    "emptyTxHistory": "No transactions in this view.",
+    "emptyOrdersForPerson": "No orders linked yet.",
+    "emptyPOsForPerson": "No purchase orders linked yet."
+  },
+  "payments": {
+    "hubIntro": "Record balance payments or open the full transaction log (every ledger movement).",
+    "hubDisabled": "Payments hub shortcuts are turned off in Control settings.",
+    "allPayments": "Transaction log",
+    "allPaymentsDesc": "Full history of balance movements: sales orders, purchase orders, payments, wallet credits, and adjustments.",
+    "newPayment": "New payment",
+    "newPaymentDesc": "Choose a person and record received or made payment.",
+    "newPaymentHint": "Select who this payment applies to, then enter amount and type.",
+    "personForPayment": "Person",
+    "choosePerson": "Choose person…",
+    "selectPersonBrowser": "Select person",
+    "searchPeople": "Search by name, phone, or ID",
+    "pressF1Person": "Press F1 to open the person browser.",
+    "listIntro": "Complete ledger for the selected period—every operation that touched a person’s balance. Filter by type or person, or search.",
+    "filterFrom": "From date & time",
+    "filterTo": "To date & time",
+    "filterType": "Transaction type",
+    "filterPerson": "Person",
+    "filterPersonAll": "All people",
+    "typePaymentsBoth": "Payments in, out, and wallet",
+    "typeAllTransactions": "All transaction types",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Name, phone, walk-in, note, reference, type…",
+    "walkInCustomer": "Walk-in",
+    "emptyList": "No transactions match your filters.",
+    "resultCount": "{{count}} row(s) shown",
+    "backToHub": "Back to Payments",
+    "filterPaymentMethod": "Payment method",
+    "methodFilterAll": "All methods",
+    "methodUnspecified": "Not set",
+    "methodColumn": "Method",
+    "methodDetailsColumn": "Payment method",
+    "logDetailsColumn": "Other details",
+    "logStatusColumn": "Status",
+    "expandNestedPaymentsAria": "Show or hide checkout payment lines for this document",
+    "listDocumentTotal": "Document total",
+    "listDocumentTotalHint": "Sale total for an order, or purchase order liability total.",
+    "listBalanceImpact": "Balance impact",
+    "listBalanceImpactHint": "Default view: for sales orders, negative means the customer still owes (or net balance down), positive means credit or overpayment. Purchase orders keep signed payable remainder. Full ledger: raw signed ledger line. Green/red matches the sign of this column for linked people.",
+    "listRegisterImpact": "Register impact",
+    "listRegisterImpactHint": "Net effect on the register (cash drawer and tender accounts): positive when money comes in, negative when paid out.",
+    "listRegisterWarehouse": "Register / inventory",
+    "registerWarehouseLegacy": "Legacy",
+    "operationRegisterWarehouse": "Register warehouse",
+    "recordPaymentRegisterWarehouse": "Register for this payment",
+    "noRegisterWarehouseForPayments": "No warehouse with a register is configured. Add one under Inventory → Warehouses.",
+    "splitHint": "Enable each method you use and enter the amount (e.g. cash + card).",
+    "totalTendered": "Total tendered",
+    "overpaymentWarning": "You are paying more than the total amount",
+    "overpaymentWillBeAddedToWallet": "will be added to wallet as credit",
+    "confirmAndAddToWallet": "Confirm & add {{amount}} to wallet",
+    "selectPersonForOverpayment": "Select a person to apply overpayment to their wallet",
+    "showFullLedger": "Show full ledger",
+    "showFullLedgerHelp": "Include every balance line. When off, checkout payments that are already summarized on order and purchase order rows are hidden.",
+    "openOrderReference": "Open order {{ref}}",
+    "openPurchaseOrderReference": "Open purchase order {{ref}}",
+    "openPaymentOperationReference": "Open payment {{ref}}",
+    "retainedStandalonePaymentRef": "Payment {{id}}",
+    "paymentOperationTitle": "Payment",
+    "backToTransactionLog": "Back to transaction log",
+    "paymentOperationNotFound": "This payment could not be found.",
+    "paymentOperationUntitled": "Payment",
+    "person": "Person",
+    "relatedDocument": "Related document",
+    "relatedSalesOrder": "Open sales order",
+    "relatedPurchaseOrder": "Open purchase order",
+    "operationTenderLines": "Tender lines",
+    "operationWalletLines": "Wallet (overpayment)",
+    "operationReversedBanner": "This payment was reversed. Ledger rows are kept for audit with a reversal marker.",
+    "reverseOperation": "Reverse payment",
+    "reverseOperationConfirmTitle": "Reverse this payment?",
+    "reverseOperationConfirmDescription": "This will undo the payment in the ledger, restore the person’s balance when applicable, and update the linked sales order or purchase order if this payment was tied to one. This cannot be undone from the app.",
+    "toastOperationReversed": "Payment reversed",
+    "operationNoteNoEditReversed": "Notes cannot be edited after this payment was reversed.",
+    "reversedBadge": "Reversed",
+    "poCancelledBadge": "Cancelled",
+    "orderCancelledBadge": "Cancelled",
+    "orderCompletedBadge": "Completed",
+    "reversedDetailsHint": "Net effect cancelled",
+    "reversedBalanceImpactHint": "This payment was reversed; net change to balance is zero.",
+    "operationNote": "Note",
+    "operationNotePlaceholder": "Optional note for this payment…",
+    "saveOperationNote": "Save note",
+    "toastOperationNoteSaved": "Note updated",
+    "operationNoteReadOnly": "Editing payment notes is turned off in Control settings.",
+    "notePreview": "Preview",
+    "operationNoteLinkHint": "Order and PO references like O-12 or PO-3 link when the note ends with a document marker from the system."
+  },
+  "register": {
+    "title": "Register",
+    "subtitle": "Running balance by tender (cash, card, cheque, InstaPay) from sales and purchases, plus manual movements.",
+    "disclaimer": "Sales or purchase payments that were stored on the ledger without a payment method are counted toward Cash in the register. Split-tender orders use each method as recorded.",
+    "balancesTitle": "Balance by payment method",
+    "totalInRegister": "Total in register",
+    "addToRegister": "Add to register",
+    "withdrawFromRegister": "Withdraw from register",
+    "viewActivity": "Register activity",
+    "activityTitle": "Recent register activity",
+    "activityEmpty": "No register movements yet.",
+    "colWhen": "When",
+    "colType": "Type",
+    "colMethod": "Method",
+    "colEffect": "Register effect",
+    "colNote": "Note",
+    "fieldMethod": "Payment method",
+    "fieldAmount": "Amount",
+    "fieldNoteOptional": "Note (optional)",
+    "confirmAdd": "Add",
+    "confirmWithdraw": "Withdraw",
+    "withdrawAvailable": "Available for this method: {{amount}}",
+    "validationAmount": "Enter a valid amount (at least 0.01).",
+    "toastDeposited": "Added to register",
+    "toastWithdrawn": "Withdrawal recorded",
+    "toastError": "Something went wrong",
+    "loadError": "Could not load register balances.",
+    "ledgerPartyName": "Register",
+    "backToRegister": "Back to register",
+    "viewPayment": "View payment",
+    "activityLinkOrder": "Order {{ref}}",
+    "activityLinkPO": "{{ref}}",
+    "activityLinkPayment": "Payment",
+    "activityLinkRegister": "Register movement",
+    "registerWarehouseLabel": "Register location",
+    "noRegisterWarehouse": "No warehouse is set up with a cash register.",
+    "withdrawAllDisabled": "Withdraw from register is turned off in Control settings.",
+    "withdrawAllConfirmTitle": "Withdraw everything from this register?",
+    "withdrawAllConfirmDescription": "One withdrawal will be recorded for each tender that has a balance. The register will read zero when finished.",
+    "withdrawAllConfirmAction": "Withdraw all",
+    "withdrawAllLedgerNote": "Withdraw all (clear register)",
+    "toastWithdrawAllDone": "All register balances withdrawn",
+    "disableRegisterPromptTitle": "Turn off register for this warehouse?",
+    "disableRegisterPromptDescription": "The register for “{{name}}” is empty. Do you want to disable the cash register for this location?",
+    "disableRegisterConfirm": "Turn off register",
+    "disableRegisterKeep": "Keep register",
+    "disableRegisterNotAllowed": "The primary or default warehouse must keep a register.",
+    "disableRegisterWarehouseMissing": "Warehouse not found."
   },
   "reports": {
     "title": "Reports",
@@ -296,6 +1162,139 @@
     "averageOrderValue": "Average Order Value",
     "mostSoldProduct": "Most sold product",
     "salesPerDay": "Sales per day"
+  },
+  "documentation": {
+    "title": "Platform guide",
+    "pageTitle": "Documentation | StockPilot",
+    "mindmapTitle": "Feature map",
+    "mapHint": "Open or close each card, then each subsection, to browse features.",
+    "mapGroups": {
+      "platform": "Platform & navigation",
+      "catalog": "Catalog & inventory",
+      "commerce": "Purchasing & sales",
+      "money": "People, payments & register",
+      "insights": "Reports & notes"
+    },
+    "areas": {
+      "nav": {
+        "title": "Navigation & admin",
+        "items": [
+          "Sidebar visibility toggles (Control)",
+          "Admin hub (Dashboard, Documentation, Reports)",
+          "Control link (settings)",
+          "Inventory hub",
+          "Orders",
+          "People",
+          "Payments",
+          "Register"
+        ]
+      },
+      "header": {
+        "title": "Top bar",
+        "items": [
+          "Low-stock bell and badge (when enabled)",
+          "Language / layout context"
+        ]
+      },
+      "dashboard": {
+        "title": "Dashboard (home)",
+        "items": [
+          "Overview tab: stats, receivables/payables, recent movements, low stock",
+          "Reports tab: sales and inventory reports",
+          "Each section can be gated in Control"
+        ]
+      },
+      "inventoryHub": {
+        "title": "Inventory hub",
+        "items": [
+          "Cards to Products, Purchase orders, Stock transfers, Warehouses, Movements, Categories, Brands",
+          "Entry point for catalog and stock workflows"
+        ]
+      },
+      "warehouses": {
+        "title": "Warehouses",
+        "items": [
+          "Locations with mandatory location text; human-facing codes auto-generated from location (e.g. NASR-CITY-01)",
+          "Optional cash register per warehouse; turning it off requires an empty register (shortcut to withdraw all, then confirm disable)"
+        ]
+      },
+      "products": {
+        "title": "Products",
+        "items": [
+          "Product list, search, and CRUD (when allowed)",
+          "Stock levels and pricing by order type"
+        ]
+      },
+      "categories": {
+        "title": "Categories",
+        "items": [
+          "Manage product categories used in the catalog"
+        ]
+      },
+      "brands": {
+        "title": "Brands",
+        "items": [
+          "Manage brands for products and filters"
+        ]
+      },
+      "movements": {
+        "title": "Stock movements",
+        "items": [
+          "History of stock in, out, and adjustments",
+          "Filters and pagination"
+        ]
+      },
+      "purchaseOrders": {
+        "title": "Purchase orders",
+        "items": [
+          "List, new PO flow, receive stock, payables",
+          "Draft and confirmed states (migrations may apply)"
+        ]
+      },
+      "orders": {
+        "title": "Sales orders",
+        "items": [
+          "POS-style draft orders, checkout, customer link",
+          "Order list and detail; cancel flows when enabled"
+        ]
+      },
+      "people": {
+        "title": "People",
+        "items": [
+          "Customers and suppliers, balances, discounts, credit",
+          "Quick-create from order/PO browsers when allowed"
+        ]
+      },
+      "payments": {
+        "title": "Payments",
+        "items": [
+          "Payment hub, transaction log, new payment",
+          "Ledger notes and reversal when enabled"
+        ]
+      },
+      "register": {
+        "title": "Register",
+        "items": [
+          "Cash-drawer balances by tender, scoped per warehouse register",
+          "Deposit, withdraw, and withdraw-all flow (e.g. from warehouses when disabling a register)",
+          "Deposit and withdraw when enabled in Control"
+        ]
+      },
+      "reports": {
+        "title": "Reports",
+        "items": [
+          "Sales and inventory value reports on the dashboard tab",
+          "CSV export where available"
+        ]
+      },
+      "notes": {
+        "title": "Notes & mentions",
+        "items": [
+          "Rich notes on orders, POs, and people with @mentions",
+          "Links to related documents when supported"
+        ]
+      }
+    }
   },
   "errorBoundary": {
     "title": "Something went wrong",

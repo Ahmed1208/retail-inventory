@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/utils/currency'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 function getDefaultDateRange() {
   const to = new Date()
@@ -29,17 +30,24 @@ function getDefaultDateRange() {
   }
 }
 
-export function Reports() {
+interface ReportsProps {
+  /** When true, skip setting document.title (used when embedded in Dashboard). */
+  embedded?: boolean
+}
+
+export function Reports({ embedded = false }: ReportsProps) {
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const [dateRange, setDateRange] = useState(getDefaultDateRange)
+  const canExportCsv = useFeatureEnabled('reports.exportCsv')
 
   useEffect(() => {
+    if (embedded) return
     document.title = 'Reports | StockPilot'
     return () => {
       document.title = 'StockPilot'
     }
-  }, [])
+  }, [embedded])
 
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
@@ -49,10 +57,10 @@ export function Reports() {
   })
 
   const { data: orders = [], isLoading: ordersLoading } = useQuery({
-    queryKey: ['orders', 'completed', dateRange.from, dateRange.to],
+    queryKey: ['orders', 'status_flow_completed', dateRange.from, dateRange.to],
     queryFn: () =>
       getAllOrders({
-        status: 'completed',
+        status_flow: 'completed',
         from: dateRange.from,
         to: dateRange.to,
       }),
@@ -186,10 +194,12 @@ export function Reports() {
           <h2 className="text-xl font-semibold">
             {t('reports.inventoryReport')}
           </h2>
-          <Button variant="outline" size="sm" onClick={exportCsv}>
-            <Download className="h-4 w-4 me-2" />
-            {t('reports.exportCsv')}
-          </Button>
+          {canExportCsv && (
+            <Button variant="outline" size="sm" onClick={exportCsv}>
+              <Download className="h-4 w-4 me-2" />
+              {t('reports.exportCsv')}
+            </Button>
+          )}
         </div>
         <div className="rounded-xl border border-border bg-card overflow-hidden">
           {productsLoading ? (

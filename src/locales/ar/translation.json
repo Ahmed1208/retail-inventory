@@ -6,11 +6,21 @@
     "dashboard": "لوحة التحكم",
     "products": "المنتجات",
     "orders": "الطلبات",
+    "people": "الأشخاص",
     "purchaseOrders": "أوامر الشراء",
     "categories": "الفئات",
     "brands": "العلامات التجارية",
+    "warehouses": "المستودعات",
+    "inventoryTransfers": "تحويلات المخزون",
     "stockMovements": "حركات المخزون",
-    "reports": "التقارير"
+    "reports": "التقارير",
+    "control": "التحكم",
+    "payments": "المدفوعات",
+    "register": "الصندوق",
+    "admin": "الإدارة",
+    "documentation": "التوثيق",
+    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو التقارير من هنا.",
+    "backToAdmin": "العودة للإدارة"
   },
   "common": {
     "search": "بحث",
@@ -34,8 +44,22 @@
     "yes": "نعم",
     "no": "لا"
   },
+  "notes": {
+    "editNote": "تعديل الملاحظة",
+    "saveNote": "حفظ",
+    "cancelEdit": "إلغاء",
+    "mentionHint": "اكتب @ لربط طلب أو أمر شراء أو دفعة أو شخص.",
+    "emptyNotePlaceholder": "لا توجد ملاحظة بعد.",
+    "editorPlaceholder": "اكتب ملاحظة…",
+    "editorAria": "ملاحظة",
+    "mentionKindOrder": "طلب",
+    "mentionKindPO": "أمر شراء",
+    "mentionKindPayment": "دفعة",
+    "mentionKindPerson": "شخص"
+  },
   "dashboard": {
     "title": "لوحة التحكم",
+    "mainDashboard": "لوحة التحكم الرئيسية",
     "welcome": "مرحباً بك في StockPilot",
     "totalProducts": "إجمالي المنتجات",
     "totalInventoryValue": "قيمة المخزون الإجمالية",
@@ -49,14 +73,367 @@
     "currentThreshold": "{{current}}/{{threshold}}",
     "emptyMovements": "لا توجد حركات مخزون حديثة.",
     "emptyLowStock": "لا توجد منتجات بمخزون منخفض. جميع المنتجات مخزونة جيداً.",
-    "totalPurchasesToday": "أوامر الشراء اليوم"
+    "totalPurchasesToday": "أوامر الشراء اليوم",
+    "totalReceivables": "إجمالي المستحقات",
+    "totalPayables": "إجمالي المدفوعات المستحقة",
+    "controlTab": "التحكم"
+  },
+  "control": {
+    "title": "التحكم",
+    "pageTitle": "التحكم | StockPilot",
+    "intro": "تشغيل أو إيقاف الميزات في هذا المتصفح. يصف كل خيار ما يتأثر في التطبيق.",
+    "securityNote": "هذه الخيارات تخفي أو تظهر الواجهة فقط ولا تمنع الوصول للواجهة البرمجية. استخدم سياسات قاعدة البيانات للحماية الحقيقية.",
+    "resetDefaults": "إعادة الكل للوضع الافتراضي",
+    "disabled": {
+      "newOrder": "إنشاء طلبات جديدة معطّل من إعدادات التحكم.",
+      "editDraft": "تعديل المسودات معطّل من إعدادات التحكم.",
+      "ordersList": "قائمة الطلبات معطّلة من إعدادات التحكم.",
+      "noOrderShortcuts": "جميع اختصارات مركز الطلبات معطّلة من إعدادات التحكم.",
+      "inventoryHubAllOff": "جميع اختصارات مركز المخزون معطّلة من إعدادات التحكم.",
+      "adminHubAllOff": "جميع اختصارات الإدارة معطّلة في التحكم. فعّل لوحة التحكم أو التوثيق أو التقارير ضمن التنقل.",
+      "purchaseOrdersList": "قائمة أوامر الشراء معطّلة من إعدادات التحكم.",
+      "noPurchaseOrderShortcuts": "جميع اختصارات مركز أوامر الشراء معطّلة من إعدادات التحكم.",
+      "newPurchaseOrder": "إنشاء أوامر شراء جديدة معطّل من إعدادات التحكم.",
+      "noInventoryTransferShortcuts": "جميع اختصارات تحويل المخزون معطّلة من إعدادات التحكم.",
+      "newInventoryTransfer": "إنشاء تحويل مخزون جديد معطّل من إعدادات التحكم.",
+      "inventoryTransfersList": "قائمة تحويلات المخزون معطّلة من إعدادات التحكم.",
+      "warehouses": "المستودعات معطّلة من إعدادات التحكم.",
+      "dashboardAllOff": "تبويبا لوحة التحكم معطّلان في التحكم. فعّل «نظرة عامة» أو «التقارير» لعرض المحتوى.",
+      "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض."
+    },
+    "area": {
+      "sidebar": "التنقل",
+      "header": "الشريط العلوي",
+      "dashboard": "لوحة التحكم (الرئيسية)",
+      "inventoryHub": "مركز المخزون",
+      "people": "الأشخاص",
+      "products": "المنتجات",
+      "categories": "الفئات",
+      "brands": "العلامات التجارية",
+      "purchaseOrders": "أوامر الشراء",
+      "inventoryTransfers": "تحويلات المخزون",
+      "orders": "طلبات المبيعات",
+      "reports": "التقارير",
+      "paymentsApp": "المدفوعات",
+      "register": "الصندوق"
+    },
+    "sidebar": {
+      "groupNav": "روابط الشريط الجانبي",
+      "dashboard": {
+        "title": "قائمة لوحة التحكم",
+        "desc": "إظهار عنصر لوحة التحكم ضمن مجموعة الإدارة في الشريط الجانبي (الرئيسية / النظرة العامة)."
+      },
+      "control": {
+        "title": "قائمة التحكم",
+        "desc": "إظهار رابط التحكم لفتح صفحة إعدادات الميزات."
+      },
+      "inventory": {
+        "title": "قائمة المخزون",
+        "desc": "إظهار عنصر المخزون في الشريط الجانبي."
+      },
+      "orders": {
+        "title": "قائمة الطلبات",
+        "desc": "إظهار عنصر الطلبات في الشريط الجانبي."
+      },
+      "people": {
+        "title": "قائمة الأشخاص",
+        "desc": "إظهار عنصر الأشخاص في الشريط الجانبي."
+      },
+      "payments": {
+        "title": "قائمة المدفوعات",
+        "desc": "إظهار عنصر المدفوعات في الشريط الجانبي (المركز والسجل ودفعة جديدة)."
+      },
+      "register": {
+        "title": "قائمة الصندوق",
+        "desc": "إظهار عنصر الصندوق لأرصدة الوسائل (نقد، فيزا، شيك، إنستاباي) والإيداع/السحب اليدوي."
+      },
+      "admin": {
+        "title": "قائمة الإدارة",
+        "desc": "إظهار رابط الإدارة في الشريط الجانبي؛ يفتح مركز الإدارة باختصارات لوحة التحكم والتوثيق والتقارير."
+      },
+      "documentation": {
+        "title": "صفحة التوثيق",
+        "desc": "إظهار رابط التوثيق تحت الإدارة وتفعيل مسار دليل المستخدم /admin/documentation."
+      },
+      "reports": {
+        "title": "اختصار التقارير (الشريط الجانبي)",
+        "desc": "إظهار رابط التقارير تحت الإدارة (يفتح تبويب التقارير في لوحة التحكم)."
+      }
+    },
+    "header": {
+      "group": "الرأس",
+      "lowStockBell": {
+        "title": "تنبيهات المخزون المنخفض (الجرس)",
+        "desc": "إظهار أيقونة الجرس والشارة للانتقال إلى منتجات المخزون المنخفض."
+      }
+    },
+    "dashboard": {
+      "groupTabs": "تبويبات لوحة التحكم",
+      "groupOverview": "تبويب النظرة العامة — الأقسام",
+      "overviewTab": {
+        "title": "تبويب النظرة العامة",
+        "desc": "إظهار تبويب لوحة التحكم الرئيسي (البطاقات والحركات)."
+      },
+      "reportsTab": {
+        "title": "تبويب التقارير",
+        "desc": "إظهار تبويب التقارير في الصفحة الرئيسية وفتح تقارير المبيعات/المخزون منها."
+      },
+      "statsCards": {
+        "title": "بطاقات الإحصاءات العلوية",
+        "desc": "عدد المنتجات، قيمة المخزون، تنبيهات المخزون المنخفض، حركات اليوم، ومشتريات اليوم."
+      },
+      "financialSnapshot": {
+        "title": "الذمم المدينة والدائنة",
+        "desc": "البطاقتان لإجمالي الذمم المدينة والدائنة."
+      },
+      "recentMovements": {
+        "title": "آخر حركات المخزون",
+        "desc": "جدول أحدث حركات الوارد/الصادر/التسوية في النظرة العامة."
+      },
+      "lowStockPanel": {
+        "title": "قائمة المخزون المنخفض",
+        "desc": "لوحة منتجات المخزون المنخفض في النظرة العامة."
+      }
+    },
+    "register": {
+      "group": "الصندوق",
+      "deposit": {
+        "title": "إيداع في الصندوق",
+        "desc": "تسجيل أموال أُدخلت إلى الصندوق (حسب وسيلة الدفع)."
+      },
+      "withdraw": {
+        "title": "سحب من الصندوق",
+        "desc": "تسجيل أموال أُخرجت من الصندوق (حسب وسيلة الدفع)."
+      },
+      "viewActivity": {
+        "title": "نشاط الصندوق",
+        "desc": "إظهار جدول النشاط الأخير واختصار «عرض النشاط» في صفحة الصندوق."
+      }
+    },
+    "paymentsApp": {
+      "group": "المدفوعات",
+      "list": {
+        "title": "سجل المعاملات",
+        "desc": "فتح السجل الكامل لحركات الرصيد: طلبات، أوامر شراء، مدفوعات، محفظة، وتسويات."
+      },
+      "editLedgerNote": {
+        "title": "تعديل ملاحظات الدفعة",
+        "desc": "السماح بتغيير الملاحظة على عمليات الدفع الوارد/الصادر من صفحة تفاصيل الدفعة."
+      },
+      "reverseLedgerOperation": {
+        "title": "عكس الدفعات المسجّلة",
+        "desc": "السماح بإلغاء دفع وارد/صادر أو إيداع/سحب صندوق من صفحة تفاصيل الدفعة (الدفتر والرصيد وصفوف الطلب/أمر الشراء عند الانطباق)."
+      },
+      "fullLedgerView": {
+        "title": "وضع الدفتر الكامل (سجل المعاملات)",
+        "desc": "إظهار خيار «عرض الدفتر الكامل» في قائمة المدفوعات لتوسيع الصفوف المعكوسة ورؤية أثر الرصيد الخام."
+      }
+    },
+    "inventoryHub": {
+      "groupLinks": "اختصارات المركز",
+      "products": {
+        "title": "بطاقة المنتجات",
+        "desc": "رابط من مركز المخزون إلى قائمة المنتجات."
+      },
+      "po": {
+        "title": "بطاقة أوامر الشراء",
+        "desc": "رابط من مركز المخزون إلى أوامر الشراء."
+      },
+      "movements": {
+        "title": "بطاقة حركات المخزون",
+        "desc": "رابط من مركز المخزون إلى حركات المخزون."
+      },
+      "categories": {
+        "title": "بطاقة الفئات",
+        "desc": "رابط من مركز المخزون إلى الفئات."
+      },
+      "brands": {
+        "title": "بطاقة العلامات",
+        "desc": "رابط من مركز المخزون إلى العلامات التجارية."
+      },
+      "warehouses": {
+        "title": "بطاقة المستودعات",
+        "desc": "رابط من مركز المخزون لإدارة المواقع: رمز عرض من نص الموقع، صندوق اختياري لكل موقع، الموقع الافتراضي، وإيقاف الصندوق بأمان عندما يكون فارغاً."
+      },
+      "transfers": {
+        "title": "بطاقة تحويلات المخزون",
+        "desc": "رابط من مركز المخزون لنقل الكميات بين مستودعين (بدون أسعار)."
+      }
+    },
+    "people": {
+      "groupList": "القائمة والملف",
+      "groupCreate": "الإنشاء",
+      "viewProfile": {
+        "title": "عرض الملف",
+        "desc": "إظهار أيقونة العين وفتح نافذة الملف مع الرصيد والسجل."
+      },
+      "editPerson": {
+        "title": "تعديل الشخص",
+        "desc": "السماح بتعديل بيانات العميل أو المورد من القائمة ومن الملف."
+      },
+      "deletePerson": {
+        "title": "حذف الشخص",
+        "desc": "إظهار إجراء الحذف عندما تسمح قواعد العمل."
+      },
+      "recordPayment": {
+        "title": "تسجيل دفعة",
+        "desc": "السماح بتسجيل دفعات الرصيد من المدفوعات → دفعة جديدة (اختيار الشخص)."
+      },
+      "addPerson": {
+        "title": "إضافة شخص",
+        "desc": "إظهار زر إنشاء عميل أو مورد جديد."
+      }
+    },
+    "products": {
+      "group": "قائمة المنتجات",
+      "add": {
+        "title": "إضافة منتج",
+        "desc": "إظهار زر إضافة منتج في صفحة المنتجات."
+      },
+      "edit": {
+        "title": "تعديل منتج",
+        "desc": "إظهار إجراء التعديل لكل صف."
+      },
+      "delete": {
+        "title": "حذف منتج",
+        "desc": "إظهار إجراء الحذف لكل صف."
+      },
+      "stockAdjust": {
+        "title": "تعديل المخزون",
+        "desc": "إظهار إجراء تعديل الكمية يدوياً."
+      }
+    },
+    "categories": {
+      "group": "الفئات",
+      "add": {
+        "title": "إضافة فئة",
+        "desc": "إظهار زر إضافة فئة."
+      },
+      "edit": {
+        "title": "تعديل فئة",
+        "desc": "السماح بالتعديل المضمن لاسم الفئة."
+      },
+      "delete": {
+        "title": "حذف فئة",
+        "desc": "إظهار إجراء حذف الفئة."
+      }
+    },
+    "brands": {
+      "group": "العلامات",
+      "add": {
+        "title": "إضافة علامة",
+        "desc": "إظهار زر إضافة علامة."
+      },
+      "edit": {
+        "title": "تعديل علامة",
+        "desc": "السماح بالتعديل المضمن لاسم العلامة."
+      },
+      "delete": {
+        "title": "حذف علامة",
+        "desc": "إظهار إجراء حذف العلامة."
+      }
+    },
+    "purchaseOrders": {
+      "groupHub": "مركز أوامر الشراء",
+      "hubList": {
+        "title": "بطاقة كل أوامر الشراء",
+        "desc": "اختصار إلى قائمة أوامر الشراء من الصفحة الرئيسية لأوامر الشراء."
+      },
+      "group": "أوامر الشراء",
+      "create": {
+        "title": "إنشاء أمر شراء",
+        "desc": "إظهار اختصار أمر شراء جديد وتفعيل إنشاء بملء الشاشة (اختيار مورد، متصفح منتجات، بنود، دفعات)."
+      },
+      "costOverridePriceDialog": {
+        "title": "تأكيد اختلاف التكلفة (أمر شراء جديد)",
+        "desc": "عند اختلاف تكلفة البند عن الكتالوج، يظهر حوار لاختيار «مرة واحدة» أو تحديث أسعار الكتالوج (تكلفة، تجزئة، جملة). عند الإيقاف يُستخدم مربع التحديث لتكلفة الافتراضي فقط."
+      },
+      "confirmReceive": {
+        "title": "تأكيد / استلام مسودة أمر شراء",
+        "desc": "إظهار الزر في مسودة أمر الشراء لتأكيد الاستلام وإدخال دفعات المورد وتسجيل المخزون."
+      },
+      "cancel": {
+        "title": "إلغاء أمر شراء",
+        "desc": "إظهار إلغاء الأوامر المستلمة في صفحة التفاصيل."
+      },
+      "editNote": {
+        "title": "تعديل ملاحظة أمر الشراء",
+        "desc": "السماح بتعديل الملاحظة المحفوظة في صفحة تفاصيل أمر الشراء (أيقونة القلم والحفظ)."
+      }
+    },
+    "inventoryTransfers": {
+      "group": "تحويلات المخزون",
+      "create": {
+        "title": "إنشاء تحويل مخزون",
+        "desc": "إظهار اختصار تحويل جديد ونموذج نقل المنتجات بين مستودعين (كميات فقط)."
+      },
+      "list": {
+        "title": "قائمة تحويلات المخزون",
+        "desc": "إظهار قائمة التحويلات السابقة وروابط تفاصيل كل تحويل."
+      }
+    },
+    "orders": {
+      "groupHub": "مركز الطلبات",
+      "hubList": {
+        "title": "بطاقة كل الطلبات",
+        "desc": "اختصار إلى قائمة الطلبات من صفحة الطلبات الرئيسية."
+      },
+      "hubNew": {
+        "title": "بطاقة طلب جديد",
+        "desc": "اختصار لإنشاء طلب جديد وتفعيل صفحة الطلب الجديد."
+      },
+      "groupPos": "نقطة البيع (مسودة / جديد)",
+      "editDraft": {
+        "title": "تعديل المسودات",
+        "desc": "فتح محرر نقطة البيع لمسودات الطلبات من تفاصيل الطلب."
+      },
+      "saveDraft": {
+        "title": "حفظ المسودة",
+        "desc": "إظهار زر حفظ المسودة في رأس نقطة البيع."
+      },
+      "checkout": {
+        "title": "الدفع",
+        "desc": "إظهار زر الدفع وتدفق الدفع والتأكيد."
+      },
+      "groupConfirmed": "طلبات مؤكدة / نشطة",
+      "print": {
+        "title": "طباعة الفاتورة",
+        "desc": "طباعة الفاتورة في صفحة تفاصيل الطلب."
+      },
+      "cancel": {
+        "title": "إلغاء الطلب",
+        "desc": "إلغاء الطلب عندما تسمح الحالة."
+      },
+      "addPayment": {
+        "title": "إضافة دفعة (محجوز)",
+        "desc": "محجوز لاستخدام لاحق: دفعات جزئية على طلبات مؤكدة من شاشة الطلب. دفعات الدفع تُتحكم من الدفع وتسجيل الدفعة."
+      },
+      "editNote": {
+        "title": "تعديل ملاحظة الطلب",
+        "desc": "تعديل حقل الملاحظة في صفحة التفاصيل."
+      }
+    },
+    "reports": {
+      "group": "تبويب التقارير",
+      "export": {
+        "title": "تصدير CSV",
+        "desc": "تصدير CSV في تقارير لوحة التحكم."
+      }
+    }
   },
   "products": {
     "title": "المنتجات",
     "addProduct": "إضافة منتج",
     "editProduct": "تعديل المنتج",
     "deleteProduct": "حذف المنتج",
-    "searchPlaceholder": "بحث باسم المنتج...",
+    "searchPlaceholder": "بحث بالاسم أو رقم المنتج...",
+    "productId": "رقم المنتج",
+    "productIdHint": "اتركه فارغاً ليتم إنشاؤه تلقائياً. يجب أن يكون فريداً.",
+    "validationProductCodeMax": "رقم المنتج ٦٤ حرفاً كحد أقصى",
+    "validationProductCodeFormat": "استخدم أحرفاً وأرقاماً ونقطة وشرطة وشرطة سفلية فقط",
+    "validationProductCodeRequired": "رقم المنتج مطلوب",
+    "validationDuplicateCode": "رقم المنتج هذا مستخدم بالفعل",
+    "validationDuplicateName": "يوجد منتج بنفس الاسم بالفعل",
     "filterByCategory": "الفئة",
     "filterByBrand": "العلامة التجارية",
     "allCategories": "جميع الفئات",
@@ -67,6 +444,8 @@
     "unit": "الوحدة",
     "lowStockThreshold": "حد التنبيه للمخزون",
     "stockAdjust": "تعديل المخزون",
+    "addNewBrand": "إضافة علامة جديدة",
+    "addNewCategory": "إضافة فئة جديدة",
     "addProductTitle": "إضافة منتج",
     "editProductTitle": "تعديل المنتج",
     "stockAdjustTitle": "تعديل المخزون",
@@ -89,7 +468,48 @@
     "toastDeleted": "تم حذف المنتج بنجاح",
     "toastStockAdjusted": "تم تحديث المخزون بنجاح",
     "toastError": "حدث خطأ ما",
-    "quantityManagedByPurchaseOrders": "الكمية تُدار من خلال أوامر الشراء"
+    "quantityManagedByPurchaseOrders": "الكمية تُدار من خلال أوامر الشراء",
+    "totalAcrossLocations": "الإجمالي في كل المستودعات",
+    "detailTitle": "المنتج",
+    "backToList": "العودة إلى المنتجات",
+    "detailSectionInfo": "تفاصيل المنتج",
+    "detailUpdated": "آخر تحديث",
+    "detailSectionSales": "تحليلات المبيعات",
+    "detailKpiUnitsSold": "الوحدات المباعة",
+    "detailKpiLineRevenue": "إيراد السطور",
+    "detailKpiOrders": "الطلبات",
+    "detailKpiRetailLines": "سطور التجزئة",
+    "detailKpiWholesaleLines": "سطور الجملة",
+    "detailChartUnitsPerDay": "الوحدات يومياً",
+    "detailChartRevenuePerDay": "الإيراد يومياً",
+    "detailNoSalesInRange": "لا مبيعات مكتملة في هذا النطاق الزمني.",
+    "detailRecentSales": "أحدث المبيعات",
+    "detailLineTotal": "إجمالي السطر",
+    "detailSectionMovements": "حركات المخزون",
+    "detailNoMovements": "لا توجد حركات مخزون لهذا المنتج.",
+    "detailEditProduct": "تعديل المنتج",
+    "priceHistorySection": "سجل الأسعار",
+    "priceHistoryChartTitle": "الأسعار عبر الزمن",
+    "priceHistoryColDate": "تاريخ التحديث",
+    "priceHistoryColDeltaCustomer": "Δ تجزئة",
+    "priceHistoryColDeltaBusiness": "Δ جملة",
+    "priceHistoryColDeltaCost": "Δ تكلفة",
+    "priceHistoryEmpty": "لا يوجد سجل أسعار بعد.",
+    "priceHistoryDialogSection": "آخر تحديثات الأسعار",
+    "priceHistoryColCustomerShort": "تجزئة",
+    "priceHistoryColBusinessShort": "جملة",
+    "priceHistoryColCostShort": "تكلفة",
+    "legendCustomerPrice": "سعر التجزئة",
+    "legendBusinessPrice": "سعر الجملة",
+    "legendCostPrice": "سعر التكلفة",
+    "averageUnitCost": "متوسط تكلفة الوحدة (متوسط مرجح)",
+    "averageUnitCostHint": "متوسط مرجح لتكاليف استلام المخزون. يُحدَّث عند استلام أمر شراء أو إدخال مخزون بسعر التكلفة في الكتالوج.",
+    "grossMarginRetail": "ربح إجمالي (مبيعات تجزئة)",
+    "grossMarginWholesale": "ربح إجمالي (مبيعات جملة)",
+    "grossProfitSoldHint": "من الطلبات المكتملة فقط: إيراد السطور ناقص الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). يُستخدم WAC الحالي كتقريب لتكلفة البضاعة المباعة.",
+    "detailPricingTableTitle": "التسعير والهوامش",
+    "totalProfitFromSales": "ربح إجمالي (المبيعات)",
+    "totalProfitFromSalesHint": "جميع الطلبات المكتملة (تجزئة + جملة): إجمالي إيراد السطور ناقص إجمالي الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). نفس منطق صفوف الجدول؛ WAC تقدير لتكلفة البضاعة."
   },
   "categories": {
     "title": "الفئات",
@@ -129,6 +549,49 @@
     "toastInUse": "العلامة قيد الاستخدام ولا يمكن حذفها",
     "toastError": "حدث خطأ ما"
   },
+  "warehouses": {
+    "title": "المستودعات",
+    "description": "حدد مواقع التخزين. يُتتبّع المخزون لكل مستودع؛ أوامر الشراء والبيع تستهدف مستودعاً واحداً لكل مستند.",
+    "addWarehouse": "إضافة مستودع",
+    "editWarehouse": "تعديل مستودع",
+    "colId": "المعرّف",
+    "colCode": "الرمز",
+    "colInternalId": "المعرّف الداخلي",
+    "colLocation": "الموقع",
+    "colDefault": "افتراضي",
+    "setAsDefault": "تعيين كمستودع افتراضي",
+    "defaultBadge": "افتراضي",
+    "selectPlaceholder": "اختر مستودعاً…",
+    "searchByIdOrName": "بحث بالمعرّف أو الاسم…",
+    "empty": "لا توجد مستودعات.",
+    "validationIdName": "المعرّف والاسم مطلوبان.",
+    "validationName": "الاسم مطلوب.",
+    "validationLocation": "الموقع مطلوب.",
+    "codeAutoHint": "الموقع إلزامي. يُولَّد رمز عرض تلقائياً من نص الموقع (مثل NASR-CITY-01).",
+    "locationPlaceholder": "مثال: مدينة نصر",
+    "registerNotEmptyTitle": "الصندوق ليس فارغاً",
+    "registerNotEmptyBody": "اسحب أو صفّر كل وسيلة دفع قبل إيقاف الصندوق لهذا المستودع.",
+    "withdrawAllRegisterShortcut": "سحب كل أرصدة الصندوق",
+    "toastCreated": "تم إنشاء المستودع",
+    "toastUpdated": "تم تحديث المستودع",
+    "toastDefaultUpdated": "تم تحديث المستودع الافتراضي",
+    "toastDeleted": "تم حذف المستودع",
+    "toastError": "حدث خطأ ما",
+    "colHasRegister": "صندوق",
+    "hasRegisterLabel": "يوجد صندوق نقدي",
+    "hasRegisterHint": "نقطة البيع ومدفوعات الصندوق تستخدم المواقع التي فيها صندوق فقط.",
+    "defaultMustHaveRegister": "المستودع الافتراضي يبقى دائماً بصندوق.",
+    "primaryWarehouseMustHaveRegister": "المستودع الأساسي (المعرّف 1) يبقى دائماً بصندوق نقدي.",
+    "deleteWarehouse": "حذف المستودع",
+    "deleteWarehouseTitle": "حذف المستودع؟",
+    "deleteWarehouseConfirm": "سيُزال المستودع نهائياً. يجب ألا يبقى مخزون ولا سجل مدفوعات للصندوق.",
+    "deleteBlockedStock": "لا يزال هناك مخزون في هذا الموقع. انقل الكميات كلها ثم أعد المحاولة.",
+    "deleteBlockedRegister": "لا تزال المدفوعات مرتبطة بهذا الصندوق. لا يمكن حذف الموقع طالما السجل يشير إليه.",
+    "openTransferToEmpty": "فتح تحويل لنقل المخزون",
+    "quantityAtWarehouse": "الكمية (هذا المستودع)",
+    "poLabel": "الاستلام في المستودع",
+    "orderLabel": "الشحن من المستودع"
+  },
   "stockMovements": {
     "title": "حركات المخزون",
     "in": "إدخال",
@@ -162,8 +625,50 @@
   },
   "orders": {
     "title": "الطلبات",
+    "allOrders": "كل الطلبات",
+    "subtitle": "إدارة طلبات المبيعات وإنشاء طلبات جديدة",
+    "allOrdersSubtitle": "عرض وبحث وإدارة الطلبات الحالية",
+    "newOrderSubtitle": "إنشاء طلب مبيعات جديد",
+    "backToOrders": "العودة للطلبات",
+    "fillRowBeforeAdd": "اختر منتجاً في هذا الصف قبل إضافة صف جديد.",
+    "priceModifiedWarning": "سعر الوحدة يختلف عن سعر القائمة لهذا النوع من الطلب.",
+    "originalPrice": "السعر الأصلي",
+    "restoreCatalogPrice": "استعادة سعر القائمة",
+    "productNotFound": "المنتج غير موجود",
+    "onlyXUnitsAvailable": "متاح {{count}} وحدة فقط",
+    "draft": "مسودة",
+    "confirmed": "مؤكد",
+    "completed": "مكتمل",
+    "saveDraft": "حفظ كمسودة",
+    "confirmOrder": "تأكيد الطلب",
+    "checkout": "الدفع",
+    "checkoutTitle": "الدفع وتأكيد الطلب",
+    "addPayment": "إضافة دفعة",
+    "remaining": "المتبقي",
+    "paid": "المدفوع",
+    "discount": "الخصم",
+    "printInvoice": "طباعة الفاتورة",
+    "walkIn": "عميل عابر",
+    "addToBalance": "أضف للرصيد",
+    "addToBalanceHint": "اختر عميلاً لتسجيل المتبقي على حسابه.",
+    "mergeRows": "دمج الصفوف؟",
+    "duplicateProduct": "المنتج موجود بالفعل",
+    "stockWarning": "يتجاوز المخزون المتاح",
+    "productBrowser": "متصفح المنتجات",
+    "customerBrowser": "متصفح العملاء",
+    "quickCreateCustomer": "عميل جديد",
+    "quickCreateCustomerTitle": "إنشاء عميل",
+    "searchCustomers": "بحث بالاسم أو الهاتف...",
+    "pressF1Customer": "الأسهم و Enter للاختيار · Esc للإغلاق",
+    "walkInBrowserHint": "بدون حساب مرتبط أو رصيد",
+    "pressF1": "اضغط F1 لتصفح المنتجات",
+    "openCustomerBrowserHint": "انقر أو اضغط F1 للبحث واختيار عميل",
+    "productId": "رقم المنتج",
+    "selectOrNew": "اختر طلباً من القائمة أو ابدأ طلباً جديداً.",
+    "applyPersonDiscount": "تطبيق نسبة خصم العميل تلقائياً",
+    "products": "المنتجات",
     "newOrder": "طلب جديد",
-    "searchPlaceholder": "بحث برقم الطلب...",
+    "searchPlaceholder": "بحث برقم الطلب أو اسم العميل...",
     "filterStatusAll": "الكل",
     "filterStatusPending": "قيد الانتظار",
     "filterStatusCompleted": "مكتمل",
@@ -191,12 +696,14 @@
     "createOrderTitle": "إنشاء طلب",
     "orderType": "نوع الطلب",
     "paymentCash": "نقدي",
-    "paymentCard": "بطاقة",
-    "paymentTransfer": "تحويل",
-    "paymentOther": "أخرى",
+    "paymentVisa": "فيزا",
+    "paymentCheque": "شيك",
+    "paymentInstapay": "إنستاباي",
     "paymentNone": "بدون",
     "paymentAmount": "المبلغ",
     "paymentBreakdown": "تفصيل الدفع",
+    "inventoryForDocument": "المخزون / المستودع",
+    "paymentRegister": "الصندوق",
     "paymentRemaining": "المتبقي",
     "validationPaymentTotal": "مجموع المدفوعات يجب أن يساوي إجمالي الطلب ({{total}})",
     "noteOptional": "ملاحظة (اختياري)",
@@ -215,16 +722,60 @@
     "orderDetailTitle": "طلب #{{number}}",
     "cancelConfirmTitle": "إلغاء الطلب",
     "cancelConfirmMessage": "إلغاء الطلب #{{number}}؟ سيتم استعادة المخزون تلقائياً لجميع الأصناف.",
+    "openPaymentOperation": "فتح الدفعة في سجل المعاملات",
+    "cancelSettlementLegend": "كيفية تسوية المدفوعات المسجّلة",
+    "cancelSettlementReverse": "عكس المدفوعات في الدفتر (افتراضي)",
+    "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للعميل (سطر واحد في الدفتر)",
+    "cancelCompletedOrderHint": "هذا الطلب مكتمل. الإلغاء يعيد المخزون ويعكس حركات الدفتر المرتبطة بالبيع.",
     "totalOrders": "إجمالي الطلبات",
     "totalRevenue": "إجمالي الإيرادات",
     "pendingOrders": "قيد الانتظار",
     "cancelledOrders": "ملغي",
-    "emptyOrders": "لا توجد طلبات تطابق الفلاتر."
+    "emptyOrders": "لا توجد طلبات تطابق الفلاتر.",
+    "customer": "عميل",
+    "selectCustomer": "عميل (اختياري)",
+    "searchPeople": "ابحث عن الأشخاص...",
+    "personBalance": "الرصيد",
+    "applyDiscountToggle": "تطبيق خصم {{pct}}٪ على هذا الطلب؟",
+    "availableCredit": "الائتمان المتاح",
+    "creditBlocked": "هذا الطلب يتجاوز حد الائتمان للعميل.",
+    "subtotal": "المجموع الفرعي",
+    "discountedTotal": "بعد الخصم"
   },
   "purchaseOrders": {
     "title": "أوامر الشراء",
+    "subtitle": "استلام المخزون من الموردين وتتبع المستحقات.",
+    "allPurchaseOrders": "كل أوامر الشراء",
+    "allPurchaseOrdersSubtitle": "بحث، تصفية، وفتح أي أمر شراء.",
+    "newPurchaseOrderSubtitle": "تدفق بملء الشاشة: مورد، منتجات، تكاليف، ودفعات.",
+    "backToPurchaseOrders": "رجوع لأوامر الشراء",
+    "backToList": "رجوع للقائمة",
+    "supplierBrowser": "اختر مورداً",
+    "quickCreateSupplier": "مورد جديد",
+    "quickCreateSupplierTitle": "إنشاء مورد",
+    "searchSuppliers": "بحث الموردين بالاسم أو الهاتف...",
+    "pressF1Supplier": "اضغط F1 عند التركيز على حقل المورد لفتح القائمة. الأسهم و Enter للاختيار.",
+    "pressF1Products": "اضغط F1 (أو إضافة منتجات) لتصفح الكتالوج حسب الفئة والعلامة. يعرض سعر التكلفة.",
+    "noLinkedSupplier": "بدون مورد مرتبط",
+    "noLinkedSupplierHint": "أدخل اسماً يدوياً أدناه، أو اختر مورداً من الدليل.",
+    "productBrowser": "إضافة منتج للشراء",
+    "productAlreadyInPo": "هذا المنتج موجود بالفعل في الأمر.",
+    "addProductsHint": "استخدم «إضافة منتجات» أو اضغط F1 لاختيار أصناف من الكتالوج.",
+    "createSubmit": "إنشاء أمر الشراء",
+    "saveDraft": "حفظ كمسودة",
+    "toastDraftSaved": "تم حفظ المسودة. أكمل التأكيد من صفحة أمر الشراء عند الجاهزية.",
+    "confirmReceiveDraft": "تأكيد واستلام",
+    "checkoutTitle": "إتمام أمر الشراء",
+    "confirmCreatePo": "تأكيد أمر الشراء",
+    "paymentRegisterWarehouse": "صندوق تسجيل المدفوعات",
+    "registerPaymentGateTitle": "أين تُسجَّل المدفوعات؟",
+    "registerPaymentGateDescription": "مستودع الاستلام هذا بلا صندوق نقدي. اختر الصندوق الذي يُسجَّل فيه دفع المورد. رصيد المورد والذمم الدائنة يبقيان صحيحين؛ يتأثر صندوق النقد فقط.",
+    "selectRegisterWarehouse": "الصندوق (بحث بالرقم أو الاسم)",
+    "registerPaymentGateContinue": "متابعة إلى الدفع",
+    "addToBalanceHint": "اختر مورداً لتسجيل المتبقي على حسابه (مستحقات لكم).",
     "searchPlaceholder": "بحث برقم الأمر...",
     "filterStatusAll": "الكل",
+    "filterStatusDraft": "مسودة",
     "filterStatusReceived": "مستلم",
     "filterStatusCancelled": "ملغي",
     "dateFrom": "من",
@@ -237,6 +788,7 @@
     "itemCount": "صنف واحد",
     "totalAmount": "المبلغ الإجمالي",
     "status": "الحالة",
+    "statusDraft": "مسودة",
     "statusReceived": "مستلم",
     "statusCancelled": "ملغي",
     "date": "التاريخ",
@@ -256,10 +808,22 @@
     "remove": "إزالة",
     "costPriceDiffWarning": "سعر التكلفة يختلف عن الافتراضي (الافتراضي: {{default}}). تحديث السعر الافتراضي؟",
     "updateDefaultCostPrice": "نعم، تحديث سعر التكلفة الافتراضي لهذا المنتج",
+    "costOverrideTitle": "التكلفة تختلف عن الكتالوج",
+    "costOverrideBody": "البند «{{name}}» يستخدم تكلفة وحدة تختلف عن الافتراضي في الكتالوج ({{listCost}}). استخدم هذه التكلفة لهذا الأمر فقط، أو حدّث أسعار المنتج (تكلفة، تجزئة، جملة).",
+    "costOverrideAllowOnce": "السماح مرة واحدة",
+    "costOverrideUpdateCatalog": "تحديث أسعار الكتالوج",
+    "costOverrideBlurHint": "اخرج من حقل التكلفة لاختيار كيفية التعامل، أو استعد تكلفة الكتالوج.",
+    "costOverrideUnsetError": "لكل بند تختلف فيه التكلفة عن الكتالوج، اخرج من حقل التكلفة أو اختر «السماح مرة واحدة» أو «تحديث أسعار الكتالوج».",
+    "catalogPricesTitle": "تحديث أسعار الكتالوج",
+    "catalogPricesHint": "تُحفظ هذه القيم على المنتج عند استلام أمر الشراء.",
+    "catalogPricesBack": "رجوع",
+    "originalPriceDisabledCatalog": "استعادة السعر غير متاحة: اخترت تحديث أسعار الكتالوج عند استلام أمر الشراء هذا.",
     "runningTotal": "المجموع",
     "validationAtLeastOne": "أضف منتجاً واحداً على الأقل",
+    "validationSupplierRequired": "اختر مورداً من الدليل قبل إتمام الشراء.",
     "validationQuantityMin": "الكمية يجب أن تكون 1 على الأقل",
     "validationCostPriceMin": "سعر التكلفة يجب أن يكون 0 أو أكثر",
+    "errorDraftStatusNotAllowed": "حفظ المسودات يتطلب تحديث قاعدة البيانات: طبّق الهجرة 016 (حالة مسودة أمر الشراء) على مشروع Supabase ثم أعد المحاولة.",
     "toastCreated": "تم إنشاء أمر الشراء بنجاح",
     "toastCancelled": "تم إلغاء أمر الشراء. تم استعادة المخزون.",
     "toastError": "حدث خطأ ما",
@@ -270,7 +834,309 @@
     "costPriceUpdated": "تم تحديث الافتراضي",
     "cancelConfirmTitle": "إلغاء أمر الشراء",
     "cancelConfirmMessage": "إلغاء أمر الشراء #{{number}}؟ سيتم خصم المخزون لجميع الأصناف.",
-    "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر."
+    "cancelConfirmMessageDraft": "إلغاء مسودة أمر الشراء #{{number}}؟ لم يُستلم شيء إلى المخزون بعد.",
+    "openPaymentOperation": "فتح الدفعة في سجل المعاملات",
+    "cancelSettlementLegend": "كيفية تسوية المدفوعات المسجّلة",
+    "cancelSettlementReverse": "عكس المدفوعات في الدفتر (افتراضي)",
+    "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للمورد (سطر واحد في الدفتر)",
+    "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
+    "selectSupplier": "مورد",
+    "supplierBalance": "رصيد المورد"
+  },
+  "inventoryTransfers": {
+    "title": "تحويلات المخزون",
+    "subtitle": "نقل المنتجات بين المستودعات. بدون أسعار—الكميات فقط.",
+    "allTransfers": "كل التحويلات",
+    "allTransfersSubtitle": "مراجعة النقل بين المواقع.",
+    "newTransfer": "تحويل جديد",
+    "newTransferSubtitle": "اختر المصدر والوجهة، أضف البنود، وأكّد.",
+    "backToTransfers": "العودة لتحويلات المخزون",
+    "backToList": "العودة للقائمة",
+    "fromWarehouse": "من مستودع",
+    "toWarehouse": "إلى مستودع",
+    "sameWarehouseError": "اختر مستودعين مختلفين.",
+    "note": "ملاحظة",
+    "notePlaceholder": "مرجع اختياري لهذا التحويل",
+    "lines": "البنود",
+    "addLine": "إضافة بند",
+    "colProduct": "المنتج",
+    "colAvailable": "المتاح (المصدر)",
+    "colNumber": "#",
+    "colDate": "التاريخ",
+    "exceedsAvailable": "تتجاوز الكمية المتاحة في المصدر.",
+    "submitTransfer": "إتمام التحويل",
+    "toastCreated": "تم التحويل",
+    "toastError": "فشل التحويل",
+    "emptyList": "لا توجد تحويلات بعد.",
+    "detailTitle": "تحويل #{{n}}",
+    "detailHeading": "تحويل #{{n}}",
+    "notFound": "التحويل غير موجود.",
+    "print": "طباعة",
+    "openTransferDetail": "فتح تحويل رقم {{n}}",
+    "promptDeleteWarehouseTitle": "حذف هذا المستودع؟",
+    "promptDeleteWarehouseDescription": "مستودع المصدر بلا مخزون. هل تزيله من المواقع؟",
+    "keepWarehouse": "إبقاء المستودع"
+  },
+  "people": {
+    "title": "الأشخاص",
+    "searchPlaceholder": "بحث بالاسم أو الهاتف...",
+    "filterRoleAll": "الكل",
+    "filterRoleCustomers": "عملاء",
+    "filterRoleSuppliers": "موردون",
+    "filterBalanceAll": "كل الأرصدة",
+    "filterBalancePositive": "مدينون لك",
+    "filterBalanceNegative": "أنت مدين لهم",
+    "filterBalanceZero": "رصيد صفر",
+    "filterDiscountAll": "الكل",
+    "filterDiscountHas": "لديهم خصم",
+    "customer": "عميل",
+    "supplier": "مورد",
+    "balance": "الرصيد",
+    "discount": "نسبة الخصم",
+    "creditLimit": "حد الائتمان",
+    "noLimit": "بدون حد",
+    "owesYou": "مدين لك",
+    "youOwe": "أنت مدين",
+    "settled": "مسوّى",
+    "recordPayment": "تسجيل دفعة",
+    "receivedPayment": "دفعة مستلمة",
+    "madePayment": "دفعة مدفوعة",
+    "balanceHistory": "سجل الرصيد",
+    "addPerson": "إضافة شخص",
+    "editPerson": "تعديل بيانات",
+    "deletePerson": "حذف شخص",
+    "viewProfile": "عرض الملف",
+    "detailTitle": "شخص",
+    "detailBack": "رجوع للأشخاص",
+    "detailSectionInfo": "الملف",
+    "detailEdit": "تعديل الشخص",
+    "detailSectionSales": "تحليلات المبيعات",
+    "detailSectionPurchases": "تحليلات المشتريات",
+    "detailGrossProfitNeedsWac": "يظهر إجمالي الربح عندما يكون لكل منتج في الطلبات المكتملة لهذا العميل متوسط تكلفة وحدة (WAC).",
+    "detailPurchaseKpiUnits": "الوحدات المستلمة",
+    "detailPurchaseKpiSpend": "إنفاق الأسطر",
+    "detailPurchaseKpiPos": "أوامر الشراء",
+    "detailChartPurchaseUnits": "الوحدات المستلمة يومياً",
+    "detailChartPurchaseSpend": "الإنفاق يومياً",
+    "detailNoPurchasesInRange": "لا توجد أسطر مشتريات مستلمة في هذا النطاق.",
+    "openFullProfile": "فتح صفحة الملف الكاملة",
+    "detailDocumentsSection": "الطلبات وأوامر الشراء",
+    "detailDocSearchLabel": "البحث برقم المستند",
+    "detailDocSearchPlaceholder": "مثال: 55، O-55، PO-12…",
+    "detailSalesOrders": "طلبات البيع",
+    "detailPurchaseOrdersTable": "أوامر الشراء",
+    "detailNoDocumentsMatch": "لا توجد مستندات تطابق الفلاتر.",
+    "detailMoneyOverTime": "إجماليات المستندات عبر الوقت",
+    "detailMoneyOverTimeHelp": "مجموع إجماليات الطلبات (عميل) وإجماليات أوامر الشراء (مورد) لكل يوم. خطان عندما يكون الشخص عميلاً ومورداً معاً.",
+    "detailMoneyLineCustomer": "طلبات البيع (الإجمالي)",
+    "detailMoneyLineSupplier": "أوامر الشراء (الإجمالي)",
+    "detailMoneyChartEmpty": "لا طلبات ولا أوامر شراء في هذا النطاق.",
+    "phone": "الهاتف",
+    "address": "العنوان",
+    "notes": "ملاحظات",
+    "roles": "الأدوار",
+    "lastUpdated": "آخر تحديث",
+    "currentBalance": "الرصيد الحالي",
+    "discountHelper": "يُطبَّق تلقائياً على طلبات العملاء",
+    "creditLimitHelper": "اتركه فارغاً لعدم وجود حد",
+    "creditLimitEnable": "تفعيل حد الائتمان",
+    "name": "الاسم",
+    "roleRemovalWarning": "هذا الشخص لديه {{count}} طلبات مرتبطة بدور العميل. أزل الدور فقط بعد إعادة ربط الطلبات.",
+    "roleRemovalWarningSupplier": "هذا الشخص لديه {{count}} أوامر شراء كمورد.",
+    "deleteBlocked": "لا يمكن الحذف: يوجد سجلات مرتبطة",
+    "deleteBlockedBalance": "لا يمكن الحذف: رصيد غير مسوّى {{amount}}",
+    "deleteConfirm": "حذف {{name}}؟ لا يمكن التراجع.",
+    "emptyPeople": "لا يوجد أشخاص يطابقون الفلاتر.",
+    "toastCreated": "تم إنشاء الشخص",
+    "toastUpdated": "تم تحديث الشخص",
+    "toastDeleted": "تم حذف الشخص",
+    "toastPayment": "تم تسجيل الدفعة",
+    "toastError": "حدث خطأ",
+    "validationNameMin": "الاسم يجب أن يكون حرفين على الأقل",
+    "validationPhoneRequired": "رقم الهاتف مطلوب.",
+    "formCreateRequiredHint": "الاسم ورقم الهاتف مطلوبان.",
+    "validationPhoneDuplicate": "رقم الهاتف مستخدم بالفعل لشخص آخر.",
+    "validationPhoneDuplicateNamed": "رقم الهاتف مستخدم بالفعل من قِبل {{name}}.",
+    "validationRoles": "اختر دوراً واحداً على الأقل",
+    "paymentAmount": "المبلغ",
+    "paymentNote": "ملاحظة (اختياري)",
+    "paymentPreview": "الرصيد بعد الدفعة",
+    "balanceExplanationPositive": "{{name}} مدين لك بـ {{amount}}",
+    "balanceExplanationNegative": "أنت مدين لـ {{name}} بـ {{amount}}",
+    "balanceExplanationZero": "مسوّى",
+    "balanceChipOwesYou": "مدين لك",
+    "balanceChipYouOwe": "أنت مدين",
+    "balanceChipSettled": "مسوّى",
+    "txWallet": "محفظة",
+    "txRegisterDeposit": "إيداع صندوق",
+    "txRegisterWithdraw": "سحب صندوق",
+    "profileOverview": "نظرة عامة",
+    "profileOrders": "الطلبات",
+    "profilePurchaseOrders": "أوامر الشراء",
+    "totalOrders": "إجمالي الطلبات",
+    "totalPurchases": "إجمالي المشتريات",
+    "totalSpent": "إجمالي الإنفاق (طلبات)",
+    "totalBought": "إجمالي الشراء (أوامر شراء)",
+    "transactionType": "النوع",
+    "transactionDate": "التاريخ",
+    "reference": "المرجع",
+    "amount": "المبلغ",
+    "runningBalance": "الرصيد التراكمي",
+    "summaryTotalIn": "إجمالي الوارد",
+    "summaryTotalOut": "إجمالي الصادر",
+    "summaryNet": "الصافي",
+    "filterTxAll": "كل الأنواع",
+    "openOrder": "فتح الطلب",
+    "openPO": "فتح أمر الشراء",
+    "txOrder": "طلب",
+    "txPurchaseOrder": "أمر شراء",
+    "txPaymentIn": "دفعة واردة",
+    "txPaymentOut": "دفعة صادرة",
+    "txAdjustment": "تسوية",
+    "adjustBalance": "تعديل الرصيد",
+    "adjustNote": "ملاحظة التسوية",
+    "savePayment": "حفظ الدفعة",
+    "emDash": "—",
+    "emptyTxHistory": "لا توجد حركات في هذا العرض.",
+    "emptyOrdersForPerson": "لا توجد طلبات مرتبطة بعد.",
+    "emptyPOsForPerson": "لا توجد أوامر شراء مرتبطة بعد."
+  },
+  "payments": {
+    "hubIntro": "سجّل مدفوعات الأرصدة أو افتح سجل المعاملات الكامل (كل حركات الدفتر).",
+    "hubDisabled": "اختصارات مركز المدفوعات معطّلة من إعدادات التحكم.",
+    "allPayments": "سجل المعاملات",
+    "allPaymentsDesc": "السجل الكامل لحركات الرصيد: مبيعات، أوامر شراء، مدفوعات، محفظة، وتسويات.",
+    "newPayment": "دفعة جديدة",
+    "newPaymentDesc": "اختر شخصاً وسجّل دفعة واردة أو صادرة.",
+    "newPaymentHint": "حدد الشخص ثم أدخل المبلغ ونوع الدفعة.",
+    "personForPayment": "الشخص",
+    "choosePerson": "اختر شخصاً…",
+    "selectPersonBrowser": "اختيار شخص",
+    "searchPeople": "بحث بالاسم أو الهاتف أو المعرف",
+    "pressF1Person": "اضغط F1 لفتح نافذة اختيار الشخص.",
+    "listIntro": "دفتر الأستاذ الكامل للفترة المحددة—كل العمليات التي غيّرت رصيد شخص. صفِّ بالنوع أو الشخص أو ابحث.",
+    "filterFrom": "من تاريخ ووقت",
+    "filterTo": "إلى تاريخ ووقت",
+    "filterType": "نوع الحركة",
+    "filterPerson": "الشخص",
+    "filterPersonAll": "كل الأشخاص",
+    "typePaymentsBoth": "دفعات واردة وصادرة ومحفظة",
+    "typeAllTransactions": "كل أنواع الحركات",
+    "searchLabel": "بحث",
+    "searchPlaceholder": "اسم، هاتف، عميل مباشر، ملاحظة، مرجع، نوع…",
+    "walkInCustomer": "عميل مباشر",
+    "emptyList": "لا توجد حركات تطابق التصفية.",
+    "resultCount": "عرض {{count}} صفاً",
+    "backToHub": "العودة إلى المدفوعات",
+    "filterPaymentMethod": "طريقة الدفع",
+    "methodFilterAll": "كل الطرق",
+    "methodUnspecified": "غير محدد",
+    "methodColumn": "الطريقة",
+    "methodDetailsColumn": "طريقة الدفع",
+    "logDetailsColumn": "تفاصيل أخرى",
+    "logStatusColumn": "الحالة",
+    "expandNestedPaymentsAria": "إظهار أو إخفاء أسطر دفعات إتمام الشراء لهذا المستند",
+    "listDocumentTotal": "إجمالي المستند",
+    "listDocumentTotalHint": "إجمالي البيع للطلب، أو إجمالي التزام أمر الشراء.",
+    "listBalanceImpact": "أثر الرصيد",
+    "listBalanceImpactHint": "العرض الافتراضي: لطلبات البيع، السالب يعني أن العميل ما زال مديناً (أو صافي انخفاض الرصيد)، والموجب يعني رصيداً زائداً أو دفعاً زائداً. أوامر الشراء تعرض المتبقي من الدين بإشارة الدفتر. الدفتر الكامل: المبلغ الموقّع لكل سطر. الأخضر/الأحمر يطابق إشارة العمود للأشخاص المرتبطين.",
+    "listRegisterImpact": "أثر الصندوق",
+    "listRegisterImpactHint": "الأثر الصافي على الصندوق (الدرج والطرق): موجب عند دخول أموال، سالب عند صرفها.",
+    "listRegisterWarehouse": "صندوق / موقع",
+    "registerWarehouseLegacy": "قديم",
+    "operationRegisterWarehouse": "مستودع الصندوق",
+    "recordPaymentRegisterWarehouse": "صندوق هذه الدفعة",
+    "noRegisterWarehouseForPayments": "لا يوجد مستودع بصندوق. أضف واحداً من المخزون ← المستودعات.",
+    "splitHint": "فعّل كل طريقة تستخدمها وأدخل المبلغ (مثلاً نقداً + بطاقة).",
+    "totalTendered": "إجمالي المدفوع",
+    "overpaymentWarning": "أنت تدفع أكثر من المبلغ الإجمالي",
+    "overpaymentWillBeAddedToWallet": "سيتم إضافته للمحفظة كرصيد",
+    "confirmAndAddToWallet": "تأكيد وإضافة {{amount}} للمحفظة",
+    "selectPersonForOverpayment": "اختر شخصاً لتطبيق الدفع الزائد على محفظته",
+    "showFullLedger": "عرض الدفتر الكامل",
+    "showFullLedgerHelp": "إظهار كل أسطر الأرصدة. عند الإيقاف، تُخفى دفعات تأكيد الطلب/أمر الشراء الظاهرة أيضاً في صف الطلب أو أمر الشراء.",
+    "openOrderReference": "فتح الطلب {{ref}}",
+    "openPurchaseOrderReference": "فتح أمر الشراء {{ref}}",
+    "openPaymentOperationReference": "فتح الدفعة {{ref}}",
+    "retainedStandalonePaymentRef": "دفعة {{id}}",
+    "paymentOperationTitle": "دفعة",
+    "backToTransactionLog": "رجوع لسجل المعاملات",
+    "paymentOperationNotFound": "تعذر العثور على هذه الدفعة.",
+    "paymentOperationUntitled": "دفعة",
+    "person": "الشخص",
+    "relatedDocument": "مستند مرتبط",
+    "relatedSalesOrder": "فتح طلب البيع",
+    "relatedPurchaseOrder": "فتح أمر الشراء",
+    "operationTenderLines": "أسطر طرق الدفع",
+    "operationWalletLines": "المحفظة (دفع زائد)",
+    "operationReversedBanner": "تم عكس هذه الدفعة. تُبقى الأسطر في الدفتر للمراجعة مع إشارة العكس.",
+    "reverseOperation": "عكس الدفعة",
+    "reverseOperationConfirmTitle": "عكس هذه الدفعة؟",
+    "reverseOperationConfirmDescription": "سيُلغى أثر الدفعة في الدفتر ويُعاد الرصيد عند وجود شخص مرتبط، ويُحدَّث طلب البيع أو أمر الشراء إن كانت الدفعة مرتبطة بهما. لا يمكن التراجع عن ذلك من التطبيق.",
+    "toastOperationReversed": "تم عكس الدفعة",
+    "operationNoteNoEditReversed": "لا يمكن تعديل الملاحظة بعد عكس الدفعة.",
+    "reversedBadge": "معكوسة",
+    "poCancelledBadge": "ملغي",
+    "orderCancelledBadge": "ملغي",
+    "orderCompletedBadge": "مكتمل",
+    "reversedDetailsHint": "لا أثر صافٍ على الرصيد",
+    "reversedBalanceImpactHint": "تم عكس هذه الدفعة؛ التغيير الصافي على الرصيد صفر.",
+    "operationNote": "ملاحظة",
+    "operationNotePlaceholder": "ملاحظة اختيارية لهذه الدفعة…",
+    "saveOperationNote": "حفظ الملاحظة",
+    "toastOperationNoteSaved": "تم تحديث الملاحظة",
+    "operationNoteReadOnly": "تعديل ملاحظات الدفعات معطّل في إعدادات التحكم.",
+    "notePreview": "معاينة",
+    "operationNoteLinkHint": "مراجع الأوامر مثل O-12 أو PO-3 تصبح روابط عندما تنتهي الملاحظة بعلامة مستند من النظام."
+  },
+  "register": {
+    "title": "الصندوق",
+    "subtitle": "رصيد جاري لكل وسيلة (نقد، فيزا، شيك، إنستاباي) من المبيعات والمشتريات، مع حركات يدوية.",
+    "disclaimer": "الدفعات المسجّلة في الدفتر دون وسيلة دفع تُحتسب ضمن النقد في الصندوق. الطلبات متعددة الوسائل تُوزَّع حسب ما سُجّل.",
+    "balancesTitle": "الرصيد حسب وسيلة الدفع",
+    "totalInRegister": "الإجمالي في الصندوق",
+    "addToRegister": "إيداع في الصندوق",
+    "withdrawFromRegister": "سحب من الصندوق",
+    "viewActivity": "نشاط الصندوق",
+    "activityTitle": "نشاط الصندوق الأخير",
+    "activityEmpty": "لا توجد حركات صندوق بعد.",
+    "colWhen": "الوقت",
+    "colType": "النوع",
+    "colMethod": "الوسيلة",
+    "colEffect": "أثر الصندوق",
+    "colNote": "ملاحظة",
+    "fieldMethod": "وسيلة الدفع",
+    "fieldAmount": "المبلغ",
+    "fieldNoteOptional": "ملاحظة (اختياري)",
+    "confirmAdd": "إيداع",
+    "confirmWithdraw": "سحب",
+    "withdrawAvailable": "المتاح لهذه الوسيلة: {{amount}}",
+    "validationAmount": "أدخل مبلغاً صالحاً (على الأقل 0.01).",
+    "toastDeposited": "تمت الإضافة للصندوق",
+    "toastWithdrawn": "تم تسجيل السحب",
+    "toastError": "حدث خطأ",
+    "loadError": "تعذر تحميل أرصدة الصندوق.",
+    "ledgerPartyName": "الصندوق",
+    "backToRegister": "العودة للصندوق",
+    "viewPayment": "عرض الدفعة",
+    "activityLinkOrder": "طلب {{ref}}",
+    "activityLinkPO": "{{ref}}",
+    "activityLinkPayment": "دفعة",
+    "activityLinkRegister": "حركة صندوق",
+    "registerWarehouseLabel": "موقع الصندوق",
+    "noRegisterWarehouse": "لا يوجد مستودع مُعدّ لصندوق نقدي.",
+    "withdrawAllDisabled": "سحب من الصندوق معطّل في إعدادات التحكم.",
+    "withdrawAllConfirmTitle": "سحب كل شيء من هذا الصندوق؟",
+    "withdrawAllConfirmDescription": "يُسجَّل سحب واحد لكل وسيلة لها رصيد. عند الانتهاء يصبح رصيد الصندوق صفراً.",
+    "withdrawAllConfirmAction": "سحب الكل",
+    "withdrawAllLedgerNote": "سحب الكل (تصفير الصندوق)",
+    "toastWithdrawAllDone": "تم سحب كل أرصدة الصندوق",
+    "disableRegisterPromptTitle": "إيقاف الصندوق لهذا المستودع؟",
+    "disableRegisterPromptDescription": "صندوق «{{name}}» فارغ. هل تريد إيقاف الصندوق النقدي لهذا الموقع؟",
+    "disableRegisterConfirm": "إيقاف الصندوق",
+    "disableRegisterKeep": "الإبقاء على الصندوق",
+    "disableRegisterNotAllowed": "المستودع الأساسي أو الافتراضي يجب أن يبقى بصندوق.",
+    "disableRegisterWarehouseMissing": "المستودع غير موجود."
   },
   "reports": {
     "title": "التقارير",
@@ -296,6 +1162,139 @@
     "averageOrderValue": "متوسط قيمة الطلب",
     "mostSoldProduct": "الأكثر مبيعاً",
     "salesPerDay": "المبيعات يومياً"
+  },
+  "documentation": {
+    "title": "دليل المنصة",
+    "pageTitle": "التوثيق | StockPilot",
+    "mindmapTitle": "خريطة الميزات",
+    "mapHint": "افتح أو أغلق كل بطاقة، ثم كل قسم فرعي، لتصفح الميزات.",
+    "mapGroups": {
+      "platform": "المنصة والتنقل",
+      "catalog": "الكتالوج والمخزون",
+      "commerce": "الشراء والمبيعات",
+      "money": "الأشخاص والمدفوعات والصندوق",
+      "insights": "التقارير والملاحظات"
+    },
+    "areas": {
+      "nav": {
+        "title": "التنقل والإدارة",
+        "items": [
+          "تبديلات ظهور الشريط الجانبي (التحكم)",
+          "مركز الإدارة (لوحة التحكم، التوثيق، التقارير)",
+          "رابط التحكم (الإعدادات)",
+          "مركز المخزون",
+          "الطلبات",
+          "الأشخاص",
+          "المدفوعات",
+          "الصندوق"
+        ]
+      },
+      "header": {
+        "title": "الشريط العلوي",
+        "items": [
+          "جرس المخزون المنخفض والشارة (عند التفعيل)",
+          "سياق اللغة / التخطيط"
+        ]
+      },
+      "dashboard": {
+        "title": "لوحة التحكم (الرئيسية)",
+        "items": [
+          "تبويب النظرة العامة: إحصاءات، مستحقات، حركات حديثة، مخزون منخفض",
+          "تبويب التقارير: تقارير المبيعات والمخزون",
+          "يمكن تقييد كل قسم من التحكم"
+        ]
+      },
+      "inventoryHub": {
+        "title": "مركز المخزون",
+        "items": [
+          "بطاقات للمنتجات وأوامر الشراء وتحويلات المخزون والمستودعات والحركات والفئات والعلامات",
+          "نقطة دخول لسير عمل الكتالوج والمخزون"
+        ]
+      },
+      "warehouses": {
+        "title": "المستودعات",
+        "items": [
+          "مواقع بنص موقع إلزامي؛ رموز عرض تُولَّد تلقائياً من الموقع (مثل NASR-CITY-01)",
+          "صندوق نقدي اختياري لكل مستودع؛ إيقافه يتطلب صندوقاً فارغاً (اختصار لسحب الكل ثم تأكيد الإيقاف)"
+        ]
+      },
+      "products": {
+        "title": "المنتجات",
+        "items": [
+          "قائمة المنتجات والبحث والإضافة والتعديل (عند السماح)",
+          "مستويات المخزون والأسعار حسب نوع الطلب"
+        ]
+      },
+      "categories": {
+        "title": "الفئات",
+        "items": [
+          "إدارة فئات المنتجات المستخدمة في الكتالوج"
+        ]
+      },
+      "brands": {
+        "title": "العلامات التجارية",
+        "items": [
+          "إدارة العلامات للمنتجات والتصفية"
+        ]
+      },
+      "movements": {
+        "title": "حركات المخزون",
+        "items": [
+          "سجل الوارد والصادر والتعديلات",
+          "فلاتر وترقيم صفحات"
+        ]
+      },
+      "purchaseOrders": {
+        "title": "أوامر الشراء",
+        "items": [
+          "القائمة، أمر شراء جديد، استلام المخزون، المستحقات",
+          "حالات المسودة والمؤكد (قد تتطلب ترحيلات قاعدة البيانات)"
+        ]
+      },
+      "orders": {
+        "title": "طلبات المبيعات",
+        "items": [
+          "مسودات بنمط نقطة البيع، الدفع، ربط العميل",
+          "قائمة الطلبات والتفاصيل؛ إلغاء عند التفعيل"
+        ]
+      },
+      "people": {
+        "title": "الأشخاص",
+        "items": [
+          "العملاء والموردون، الأرصدة، الخصومات، الائتمان",
+          "إنشاء سريع من متصفحات الطلب/أمر الشراء عند السماح"
+        ]
+      },
+      "payments": {
+        "title": "المدفوعات",
+        "items": [
+          "مركز المدفوعات، سجل المعاملات، دفعة جديدة",
+          "ملاحظات الدفتر والعكس عند التفعيل"
+        ]
+      },
+      "register": {
+        "title": "الصندوق",
+        "items": [
+          "أرصدة الوسائل في الصندوق لكل مستودع صندوق",
+          "إيداع وسحب وسحب-الكل (مثلاً من المستودعات عند إيقاف الصندوق)",
+          "الإيداع والسحب عند التفعيل في التحكم"
+        ]
+      },
+      "reports": {
+        "title": "التقارير",
+        "items": [
+          "تقارير المبيعات وقيمة المخزون في تبويب لوحة التحكم",
+          "تصدير CSV حيثما يتوفر"
+        ]
+      },
+      "notes": {
+        "title": "الملاحظات والإشارات",
+        "items": [
+          "ملاحظات غنية على الطلبات وأوامر الشراء والأشخاص مع @",
+          "روابط لمستندات ذات صلة عند الدعم"
+        ]
+      }
+    }
   },
   "errorBoundary": {
     "title": "حدث خطأ ما",
