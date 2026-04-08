@@ -11,6 +11,7 @@
     "categories": "الفئات",
     "brands": "العلامات التجارية",
     "warehouses": "المستودعات",
+    "inventoryTransfers": "تحويلات المخزون",
     "stockMovements": "حركات المخزون",
     "reports": "التقارير",
     "control": "التحكم",
@@ -93,6 +94,9 @@
       "purchaseOrdersList": "قائمة أوامر الشراء معطّلة من إعدادات التحكم.",
       "noPurchaseOrderShortcuts": "جميع اختصارات مركز أوامر الشراء معطّلة من إعدادات التحكم.",
       "newPurchaseOrder": "إنشاء أوامر شراء جديدة معطّل من إعدادات التحكم.",
+      "noInventoryTransferShortcuts": "جميع اختصارات تحويل المخزون معطّلة من إعدادات التحكم.",
+      "newInventoryTransfer": "إنشاء تحويل مخزون جديد معطّل من إعدادات التحكم.",
+      "inventoryTransfersList": "قائمة تحويلات المخزون معطّلة من إعدادات التحكم.",
       "warehouses": "المستودعات معطّلة من إعدادات التحكم.",
       "dashboardAllOff": "تبويبا لوحة التحكم معطّلان في التحكم. فعّل «نظرة عامة» أو «التقارير» لعرض المحتوى.",
       "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض."
@@ -107,6 +111,7 @@
       "categories": "الفئات",
       "brands": "العلامات التجارية",
       "purchaseOrders": "أوامر الشراء",
+      "inventoryTransfers": "تحويلات المخزون",
       "orders": "طلبات المبيعات",
       "reports": "التقارير",
       "paymentsApp": "المدفوعات",
@@ -248,7 +253,11 @@
       },
       "warehouses": {
         "title": "بطاقة المستودعات",
-        "desc": "رابط من مركز المخزون لإدارة المستودعات والموقع الافتراضي."
+        "desc": "رابط من مركز المخزون لإدارة المواقع: رمز عرض من نص الموقع، صندوق اختياري لكل موقع، الموقع الافتراضي، وإيقاف الصندوق بأمان عندما يكون فارغاً."
+      },
+      "transfers": {
+        "title": "بطاقة تحويلات المخزون",
+        "desc": "رابط من مركز المخزون لنقل الكميات بين مستودعين (بدون أسعار)."
       }
     },
     "people": {
@@ -350,6 +359,17 @@
       "editNote": {
         "title": "تعديل ملاحظة أمر الشراء",
         "desc": "السماح بتعديل الملاحظة المحفوظة في صفحة تفاصيل أمر الشراء (أيقونة القلم والحفظ)."
+      }
+    },
+    "inventoryTransfers": {
+      "group": "تحويلات المخزون",
+      "create": {
+        "title": "إنشاء تحويل مخزون",
+        "desc": "إظهار اختصار تحويل جديد ونموذج نقل المنتجات بين مستودعين (كميات فقط)."
+      },
+      "list": {
+        "title": "قائمة تحويلات المخزون",
+        "desc": "إظهار قائمة التحويلات السابقة وروابط تفاصيل كل تحويل."
       }
     },
     "orders": {
@@ -535,6 +555,8 @@
     "addWarehouse": "إضافة مستودع",
     "editWarehouse": "تعديل مستودع",
     "colId": "المعرّف",
+    "colCode": "الرمز",
+    "colInternalId": "المعرّف الداخلي",
     "colLocation": "الموقع",
     "colDefault": "افتراضي",
     "setAsDefault": "تعيين كمستودع افتراضي",
@@ -543,10 +565,29 @@
     "searchByIdOrName": "بحث بالمعرّف أو الاسم…",
     "empty": "لا توجد مستودعات.",
     "validationIdName": "المعرّف والاسم مطلوبان.",
+    "validationName": "الاسم مطلوب.",
+    "validationLocation": "الموقع مطلوب.",
+    "codeAutoHint": "الموقع إلزامي. يُولَّد رمز عرض تلقائياً من نص الموقع (مثل NASR-CITY-01).",
+    "locationPlaceholder": "مثال: مدينة نصر",
+    "registerNotEmptyTitle": "الصندوق ليس فارغاً",
+    "registerNotEmptyBody": "اسحب أو صفّر كل وسيلة دفع قبل إيقاف الصندوق لهذا المستودع.",
+    "withdrawAllRegisterShortcut": "سحب كل أرصدة الصندوق",
     "toastCreated": "تم إنشاء المستودع",
     "toastUpdated": "تم تحديث المستودع",
     "toastDefaultUpdated": "تم تحديث المستودع الافتراضي",
+    "toastDeleted": "تم حذف المستودع",
     "toastError": "حدث خطأ ما",
+    "colHasRegister": "صندوق",
+    "hasRegisterLabel": "يوجد صندوق نقدي",
+    "hasRegisterHint": "نقطة البيع ومدفوعات الصندوق تستخدم المواقع التي فيها صندوق فقط.",
+    "defaultMustHaveRegister": "المستودع الافتراضي يبقى دائماً بصندوق.",
+    "primaryWarehouseMustHaveRegister": "المستودع الأساسي (المعرّف 1) يبقى دائماً بصندوق نقدي.",
+    "deleteWarehouse": "حذف المستودع",
+    "deleteWarehouseTitle": "حذف المستودع؟",
+    "deleteWarehouseConfirm": "سيُزال المستودع نهائياً. يجب ألا يبقى مخزون ولا سجل مدفوعات للصندوق.",
+    "deleteBlockedStock": "لا يزال هناك مخزون في هذا الموقع. انقل الكميات كلها ثم أعد المحاولة.",
+    "deleteBlockedRegister": "لا تزال المدفوعات مرتبطة بهذا الصندوق. لا يمكن حذف الموقع طالما السجل يشير إليه.",
+    "openTransferToEmpty": "فتح تحويل لنقل المخزون",
     "quantityAtWarehouse": "الكمية (هذا المستودع)",
     "poLabel": "الاستلام في المستودع",
     "orderLabel": "الشحن من المستودع"
@@ -661,6 +702,8 @@
     "paymentNone": "بدون",
     "paymentAmount": "المبلغ",
     "paymentBreakdown": "تفصيل الدفع",
+    "inventoryForDocument": "المخزون / المستودع",
+    "paymentRegister": "الصندوق",
     "paymentRemaining": "المتبقي",
     "validationPaymentTotal": "مجموع المدفوعات يجب أن يساوي إجمالي الطلب ({{total}})",
     "noteOptional": "ملاحظة (اختياري)",
@@ -724,6 +767,11 @@
     "confirmReceiveDraft": "تأكيد واستلام",
     "checkoutTitle": "إتمام أمر الشراء",
     "confirmCreatePo": "تأكيد أمر الشراء",
+    "paymentRegisterWarehouse": "صندوق تسجيل المدفوعات",
+    "registerPaymentGateTitle": "أين تُسجَّل المدفوعات؟",
+    "registerPaymentGateDescription": "مستودع الاستلام هذا بلا صندوق نقدي. اختر الصندوق الذي يُسجَّل فيه دفع المورد. رصيد المورد والذمم الدائنة يبقيان صحيحين؛ يتأثر صندوق النقد فقط.",
+    "selectRegisterWarehouse": "الصندوق (بحث بالرقم أو الاسم)",
+    "registerPaymentGateContinue": "متابعة إلى الدفع",
     "addToBalanceHint": "اختر مورداً لتسجيل المتبقي على حسابه (مستحقات لكم).",
     "searchPlaceholder": "بحث برقم الأمر...",
     "filterStatusAll": "الكل",
@@ -794,6 +842,40 @@
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
     "selectSupplier": "مورد",
     "supplierBalance": "رصيد المورد"
+  },
+  "inventoryTransfers": {
+    "title": "تحويلات المخزون",
+    "subtitle": "نقل المنتجات بين المستودعات. بدون أسعار—الكميات فقط.",
+    "allTransfers": "كل التحويلات",
+    "allTransfersSubtitle": "مراجعة النقل بين المواقع.",
+    "newTransfer": "تحويل جديد",
+    "newTransferSubtitle": "اختر المصدر والوجهة، أضف البنود، وأكّد.",
+    "backToTransfers": "العودة لتحويلات المخزون",
+    "backToList": "العودة للقائمة",
+    "fromWarehouse": "من مستودع",
+    "toWarehouse": "إلى مستودع",
+    "sameWarehouseError": "اختر مستودعين مختلفين.",
+    "note": "ملاحظة",
+    "notePlaceholder": "مرجع اختياري لهذا التحويل",
+    "lines": "البنود",
+    "addLine": "إضافة بند",
+    "colProduct": "المنتج",
+    "colAvailable": "المتاح (المصدر)",
+    "colNumber": "#",
+    "colDate": "التاريخ",
+    "exceedsAvailable": "تتجاوز الكمية المتاحة في المصدر.",
+    "submitTransfer": "إتمام التحويل",
+    "toastCreated": "تم التحويل",
+    "toastError": "فشل التحويل",
+    "emptyList": "لا توجد تحويلات بعد.",
+    "detailTitle": "تحويل #{{n}}",
+    "detailHeading": "تحويل #{{n}}",
+    "notFound": "التحويل غير موجود.",
+    "print": "طباعة",
+    "openTransferDetail": "فتح تحويل رقم {{n}}",
+    "promptDeleteWarehouseTitle": "حذف هذا المستودع؟",
+    "promptDeleteWarehouseDescription": "مستودع المصدر بلا مخزون. هل تزيله من المواقع؟",
+    "keepWarehouse": "إبقاء المستودع"
   },
   "people": {
     "title": "الأشخاص",
@@ -960,6 +1042,11 @@
     "listBalanceImpactHint": "العرض الافتراضي: لطلبات البيع، السالب يعني أن العميل ما زال مديناً (أو صافي انخفاض الرصيد)، والموجب يعني رصيداً زائداً أو دفعاً زائداً. أوامر الشراء تعرض المتبقي من الدين بإشارة الدفتر. الدفتر الكامل: المبلغ الموقّع لكل سطر. الأخضر/الأحمر يطابق إشارة العمود للأشخاص المرتبطين.",
     "listRegisterImpact": "أثر الصندوق",
     "listRegisterImpactHint": "الأثر الصافي على الصندوق (الدرج والطرق): موجب عند دخول أموال، سالب عند صرفها.",
+    "listRegisterWarehouse": "صندوق / موقع",
+    "registerWarehouseLegacy": "قديم",
+    "operationRegisterWarehouse": "مستودع الصندوق",
+    "recordPaymentRegisterWarehouse": "صندوق هذه الدفعة",
+    "noRegisterWarehouseForPayments": "لا يوجد مستودع بصندوق. أضف واحداً من المخزون ← المستودعات.",
     "splitHint": "فعّل كل طريقة تستخدمها وأدخل المبلغ (مثلاً نقداً + بطاقة).",
     "totalTendered": "إجمالي المدفوع",
     "overpaymentWarning": "أنت تدفع أكثر من المبلغ الإجمالي",
@@ -1035,7 +1122,21 @@
     "activityLinkOrder": "طلب {{ref}}",
     "activityLinkPO": "{{ref}}",
     "activityLinkPayment": "دفعة",
-    "activityLinkRegister": "حركة صندوق"
+    "activityLinkRegister": "حركة صندوق",
+    "registerWarehouseLabel": "موقع الصندوق",
+    "noRegisterWarehouse": "لا يوجد مستودع مُعدّ لصندوق نقدي.",
+    "withdrawAllDisabled": "سحب من الصندوق معطّل في إعدادات التحكم.",
+    "withdrawAllConfirmTitle": "سحب كل شيء من هذا الصندوق؟",
+    "withdrawAllConfirmDescription": "يُسجَّل سحب واحد لكل وسيلة لها رصيد. عند الانتهاء يصبح رصيد الصندوق صفراً.",
+    "withdrawAllConfirmAction": "سحب الكل",
+    "withdrawAllLedgerNote": "سحب الكل (تصفير الصندوق)",
+    "toastWithdrawAllDone": "تم سحب كل أرصدة الصندوق",
+    "disableRegisterPromptTitle": "إيقاف الصندوق لهذا المستودع؟",
+    "disableRegisterPromptDescription": "صندوق «{{name}}» فارغ. هل تريد إيقاف الصندوق النقدي لهذا الموقع؟",
+    "disableRegisterConfirm": "إيقاف الصندوق",
+    "disableRegisterKeep": "الإبقاء على الصندوق",
+    "disableRegisterNotAllowed": "المستودع الأساسي أو الافتراضي يجب أن يبقى بصندوق.",
+    "disableRegisterWarehouseMissing": "المستودع غير موجود."
   },
   "reports": {
     "title": "التقارير",
@@ -1106,8 +1207,15 @@
       "inventoryHub": {
         "title": "مركز المخزون",
         "items": [
-          "بطاقات للمنتجات وأوامر الشراء والحركات والفئات والعلامات",
+          "بطاقات للمنتجات وأوامر الشراء وتحويلات المخزون والمستودعات والحركات والفئات والعلامات",
           "نقطة دخول لسير عمل الكتالوج والمخزون"
+        ]
+      },
+      "warehouses": {
+        "title": "المستودعات",
+        "items": [
+          "مواقع بنص موقع إلزامي؛ رموز عرض تُولَّد تلقائياً من الموقع (مثل NASR-CITY-01)",
+          "صندوق نقدي اختياري لكل مستودع؛ إيقافه يتطلب صندوقاً فارغاً (اختصار لسحب الكل ثم تأكيد الإيقاف)"
         ]
       },
       "products": {
@@ -1167,8 +1275,9 @@
       "register": {
         "title": "الصندوق",
         "items": [
-          "أرصدة الوسائل في الصندوق",
-          "إيداع وسحب عند التفعيل"
+          "أرصدة الوسائل في الصندوق لكل مستودع صندوق",
+          "إيداع وسحب وسحب-الكل (مثلاً من المستودعات عند إيقاف الصندوق)",
+          "الإيداع والسحب عند التفعيل في التحكم"
         ]
       },
       "reports": {

@@ -5,6 +5,7 @@ import {
   roundMoney,
 } from '@/services/peopleService'
 import type { BalanceTransaction, PaymentMethod } from '@/types'
+import { PAYMENT_METHODS_ORDERED } from '@/utils/paymentMethod'
 
 /** Route id for `/payments/operations/:id` from a register activity row. */
 export function ledgerPaymentOperationRouteId(
@@ -121,10 +122,13 @@ export function aggregateRegisterBalances(rows: BalanceTransaction[]): RegisterB
   return out
 }
 
-export async function getRegisterBalances(): Promise<RegisterBalances> {
+export async function getRegisterBalances(
+  registerWarehouseId: number
+): Promise<RegisterBalances> {
   let q = supabase
     .from(BALANCE_TX)
     .select('*')
+    .eq('register_warehouse_id', registerWarehouseId)
     .is('reversed_at', null)
     .in('type', [
       'payment_in',
@@ -156,6 +160,7 @@ function nextRegisterRef(): string {
 }
 
 export async function depositToRegister(data: {
+  register_warehouse_id: number
   payment_method: PaymentMethod
   amount: number
   note?: string
@@ -174,12 +179,14 @@ export async function depositToRegister(data: {
     payment_method: data.payment_method,
     payment_group_id: null,
     wallet_direction: null,
+    register_warehouse_id: data.register_warehouse_id,
   })
   const id = await fetchBalanceTxIdByReferenceNumber(ref)
   return { id }
 }
 
 export async function withdrawFromRegister(data: {
+  register_warehouse_id: number
   payment_method: PaymentMethod
   amount: number
   note?: string
@@ -187,7 +194,7 @@ export async function withdrawFromRegister(data: {
   const amt = roundMoney(data.amount)
   if (amt < 0.01) throw new Error('Amount must be at least 0.01')
 
-  const balances = await getRegisterBalances()
+  const balances = await getRegisterBalances(data.register_warehouse_id)
   const available = roundMoney(balances[data.payment_method])
   if (roundMoney(amt) > roundMoney(available + 0.005)) {
     throw new Error(
@@ -206,9 +213,31 @@ export async function withdrawFromRegister(data: {
     payment_method: data.payment_method,
     payment_group_id: null,
     wallet_direction: null,
+    register_warehouse_id: data.register_warehouse_id,
   })
   const id = await fetchBalanceTxIdByReferenceNumber(ref)
   return { id }
+}
+
+/** One withdraw row per tender method with a positive balance (register must end at zero). */
+export async function withdrawAllFromRegister(params: {
+  register_warehouse_id: number
+  note?: string
+}): Promise<{ withdrawals: { method: PaymentMethod; amount: number; id: string }[] }> {
+  const b = await getRegisterBalances(params.register_warehouse_id)
+  const withdrawals: { method: PaymentMethod; amount: number; id: string }[] = []
+  for (const m of PAYMENT_METHODS_ORDERED) {
+    const amt = roundMoney(b[m])
+    if (amt < 0.01) continue
+    const { id } = await withdrawFromRegister({
+      register_warehouse_id: params.register_warehouse_id,
+      payment_method: m,
+      amount: amt,
+      note: params.note,
+    })
+    withdrawals.push({ method: m, amount: amt, id })
+  }
+  return { withdrawals }
 }
 
 export type RegisterActivityRow = BalanceTransaction & {
@@ -217,11 +246,13 @@ export type RegisterActivityRow = BalanceTransaction & {
 
 /** Recent ledger lines that affect the register (newest first). */
 export async function listRegisterActivity(
+  registerWarehouseId: number,
   limit = 80
 ): Promise<RegisterActivityRow[]> {
   let q = supabase
     .from(BALANCE_TX)
     .select('*')
+    .eq('register_warehouse_id', registerWarehouseId)
     .is('reversed_at', null)
     .in('type', [
       'payment_in',

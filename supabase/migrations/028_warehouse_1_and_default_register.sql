@@ -1,6 +1,13 @@
--- Idempotent repair: always have warehouse id = 1 ("default"), optional default flag,
--- backfill product_warehouse_stock for warehouse 1, repoint orphan document FKs.
+-- Ensure the primary inventory location (id 1) and any default warehouse always host a register.
+-- Repairs rows created before register flags or if flags were cleared incorrectly.
 
+UPDATE public.warehouses SET has_register = true WHERE id = 1;
+
+UPDATE public.warehouses
+SET has_register = true
+WHERE is_default = true AND (has_register IS DISTINCT FROM true);
+
+-- Strengthen RPC: always re-apply after other repairs (covers any code path that omitted the flag).
 CREATE OR REPLACE FUNCTION public.ensure_default_warehouse()
 RETURNS void
 LANGUAGE plpgsql
@@ -8,14 +15,18 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.warehouses (id, name, location, is_default)
-  VALUES (1, 'default', NULL, true)
+  INSERT INTO public.warehouses (id, name, location, is_default, has_register)
+  VALUES (1, 'default', NULL, true, true)
   ON CONFLICT (id) DO NOTHING;
+
+  UPDATE public.warehouses SET has_register = true WHERE id = 1;
 
   IF NOT EXISTS (SELECT 1 FROM public.warehouses WHERE is_default = true) THEN
     UPDATE public.warehouses SET is_default = false WHERE is_default = true;
     UPDATE public.warehouses SET is_default = true WHERE id = 1;
   END IF;
+
+  UPDATE public.warehouses SET has_register = true WHERE is_default = true;
 
   PERFORM setval(
     pg_get_serial_sequence('public.warehouses', 'id'),
@@ -41,9 +52,8 @@ BEGIN
   UPDATE public.stock_movements sm
   SET warehouse_id = 1
   WHERE NOT EXISTS (SELECT 1 FROM public.warehouses w WHERE w.id = sm.warehouse_id);
+
+  UPDATE public.warehouses SET has_register = true WHERE id = 1;
+  UPDATE public.warehouses SET has_register = true WHERE is_default = true;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO anon;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO service_role;

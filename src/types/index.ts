@@ -34,11 +34,33 @@ export interface Brand {
 
 export interface Warehouse {
   id: number
+  /** Human-readable id, e.g. NASR-CITY-01 (legacy DB may fall back to WH-0001). */
+  code: string
   name: string
   location: string | null
   is_default: boolean
+  /** When true, this location has a cash register; POS and register-scoped ledger rows attach here. */
+  has_register: boolean
   created_at: string
   updated_at: string
+}
+
+/** Stock move between two warehouses (no pricing). */
+export interface InventoryTransfer {
+  id: string
+  transfer_number: number
+  from_warehouse_id: number
+  to_warehouse_id: number
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface InventoryTransferItem {
+  id: string
+  transfer_id: string
+  product_id: string
+  quantity: number
 }
 
 export type StockMovementType = 'in' | 'out' | 'adjustment'
@@ -138,6 +160,8 @@ export interface BalanceTransaction {
   payment_group_id: string | null
   /** Set when type is `wallet` (overpayment credit). */
   wallet_direction: WalletDirection | null
+  /** Cash register / drawer warehouse for register-affecting rows; null for wallet-only etc. */
+  register_warehouse_id: number | null
   created_at: string
   /** Set when this row was undone by a reversal (migration 013+). */
   reversed_at?: string | null

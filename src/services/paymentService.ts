@@ -8,6 +8,11 @@ import {
   roundMoney,
   supabaseErrorMessage,
 } from '@/services/peopleService'
+import {
+  assertWarehouseHasRegister,
+  DEFAULT_WAREHOUSE_ID,
+  resolveRegisterWarehouseForPoPayment,
+} from '@/services/warehouseService'
 import type { OrderWithItemsAndPayments, PaymentMethod, WalletDirection } from '@/types'
 
 /** Thrown when splits exceed order/PO total but no person is linked for wallet credit. */
@@ -84,6 +89,11 @@ export async function createOrderPayment(params: {
 
   if (upErr) throw upErr
 
+  const registerWh =
+    order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+      ? Math.trunc(Number(order.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
   if (order.person_id) {
     const { data: b0, error: b0e } = await supabase
       .from('people')
@@ -97,6 +107,7 @@ export async function createOrderPayment(params: {
       towardOrder > 0.01 && over > 0.01 ? crypto.randomUUID() : null
 
     if (towardOrder > 0.01) {
+      await assertWarehouseHasRegister(registerWh)
       await insertBalanceTransactionRow({
         person_id: order.person_id,
         type: 'payment_in',
@@ -107,6 +118,7 @@ export async function createOrderPayment(params: {
         payment_method: params.method,
         payment_group_id: gid,
         wallet_direction: null,
+        register_warehouse_id: registerWh,
       })
       bal = roundMoney(bal - towardOrder)
     }
@@ -154,6 +166,9 @@ export async function createPurchaseOrderPayment(params: {
   orderNumber: number
   totalAmount: number
   payments: PurchaseOrderPaymentInput[]
+  poWarehouseId: number
+  /** Required when `poWarehouseId` warehouse has no register. */
+  registerWarehouseId?: number | null
 }): Promise<{ balance: number }> {
   const payments = params.payments.filter((p) => roundMoney(p.amount) > 0.01)
   const sum = roundMoney(payments.reduce((s, p) => s + roundMoney(p.amount), 0))
@@ -173,6 +188,14 @@ export async function createPurchaseOrderPayment(params: {
     .single()
   if (b0e) throw b0e
   let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
+
+  const registerWh =
+    sum >= 0.01
+      ? await resolveRegisterWarehouseForPoPayment(
+          params.poWarehouseId,
+          params.registerWarehouseId
+        )
+      : null
 
   const liability = roundMoney(-total)
   await insertBalanceTransactionRow({
@@ -211,6 +234,9 @@ export async function createPurchaseOrderPayment(params: {
     const walletPart = roundMoney(a - toward)
 
     if (toward > 0.01) {
+      if (registerWh == null) {
+        throw new Error('Register warehouse is required for PO payments')
+      }
       await insertBalanceTransactionRow({
         person_id: params.personId,
         type: 'payment_out',
@@ -221,6 +247,7 @@ export async function createPurchaseOrderPayment(params: {
         payment_method: p.payment_method,
         payment_group_id: paymentGroupId,
         wallet_direction: null,
+        register_warehouse_id: registerWh,
       })
       bal = roundMoney(bal + toward)
       remainingLiability = roundMoney(remainingLiability - toward)

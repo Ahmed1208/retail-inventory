@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "db:push": "npx supabase db push",
+    "db:push:local": "node scripts/db-push-from-env.mjs",
     "db:reset": "npx supabase db reset",
     "lint": "eslint .",
     "preview": "vite preview"

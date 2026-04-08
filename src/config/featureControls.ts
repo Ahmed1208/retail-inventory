@@ -44,6 +44,9 @@ export const FEATURE_CONTROL_IDS = [
   'inventory.hubCategories',
   'inventory.hubBrands',
   'inventory.hubWarehouses',
+  'inventory.hubTransfers',
+  'inventoryTransfers.create',
+  'inventoryTransfers.list',
   // Products
   'products.addProduct',
   'products.editProduct',
@@ -338,6 +341,34 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.inventoryHub.warehouses.title',
             descriptionKey: 'control.inventoryHub.warehouses.desc',
+          },
+          {
+            id: 'inventory.hubTransfers',
+            defaultEnabled: true,
+            titleKey: 'control.inventoryHub.transfers.title',
+            descriptionKey: 'control.inventoryHub.transfers.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    titleKey: 'control.area.inventoryTransfers',
+    groups: [
+      {
+        titleKey: 'control.inventoryTransfers.group',
+        items: [
+          {
+            id: 'inventoryTransfers.create',
+            defaultEnabled: true,
+            titleKey: 'control.inventoryTransfers.create.title',
+            descriptionKey: 'control.inventoryTransfers.create.desc',
+          },
+          {
+            id: 'inventoryTransfers.list',
+            defaultEnabled: true,
+            titleKey: 'control.inventoryTransfers.list.title',
+            descriptionKey: 'control.inventoryTransfers.list.desc',
           },
         ],
       },

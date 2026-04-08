@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -31,6 +31,7 @@ import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { ledgerPaymentRelatedDocumentHref } from '@/utils/ledgerLinks'
 import { EditableNoteCard } from '@/components/common/EditableNoteCard'
+import { listWarehouses } from '@/services/warehouseService'
 
 function isPaymentMethod(m: unknown): m is PaymentMethod {
   return typeof m === 'string' && PAYMENT_METHODS.includes(m as PaymentMethod)
@@ -59,6 +60,18 @@ export function PaymentOperationDetail() {
     queryFn: () => getLedgerPaymentOperation(id!),
     enabled: !!id && canList,
   })
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+    enabled: !!id && canList,
+  })
+
+  const registerWhName = useMemo(() => {
+    const rid = op?.register_warehouse_id
+    if (rid == null) return null
+    return warehouses.find((w) => w.id === rid)?.name ?? null
+  }, [op?.register_warehouse_id, warehouses])
 
   useEffect(() => {
     if (op?.reference_number) {
@@ -237,6 +250,13 @@ export function PaymentOperationDetail() {
               timeStyle: 'short',
             }).format(new Date(op.created_at))}
           </p>
+          {op.register_warehouse_id != null ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('payments.operationRegisterWarehouse')}: #
+              {op.register_warehouse_id}
+              {registerWhName ? ` · ${registerWhName}` : ''}
+            </p>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4">
@@ -284,6 +304,15 @@ export function PaymentOperationDetail() {
             {t('payments.operationTenderLines')}
           </div>
           <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/20 text-start text-xs font-medium text-muted-foreground">
+                <th className="px-4 py-2">{t('orders.paymentMethod')}</th>
+                <th className="px-4 py-2">{t('orders.paymentRegister')}</th>
+                <th className="px-4 py-2 text-end">
+                  {t('orders.paymentAmount')}
+                </th>
+              </tr>
+            </thead>
             <tbody>
               {op.lines.map((line) => (
                 <tr
@@ -295,6 +324,16 @@ export function PaymentOperationDetail() {
                       ? paymentLabel(line.payment_method, t)
                       : t('payments.methodUnspecified')}
                   </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {op.register_warehouse_id != null ? (
+                      <>
+                        #{op.register_warehouse_id}
+                        {registerWhName ? ` · ${registerWhName}` : ''}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                   <td className="px-4 py-2 text-end tabular-nums font-medium">
                     {fc(Math.abs(line.amount))}
                   </td>
@@ -303,7 +342,9 @@ export function PaymentOperationDetail() {
             </tbody>
             <tfoot>
               <tr className="bg-muted/30 font-medium">
-                <td className="px-4 py-2">{t('payments.totalTendered')}</td>
+                <td className="px-4 py-2" colSpan={2}>
+                  {t('payments.totalTendered')}
+                </td>
                 <td className="px-4 py-2 text-end tabular-nums">
                   {fc(totalTendered)}
                 </td>

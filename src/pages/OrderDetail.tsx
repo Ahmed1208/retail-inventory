@@ -16,6 +16,8 @@ import {
   getLedgerPaymentOperationRouteIdForOrder,
   roundMoney,
 } from '@/services/peopleService'
+import { listWarehouses } from '@/services/warehouseService'
+import { fetchRegisterIdsForOrderPayments } from '@/services/paymentRegisterDisplayService'
 import type { OrderWithItemsAndPayments } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -60,6 +62,11 @@ export function OrderDetail() {
     queryFn: () => getAllPeople(),
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+
   const {
     data: order,
     isLoading,
@@ -88,6 +95,22 @@ export function OrderDetail() {
   const paidAtOrder = order ? roundMoney(order.paid_amount) : 0
   const showCancelSettlementChoice =
     !!order?.person_id && paidAtOrder > 0.01
+
+  const { data: orderPaymentRegisterIds, isFetching: orderPayRegFetching } =
+    useQuery({
+      queryKey: [
+        'orderPaymentRegisters',
+        order?.id,
+        order?.payment_installments?.length ?? 0,
+      ],
+      queryFn: () =>
+        fetchRegisterIdsForOrderPayments(
+          order!.id,
+          order!.payment_installments,
+        ),
+      enabled:
+        !!order && (order.payment_installments?.length ?? 0) > 0,
+    })
 
   useEffect(() => {
     if (order) {
@@ -250,6 +273,9 @@ export function OrderDetail() {
             mutateAsync: (p) => noteMut.mutateAsync(p),
             isPending: noteMut.isPending,
           }}
+          warehouses={warehouses}
+          paymentRegisterIds={orderPaymentRegisterIds}
+          paymentRegistersLoading={orderPayRegFetching}
         />
       )}
 

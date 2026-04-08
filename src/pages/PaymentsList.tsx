@@ -35,6 +35,7 @@ import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
 import { isRetainedFromCancelledDocumentNote } from '@/utils/ledgerLinks'
 import { PersonProfileDialog } from '@/components/people/PersonProfileDialog'
+import { listWarehouses } from '@/services/warehouseService'
 
 type MethodFilterState = 'all' | 'unspecified' | PaymentMethod
 
@@ -210,6 +211,17 @@ export function PaymentsList() {
     return m
   }, [people])
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+    enabled: canList,
+  })
+
+  const whNameById = useMemo(
+    () => new Map(warehouses.map((w) => [w.id, w.name] as const)),
+    [warehouses]
+  )
+
   const { data: rows = [], isLoading, isError, error: queryError } = useQuery({
     queryKey: [
       'balanceTransactions',
@@ -267,6 +279,11 @@ export function PaymentsList() {
       const reg = registerImpactValue(r, effectiveFullLedger)
       const regStr =
         reg == null ? '' : `${reg} ${fc(reg)}`.toLowerCase()
+      const rw = r.register_warehouse_id
+      const rwStr =
+        rw != null
+          ? `${rw} ${(whNameById.get(rw) ?? '').toLowerCase()}`
+          : ''
       const meth = r.paymentLines
         .map((l) => {
           const label = l.payment_method
@@ -290,6 +307,7 @@ export function PaymentsList() {
         docStr.includes(q) ||
         impactStr.includes(q) ||
         regStr.includes(q) ||
+        rwStr.includes(q) ||
         r.id.toLowerCase().includes(q) ||
         (r.reversed && reversedBadgeStr.includes(q)) ||
         (r.reversed && reversedHintStr.includes(q)) ||
@@ -310,7 +328,15 @@ export function PaymentsList() {
         matchesSearchRow(parent) ||
         (parent.children ?? []).some((c) => matchesSearchRow(c))
     )
-  }, [rows, debouncedSearch, t, fc, effectiveFullLedger, i18n.language])
+  }, [
+    rows,
+    debouncedSearch,
+    t,
+    fc,
+    effectiveFullLedger,
+    i18n.language,
+    whNameById,
+  ])
 
   const toggleNestedParent = (parentId: string) => {
     setExpandedNestedParents((prev) => {
@@ -548,6 +574,18 @@ export function PaymentsList() {
         <td className="px-3 py-2 text-muted-foreground">
           <LedgerReferenceLink row={row} />
         </td>
+        <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+          {row.register_warehouse_id != null ? (
+            <>
+              #{row.register_warehouse_id}
+              {whNameById.get(row.register_warehouse_id)
+                ? ` · ${whNameById.get(row.register_warehouse_id)}`
+                : ''}
+            </>
+          ) : (
+            t('payments.registerWarehouseLegacy')
+          )}
+        </td>
         <td
           className={cn(
             'px-3 py-2 text-end tabular-nums font-medium',
@@ -747,7 +785,7 @@ export function PaymentsList() {
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="p-4">
-            <LoadingSkeleton rows={8} columns={13} />
+            <LoadingSkeleton rows={8} columns={14} />
           </div>
         ) : isError ? (
           <p className="px-4 py-12 text-center text-sm text-destructive">
@@ -793,6 +831,9 @@ export function PaymentsList() {
                   </th>
                   <th className="px-3 py-2.5 text-start font-medium text-muted-foreground">
                     {t('people.reference')}
+                  </th>
+                  <th className="px-3 py-2.5 text-start font-medium text-muted-foreground whitespace-nowrap">
+                    {t('payments.listRegisterWarehouse')}
                   </th>
                   <th
                     className="px-3 py-2.5 text-end font-medium text-muted-foreground"

@@ -1,5 +1,20 @@
--- Idempotent repair: always have warehouse id = 1 ("default"), optional default flag,
--- backfill product_warehouse_stock for warehouse 1, repoint orphan document FKs.
+-- Human-readable warehouse codes (e.g. NASR-CITY-01) + ensure default row has code.
+
+ALTER TABLE public.warehouses
+  ADD COLUMN IF NOT EXISTS code text;
+
+UPDATE public.warehouses
+SET code = CASE
+  WHEN id = 1 THEN 'DEFAULT-01'
+  ELSE 'WH-' || LPAD(id::text, 4, '0')
+END
+WHERE code IS NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS warehouses_code_unique
+  ON public.warehouses (code);
+
+ALTER TABLE public.warehouses
+  ALTER COLUMN code SET NOT NULL;
 
 CREATE OR REPLACE FUNCTION public.ensure_default_warehouse()
 RETURNS void
@@ -8,14 +23,18 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  INSERT INTO public.warehouses (id, name, location, is_default)
-  VALUES (1, 'default', NULL, true)
+  INSERT INTO public.warehouses (id, name, location, is_default, has_register, code)
+  VALUES (1, 'default', NULL, true, true, 'DEFAULT-01')
   ON CONFLICT (id) DO NOTHING;
+
+  UPDATE public.warehouses SET has_register = true WHERE id = 1;
 
   IF NOT EXISTS (SELECT 1 FROM public.warehouses WHERE is_default = true) THEN
     UPDATE public.warehouses SET is_default = false WHERE is_default = true;
     UPDATE public.warehouses SET is_default = true WHERE id = 1;
   END IF;
+
+  UPDATE public.warehouses SET has_register = true WHERE is_default = true;
 
   PERFORM setval(
     pg_get_serial_sequence('public.warehouses', 'id'),
@@ -41,9 +60,8 @@ BEGIN
   UPDATE public.stock_movements sm
   SET warehouse_id = 1
   WHERE NOT EXISTS (SELECT 1 FROM public.warehouses w WHERE w.id = sm.warehouse_id);
+
+  UPDATE public.warehouses SET has_register = true WHERE id = 1;
+  UPDATE public.warehouses SET has_register = true WHERE is_default = true;
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO anon;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO service_role;

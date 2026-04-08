@@ -1,12 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { ListOrdered, MinusCircle, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Dialog,
   DialogContent,
@@ -24,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
@@ -34,8 +45,14 @@ import {
   ledgerPaymentOperationRouteId,
   listRegisterActivity,
   type RegisterActivityRow,
+  withdrawAllFromRegister,
   withdrawFromRegister,
 } from '@/services/registerService'
+import {
+  DEFAULT_WAREHOUSE_ID,
+  listWarehouses,
+  updateWarehouse,
+} from '@/services/warehouseService'
 import type { PaymentMethod } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
@@ -105,9 +122,11 @@ export function Register() {
   const { t, i18n } = useTranslation()
   const { isRTL } = useLanguage()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const qc = useQueryClient()
   const activityRef = useRef<HTMLDivElement>(null)
+  const withdrawAllFlowConsumed = useRef(false)
 
   const canPage = useFeatureEnabled('sidebar.register')
   const canDeposit = useFeatureEnabled('register.deposit')
@@ -119,6 +138,51 @@ export function Register() {
   const [method, setMethod] = useState<PaymentMethod>('cash')
   const [amountStr, setAmountStr] = useState('')
   const [note, setNote] = useState('')
+  const [registerWarehouseId, setRegisterWarehouseId] = useState<number | null>(
+    null
+  )
+  const [withdrawAllDialogOpen, setWithdrawAllDialogOpen] = useState(false)
+  const [disableRegisterPromptOpen, setDisableRegisterPromptOpen] =
+    useState(false)
+
+  const { data: warehouses = [], isSuccess: warehousesReady } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+    enabled: canPage,
+  })
+
+  const registerWarehouses = useMemo(
+    () => warehouses.filter((w) => w.has_register),
+    [warehouses]
+  )
+
+  useEffect(() => {
+    if (!warehousesReady || registerWarehouses.length === 0) return
+    const qp = searchParams.get('registerWarehouseId')
+    if (qp) {
+      const n = Math.trunc(Number(qp))
+      if (registerWarehouses.some((w) => w.id === n)) {
+        setRegisterWarehouseId(n)
+        return
+      }
+    }
+    const d =
+      registerWarehouses.find((w) => w.is_default && w.has_register) ??
+      registerWarehouses[0]
+    setRegisterWarehouseId(d.id)
+  }, [warehousesReady, registerWarehouses, searchParams])
+
+  const setRegisterSelection = (id: number) => {
+    setRegisterWarehouseId(id)
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.set('registerWarehouseId', String(id))
+        return n
+      },
+      { replace: true }
+    )
+  }
 
   useEffect(() => {
     document.title = `${t('register.title')} | StockPilot`
@@ -130,15 +194,74 @@ export function Register() {
   const fc = (n: number) => formatCurrency(n, lang)
 
   const balancesQuery = useQuery({
-    queryKey: ['registerBalances'],
-    queryFn: getRegisterBalances,
-    enabled: canPage,
+    queryKey: ['registerBalances', registerWarehouseId],
+    queryFn: () => getRegisterBalances(registerWarehouseId!),
+    enabled: canPage && registerWarehouseId != null,
   })
 
+  const clearWithdrawQueryParams = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        n.delete('withdrawAll')
+        n.delete('disableRegisterAfter')
+        return n
+      },
+      { replace: true }
+    )
+  }, [setSearchParams])
+
+  useEffect(() => {
+    if (searchParams.get('withdrawAll') !== '1') {
+      withdrawAllFlowConsumed.current = false
+      return
+    }
+    if (!canPage) return
+    if (!warehousesReady || registerWarehouseId == null) return
+    if (!balancesQuery.isSuccess) return
+    if (withdrawAllFlowConsumed.current) return
+
+    if (!canWithdraw) {
+      withdrawAllFlowConsumed.current = true
+      toast.error(t('register.withdrawAllDisabled'))
+      clearWithdrawQueryParams()
+      return
+    }
+
+    withdrawAllFlowConsumed.current = true
+    const total = balancesQuery.data?.total ?? 0
+    const wantsDisable = searchParams.get('disableRegisterAfter') === '1'
+    const w = warehouses.find((x) => x.id === registerWarehouseId)
+    const mayDisable =
+      Boolean(w) && w!.id !== DEFAULT_WAREHOUSE_ID && !w!.is_default
+
+    if (total < 0.01) {
+      clearWithdrawQueryParams()
+      if (wantsDisable) {
+        if (mayDisable) setDisableRegisterPromptOpen(true)
+        else toast.message(t('register.disableRegisterNotAllowed'))
+      }
+      return
+    }
+
+    setWithdrawAllDialogOpen(true)
+  }, [
+    searchParams,
+    canPage,
+    canWithdraw,
+    warehousesReady,
+    registerWarehouseId,
+    balancesQuery.isSuccess,
+    balancesQuery.data?.total,
+    warehouses,
+    clearWithdrawQueryParams,
+    t,
+  ])
+
   const activityQuery = useQuery({
-    queryKey: ['registerActivity'],
-    queryFn: () => listRegisterActivity(100),
-    enabled: canPage && canViewActivity,
+    queryKey: ['registerActivity', registerWarehouseId],
+    queryFn: () => listRegisterActivity(registerWarehouseId!, 100),
+    enabled: canPage && canViewActivity && registerWarehouseId != null,
   })
 
   const resetForm = () => {
@@ -150,6 +273,7 @@ export function Register() {
   const depositMut = useMutation({
     mutationFn: () =>
       depositToRegister({
+        register_warehouse_id: registerWarehouseId!,
         payment_method: method,
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
@@ -173,6 +297,7 @@ export function Register() {
   const withdrawMut = useMutation({
     mutationFn: () =>
       withdrawFromRegister({
+        register_warehouse_id: registerWarehouseId!,
         payment_method: method,
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
@@ -189,6 +314,54 @@ export function Register() {
       qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
       setWithdrawOpen(false)
       resetForm()
+    },
+    onError: (e: Error) => toast.error(e.message || t('register.toastError')),
+  })
+
+  const withdrawAllMut = useMutation({
+    mutationFn: async (opts: { wantsDisableAfter: boolean }) => {
+      const res = await withdrawAllFromRegister({
+        register_warehouse_id: registerWarehouseId!,
+        note: t('register.withdrawAllLedgerNote'),
+      })
+      return { ...res, wantsDisableAfter: opts.wantsDisableAfter }
+    },
+    onSuccess: (data) => {
+      setWithdrawAllDialogOpen(false)
+      clearWithdrawQueryParams()
+      toast.success(t('register.toastWithdrawAllDone'))
+      qc.invalidateQueries({ queryKey: ['registerBalances'] })
+      qc.invalidateQueries({ queryKey: ['registerActivity'] })
+      qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
+      const w = warehouses.find((x) => x.id === registerWarehouseId)
+      if (
+        data.wantsDisableAfter &&
+        w &&
+        w.id !== DEFAULT_WAREHOUSE_ID &&
+        !w.is_default
+      ) {
+        setDisableRegisterPromptOpen(true)
+      }
+    },
+    onError: (e: Error) => toast.error(e.message || t('register.toastError')),
+  })
+
+  const disableRegisterMut = useMutation({
+    mutationFn: async () => {
+      const wid = registerWarehouseId!
+      const w = warehouses.find((x) => x.id === wid)
+      if (!w) throw new Error(t('register.disableRegisterWarehouseMissing'))
+      return updateWarehouse(wid, {
+        name: w.name,
+        location: w.location?.trim() || null,
+        has_register: false,
+      })
+    },
+    onSuccess: () => {
+      toast.success(t('warehouses.toastUpdated'))
+      qc.invalidateQueries({ queryKey: ['warehouses'] })
+      qc.invalidateQueries({ queryKey: ['registerBalances'] })
+      setDisableRegisterPromptOpen(false)
     },
     onError: (e: Error) => toast.error(e.message || t('register.toastError')),
   })
@@ -230,6 +403,7 @@ export function Register() {
   }
 
   const b = balancesQuery.data
+  const selectedWarehouse = warehouses.find((x) => x.id === registerWarehouseId)
 
   const typeLabel = (tp: string) => {
     if (tp === 'payment_in') return t('people.txPaymentIn')
@@ -251,7 +425,21 @@ export function Register() {
         <p className="mt-2 text-xs text-muted-foreground">{t('register.disclaimer')}</p>
       </div>
 
-      {balancesQuery.isLoading ? (
+      {warehousesReady && registerWarehouses.length > 0 && registerWarehouseId != null ? (
+        <div className="max-w-md">
+          <WarehouseCombobox
+            id="register-warehouse-picker"
+            label={t('register.registerWarehouseLabel')}
+            warehouses={registerWarehouses}
+            value={registerWarehouseId}
+            onChange={setRegisterSelection}
+          />
+        </div>
+      ) : warehousesReady && registerWarehouses.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('register.noRegisterWarehouse')}</p>
+      ) : null}
+
+      {balancesQuery.isLoading || registerWarehouseId == null ? (
         <LoadingSkeleton className="h-40" />
       ) : balancesQuery.isError ? (
         <p className="text-sm text-destructive">{t('register.loadError')}</p>
@@ -532,6 +720,90 @@ export function Register() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={withdrawAllDialogOpen}
+        onOpenChange={(open) => {
+          setWithdrawAllDialogOpen(open)
+          if (!open) clearWithdrawQueryParams()
+        }}
+      >
+        <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('register.withdrawAllConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-start text-muted-foreground">
+                <p>{t('register.withdrawAllConfirmDescription')}</p>
+                {b ? (
+                  <ul className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm text-foreground">
+                    {PAYMENT_METHODS.map((m) => (
+                      <li
+                        key={m}
+                        className="flex justify-between gap-4 tabular-nums"
+                      >
+                        <span>{paymentLabel(m, t)}</span>
+                        <span>{fc(b[m])}</span>
+                      </li>
+                    ))}
+                    <li className="mt-2 flex justify-between border-t border-border pt-2 font-medium">
+                      <span>{t('register.totalInRegister')}</span>
+                      <span>{fc(b.total)}</span>
+                    </li>
+                  </ul>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={withdrawAllMut.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                withdrawAllMut.mutate({
+                  wantsDisableAfter:
+                    searchParams.get('disableRegisterAfter') === '1',
+                })
+              }}
+            >
+              {t('register.withdrawAllConfirmAction')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={disableRegisterPromptOpen}
+        onOpenChange={setDisableRegisterPromptOpen}
+      >
+        <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('register.disableRegisterPromptTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-start">
+              {t('register.disableRegisterPromptDescription', {
+                name: selectedWarehouse?.name ?? '',
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('register.disableRegisterKeep')}</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={disableRegisterMut.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                disableRegisterMut.mutate()
+              }}
+            >
+              {t('register.disableRegisterConfirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

@@ -35,6 +35,8 @@ type Props = {
   lang: 'en' | 'ar'
   isRTL: boolean
   onPick: (product: ProductWithRelations) => void
+  /** When false, hide catalog unit price in each row (e.g. stock transfers). */
+  showCatalogPrice?: boolean
 }
 
 export function ProductBrowserModal({
@@ -48,6 +50,7 @@ export function ProductBrowserModal({
   lang,
   isRTL,
   onPick,
+  showCatalogPrice = true,
 }: Props) {
   const { t } = useTranslation()
   const searchRef = useRef<HTMLInputElement>(null)
@@ -232,14 +235,16 @@ export function ProductBrowserModal({
                       {t('orders.availableStock')}:{' '}
                       {displayStock ? displayStock(p) : p.quantity}
                     </span>
-                    <span className="tabular-nums">
-                      {purpose === 'purchase'
-                        ? t('products.costPrice')
-                        : orderType === 'retail'
-                          ? t('products.customerPrice')
-                          : t('products.businessPrice')}
-                      : {formatCurrency(price(p), lang)}
-                    </span>
+                    {showCatalogPrice ? (
+                      <span className="tabular-nums">
+                        {purpose === 'purchase'
+                          ? t('products.costPrice')
+                          : orderType === 'retail'
+                            ? t('products.customerPrice')
+                            : t('products.businessPrice')}
+                        : {formatCurrency(price(p), lang)}
+                      </span>
+                    ) : null}
                   </div>
                 </button>
               ))}

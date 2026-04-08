@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { recordPayment, roundMoney, supabaseErrorMessage } from '@/services/peopleService'
+import { listWarehouses } from '@/services/warehouseService'
 import type { PaymentMethod, Person } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,6 +57,17 @@ export function RecordPaymentForm({
   const [payAmounts, setPayAmounts] = useState(emptyPayAmounts)
   const [note, setNote] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [registerWarehouseId, setRegisterWarehouseId] = useState(1)
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+
+  const registerWarehouses = useMemo(
+    () => warehouses.filter((w) => w.has_register),
+    [warehouses]
+  )
 
   useEffect(() => {
     if (person.balance > 0.005) setType('payment_in')
@@ -62,7 +76,21 @@ export function RecordPaymentForm({
     setPayUse(emptyPayUse())
     setPayAmounts(emptyPayAmounts())
     setNote('')
-  }, [person])
+    if (registerWarehouses.length > 0) {
+      const d =
+        registerWarehouses.find((w) => w.is_default) ?? registerWarehouses[0]
+      setRegisterWarehouseId(d.id)
+    }
+  }, [person, registerWarehouses])
+
+  useEffect(() => {
+    if (registerWarehouses.length === 0) return
+    if (!registerWarehouses.some((w) => w.id === registerWarehouseId)) {
+      const d =
+        registerWarehouses.find((w) => w.is_default) ?? registerWarehouses[0]
+      setRegisterWarehouseId(d.id)
+    }
+  }, [registerWarehouses, registerWarehouseId])
 
   const paymentsPayload = useMemo(() => {
     const out: { payment_method: PaymentMethod; amount: number }[] = []
@@ -107,6 +135,7 @@ export function RecordPaymentForm({
         type,
         payments: paymentsPayload,
         note: note.trim() || undefined,
+        register_warehouse_id: registerWarehouseId,
       })
       onSuccess()
     } catch (e) {
@@ -153,6 +182,19 @@ export function RecordPaymentForm({
           </label>
         </div>
       </div>
+      {registerWarehouses.length > 0 ? (
+        <WarehouseCombobox
+          id="record-payment-register-wh"
+          label={t('payments.recordPaymentRegisterWarehouse')}
+          warehouses={registerWarehouses}
+          value={registerWarehouseId}
+          onChange={setRegisterWarehouseId}
+        />
+      ) : (
+        <p className="text-sm text-destructive">
+          {t('payments.noRegisterWarehouseForPayments')}
+        </p>
+      )}
       <div>
         <p className="mb-2 text-sm font-medium">
           {t('orders.paymentBreakdown')}
@@ -230,7 +272,9 @@ export function RecordPaymentForm({
           <Button
             type="button"
             onClick={submit}
-            disabled={!validPayment || submitting}
+            disabled={
+              !validPayment || submitting || registerWarehouses.length === 0
+            }
           >
             {t('people.savePayment')}
           </Button>
@@ -250,7 +294,9 @@ export function RecordPaymentForm({
           <Button
             type="button"
             onClick={submit}
-            disabled={!validPayment || submitting}
+            disabled={
+              !validPayment || submitting || registerWarehouses.length === 0
+            }
           >
             {t('people.savePayment')}
           </Button>

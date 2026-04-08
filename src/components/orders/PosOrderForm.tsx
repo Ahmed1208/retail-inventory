@@ -138,10 +138,22 @@ export function PosOrderForm({
   useEffect(() => {
     if (draftOrderId) return
     if (warehouseInitRef.current || warehouses.length === 0) return
-    const d = warehouses.find((w) => w.is_default)
-    setWarehouseId(d?.id ?? 1)
+    const withReg = warehouses.filter((w) => w.has_register)
+    if (withReg.length === 0) return
+    const d = withReg.find((w) => w.is_default) ?? withReg[0]
+    setWarehouseId(d.id)
     warehouseInitRef.current = true
   }, [warehouses, draftOrderId])
+
+  useEffect(() => {
+    if (warehouses.length === 0) return
+    const withReg = warehouses.filter((w) => w.has_register)
+    if (withReg.length === 0) return
+    if (!withReg.some((w) => w.id === warehouseId)) {
+      const d = withReg.find((w) => w.is_default) ?? withReg[0]
+      setWarehouseId(d.id)
+    }
+  }, [warehouses, warehouseId])
 
   const customers = useMemo(
     () => people.filter((p) => p.roles.includes('customer')),
@@ -863,6 +875,7 @@ export function PosOrderForm({
           warehouses={warehouses}
           value={warehouseId}
           onChange={setWarehouseId}
+          filterHasRegister
           className="min-w-[200px] max-w-full flex-1"
         />
         {selectedPerson && (

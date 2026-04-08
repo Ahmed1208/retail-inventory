@@ -7,6 +7,9 @@ const KNOWN: readonly PaymentMethod[] = [
   'instapay',
 ]
 
+/** Canonical tender iteration order (register withdraw-all, payment forms). */
+export const PAYMENT_METHODS_ORDERED: readonly PaymentMethod[] = KNOWN
+
 const LEGACY: Record<string, PaymentMethod> = {
   card: 'visa',
   transfer: 'instapay',

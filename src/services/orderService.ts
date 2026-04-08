@@ -1,6 +1,12 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
-import { DEFAULT_WAREHOUSE_ID } from '@/services/warehouseService'
+import {
+  assertWarehouseHasRegister,
+  DEFAULT_WAREHOUSE_ID,
+  fetchActiveTenderRegistersForDocument,
+  resolveRegisterWarehouseForRetainedPayment,
+  takeRegisterFromTenderPool,
+} from '@/services/warehouseService'
 import {
   getLedgerDocumentLineCreatedAt,
   getNextStandaloneLedgerRef,
@@ -647,7 +653,8 @@ export async function createOrder(data: {
  */
 async function insertConfirmOrderLedgerLines(
   order: OrderWithItemsAndPayments,
-  personId: string | null
+  personId: string | null,
+  registerWarehouseId: number
 ): Promise<void> {
   const total = roundMoney(order.total_amount)
   const paid = roundMoney(order.paid_amount)
@@ -704,6 +711,7 @@ async function insertConfirmOrderLedgerLines(
             payment_method: inst.method,
             payment_group_id: paymentGroupId,
             wallet_direction: null,
+            register_warehouse_id: registerWarehouseId,
           })
           if (bal !== null) bal = roundMoney(bal - toward)
           remainingToOrder = roundMoney(remainingToOrder - toward)
@@ -742,6 +750,7 @@ async function insertConfirmOrderLedgerLines(
           payment_method: null,
           payment_group_id: null,
           wallet_direction: null,
+          register_warehouse_id: registerWarehouseId,
         })
         if (bal !== null) bal = roundMoney(bal - toward)
       }
@@ -829,6 +838,7 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
     order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
       ? Math.trunc(Number(order.warehouse_id))
       : DEFAULT_WAREHOUSE_ID
+  await assertWarehouseHasRegister(whId)
   const productIds = [...new Set(order.items.map((i) => i.product_id))]
   const { data: pwsRows, error: stockErr } = await supabase
     .from('product_warehouse_stock')
@@ -873,7 +883,7 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
 
   if (upErr) throw upErr
 
-  await insertConfirmOrderLedgerLines(order, order.person_id)
+  await insertConfirmOrderLedgerLines(order, order.person_id, whId)
 
   const updated = await getOrderById(id)
   if (!updated) throw new Error('Order not found after confirm')
@@ -939,6 +949,20 @@ async function applyPersonOrderCancelLedger(
     )
   }
 
+  const orderWhId =
+    order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+      ? Math.trunc(Number(order.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
+  const tenderRegisterPoolWorking =
+    retain && paid > 0.01
+      ? [...(await fetchActiveTenderRegistersForDocument(order.id, 'payment_in'))]
+      : []
+  const firstLedgerRegister =
+    tenderRegisterPoolWorking.length > 0
+      ? tenderRegisterPoolWorking[0].register_warehouse_id
+      : null
+
   const routeIds = await listActiveLedgerPaymentOperationRouteIdsForDocument(
     order.id,
     refNum,
@@ -954,6 +978,20 @@ async function applyPersonOrderCancelLedger(
 
   if (retain && paid > 0.01) {
     const anchorIso = orderLedgerAnchor ?? new Date().toISOString()
+
+    const registerForRetainedLine = async (
+      method: PaymentMethod | null,
+      lineAmount: number
+    ) => {
+      const m = method ?? 'cash'
+      const matched = takeRegisterFromTenderPool(
+        tenderRegisterPoolWorking,
+        m,
+        lineAmount
+      )
+      const prior = matched ?? firstLedgerRegister
+      return resolveRegisterWarehouseForRetainedPayment(orderWhId, prior ?? null)
+    }
 
     const { data: balRow0, error: b0e } = await supabase
       .from('people')
@@ -997,6 +1035,10 @@ async function applyPersonOrderCancelLedger(
             payment_group_id: paymentGroupId,
             wallet_direction: null,
             created_at: retainedPaymentCreatedAt(anchorIso),
+            register_warehouse_id: await registerForRetainedLine(
+              inst.method,
+              toward
+            ),
           })
           bal = roundMoney(bal + roundMoney(-toward))
           remainingToOrder = roundMoney(remainingToOrder - toward)
@@ -1048,6 +1090,10 @@ async function applyPersonOrderCancelLedger(
             payment_group_id: paymentGroupId,
             wallet_direction: null,
             created_at: retainedPaymentCreatedAt(anchorIso),
+            register_warehouse_id: await registerForRetainedLine(
+              p.payment_method,
+              toward
+            ),
           })
           bal = roundMoney(bal + roundMoney(-toward))
           remainingToOrder = roundMoney(remainingToOrder - toward)
@@ -1091,6 +1137,10 @@ async function applyPersonOrderCancelLedger(
           payment_group_id: null,
           wallet_direction: null,
           created_at: retainedPaymentCreatedAt(anchorIso),
+          register_warehouse_id: await registerForRetainedLine(
+            order.payment_method,
+            toward
+          ),
         })
         bal = roundMoney(bal + roundMoney(-toward))
       }

@@ -164,6 +164,7 @@ const BALANCE_TX_OPTIONAL_COLS = [
   'payment_group_id',
   'wallet_direction',
   'payment_method',
+  'register_warehouse_id',
 ] as const
 
 /**
@@ -249,6 +250,10 @@ export function mapTxRow(row: Record<string, unknown>): BalanceTransaction {
     created_at: String(row.created_at),
     reversed_at:
       rev != null && String(rev) !== '' ? String(rev) : null,
+    register_warehouse_id:
+      row.register_warehouse_id != null && row.register_warehouse_id !== ''
+        ? Number(row.register_warehouse_id)
+        : null,
   }
 }
 
@@ -550,6 +555,8 @@ export async function recordPayment(data: {
   /** One row per method; amounts must sum to the total payment. */
   payments: { payment_method: PaymentMethod; amount: number }[]
   note?: string
+  /** Cash register warehouse (required for register-affecting standalone payments). */
+  register_warehouse_id: number
 }): Promise<Person> {
   const lines = (data.payments ?? []).filter((p) => p.amount > 0.01)
   const total = roundMoney(lines.reduce((s, p) => s + p.amount, 0))
@@ -580,6 +587,7 @@ export async function recordPayment(data: {
     payment_group_id: string | null
     wallet_direction: null
     reference_number: string
+    register_warehouse_id: number
   }[] = []
 
   for (let i = 0; i < lines.length; i++) {
@@ -604,6 +612,7 @@ export async function recordPayment(data: {
       payment_group_id: paymentGroupId,
       wallet_direction: null,
       reference_number: refNumber,
+      register_warehouse_id: data.register_warehouse_id,
     })
   }
 
@@ -708,6 +717,8 @@ export type PaymentGroupedListItem = {
   children?: PaymentGroupedListItem[]
   /** Set when this row is only shown under a document parent. */
   isCheckoutChild?: boolean
+  /** Register warehouse for register-affecting payment lines (propagated to document parents when nested). */
+  register_warehouse_id?: number | null
 }
 
 export type PaymentsHubTypeFilter =
@@ -785,6 +796,7 @@ function buildPaymentGroupFromRows(
     reversedAt,
     purchaseOrderStatus: null,
     orderStatus: null,
+    register_warehouse_id: first.register_warehouse_id ?? null,
   }
 }
 
@@ -819,6 +831,7 @@ function singleRowToPaymentGroup(
     reversedAt,
     purchaseOrderStatus: null,
     orderStatus: null,
+    register_warehouse_id: row.register_warehouse_id ?? null,
   }
 }
 
@@ -1043,6 +1056,26 @@ function nestCheckoutPaymentsUnderDocuments(
     out.push({ ...g, children: undefined })
   }
   return out
+}
+
+function propagateRegisterWarehouseToDocumentParents(
+  groups: PaymentGroupedListItem[]
+): PaymentGroupedListItem[] {
+  return groups.map((g) => {
+    if (
+      (g.type === 'order' || g.type === 'purchase_order') &&
+      g.children?.length
+    ) {
+      const fromChild = g.children
+        .map((c) => c.register_warehouse_id)
+        .find((x) => x != null)
+      const rw = g.register_warehouse_id ?? fromChild
+      if (rw != null) {
+        return { ...g, register_warehouse_id: rw }
+      }
+    }
+    return g
+  })
 }
 
 function filterReversalMirrorAdjustments(
@@ -1374,6 +1407,7 @@ export async function listBalanceTransactionsWithPeople(filters: {
   groups = await attachPurchaseOrderStatusToGroups(groups)
   groups = await attachOrderStatusToGroups(groups)
   groups = nestCheckoutPaymentsUnderDocuments(groups, fullLedger)
+  groups = propagateRegisterWarehouseToDocumentParents(groups)
   groups = filterReversalMirrorAdjustments(groups, fullLedger)
   if (mf !== 'all') {
     groups = groups.filter((g) => groupMatchesMethodFilter(g, mf))
@@ -1466,6 +1500,8 @@ export type LedgerPaymentOperation = {
   person_id: string | null
   person: Pick<Person, 'id' | 'name' | 'phone'> | null
   created_at: string
+  /** Register / drawer warehouse for this operation (from tender rows). */
+  register_warehouse_id: number | null
   lines: LedgerPaymentOperationLine[]
   /** Wallet lines from the same payment group / time cluster (overpayment). */
   walletLines: LedgerPaymentOperationLine[]
@@ -1476,6 +1512,11 @@ export type LedgerPaymentOperation = {
 }
 
 const LEDGER_PAY_TYPES = ['payment_in', 'payment_out'] as const
+
+function operationRegisterWarehouseId(rows: BalanceTransaction[]): number | null {
+  const v = rows.map((r) => r.register_warehouse_id).find((x) => x != null)
+  return v ?? null
+}
 
 const WALLET_TIME_WINDOW_MS = 8000
 const INSTALLMENT_CLUSTER_GAP_MS = 3500
@@ -1581,6 +1622,7 @@ export async function getLedgerPaymentOperation(
         person_id: null,
         person: null,
         created_at: direct.created_at,
+        register_warehouse_id: direct.register_warehouse_id,
         lines: [
           {
             id: direct.id,
@@ -1712,6 +1754,8 @@ export async function getLedgerPaymentOperation(
       (max, r) => (r.created_at > max ? r.created_at : max),
       rows[0].created_at
     ),
+    register_warehouse_id:
+      operationRegisterWarehouseId(rows) ?? anchor.register_warehouse_id,
     lines,
     walletLines,
     reversed,

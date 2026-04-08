@@ -17,6 +17,8 @@ type Props = {
   id?: string
   /** Overrides default "Warehouses" field label when `id` is set. */
   label?: string
+  /** When true, only warehouses with a cash register are listed (e.g. POS). */
+  filterHasRegister?: boolean
 }
 
 export function WarehouseCombobox({
@@ -27,27 +29,35 @@ export function WarehouseCombobox({
   className,
   id,
   label,
+  filterHasRegister,
 }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   const rootRef = useRef<HTMLDivElement>(null)
 
+  const list = useMemo(
+    () =>
+      filterHasRegister ? warehouses.filter((w) => w.has_register) : warehouses,
+    [warehouses, filterHasRegister]
+  )
+
   const selected = useMemo(
-    () => warehouses.find((w) => w.id === value) ?? null,
-    [warehouses, value]
+    () => list.find((w) => w.id === value) ?? null,
+    [list, value]
   )
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase()
-    if (!s) return warehouses
-    return warehouses.filter(
+    if (!s) return list
+    return list.filter(
       (w) =>
         String(w.id).includes(s) ||
+        w.code.toLowerCase().includes(s) ||
         w.name.toLowerCase().includes(s) ||
         (w.location?.toLowerCase().includes(s) ?? false)
     )
-  }, [warehouses, q])
+  }, [list, q])
 
   useEffect(() => {
     if (!open) return
@@ -80,7 +90,7 @@ export function WarehouseCombobox({
       >
         <span className="truncate text-start">
           {selected
-            ? `${selected.id} · ${selected.name}`
+            ? `${selected.code} · ${selected.name}`
             : t('warehouses.selectPlaceholder')}
         </span>
         <ChevronsUpDown className="ms-2 h-4 w-4 shrink-0 opacity-50" />
@@ -128,8 +138,8 @@ export function WarehouseCombobox({
                         w.id === value ? 'opacity-100' : 'opacity-0'
                       )}
                     />
-                    <span className="font-mono tabular-nums text-muted-foreground">
-                      {w.id}
+                    <span className="font-mono text-muted-foreground">
+                      {w.code}
                     </span>
                     <span className="min-w-0 truncate font-medium">
                       {w.name}

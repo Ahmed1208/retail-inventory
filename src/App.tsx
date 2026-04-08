@@ -22,6 +22,10 @@ import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { Warehouses } from '@/pages/Warehouses'
+import { InventoryTransfersHome } from '@/pages/InventoryTransfersHome'
+import { NewInventoryTransfer } from '@/pages/NewInventoryTransfer'
+import { InventoryTransfersList } from '@/pages/InventoryTransfersList'
+import { InventoryTransferDetail } from '@/pages/InventoryTransferDetail'
 import { Control } from '@/pages/Control'
 import { AdminSectionLayout } from '@/components/layout/AdminSectionLayout'
 import { RootRedirect } from '@/components/routing/RootRedirect'
@@ -45,6 +49,10 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="/inventory" element={<InventoryHub />} />
             <Route path="/warehouses" element={<Warehouses />} />
+            <Route path="/inventory-transfers/list" element={<InventoryTransfersList />} />
+            <Route path="/inventory-transfers/new" element={<NewInventoryTransfer />} />
+            <Route path="/inventory-transfers/:id" element={<InventoryTransferDetail />} />
+            <Route path="/inventory-transfers" element={<InventoryTransfersHome />} />
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/products" element={<Products />} />
             <Route

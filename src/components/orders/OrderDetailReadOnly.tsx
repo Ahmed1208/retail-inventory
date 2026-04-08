@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Printer } from 'lucide-react'
 
-import type { OrderWithItemsAndPayments, Person } from '@/types'
+import { Loader2 } from 'lucide-react'
+
+import type { OrderWithItemsAndPayments, Person, Warehouse } from '@/types'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -25,6 +27,9 @@ export function OrderDetailReadOnly({
   onPrint,
   onCancel,
   noteMut,
+  warehouses = [],
+  paymentRegisterIds,
+  paymentRegistersLoading = false,
 }: {
   order: OrderWithItemsAndPayments
   t: TFn
@@ -42,10 +47,16 @@ export function OrderDetailReadOnly({
     mutateAsync: (p: { id: string; text: string }) => Promise<unknown>
     isPending: boolean
   }
+  warehouses?: Warehouse[]
+  /** Ledger register warehouse id per installment (same order as `payment_installments`). */
+  paymentRegisterIds?: (number | null)[]
+  paymentRegistersLoading?: boolean
 }) {
   const person = order.person_id
     ? people.find((p) => p.id === order.person_id)
     : null
+  const shipWarehouse =
+    warehouses.find((w) => w.id === order.warehouse_id) ?? null
   const paidRatio =
     order.total_amount > 0
       ? Math.min(100, (order.paid_amount / order.total_amount) * 100)
@@ -115,6 +126,17 @@ export function OrderDetailReadOnly({
         )}
       </div>
 
+      <div className="border-b p-4">
+        <p className="text-sm">
+          <span className="text-muted-foreground">
+            {t('orders.inventoryForDocument')}:
+          </span>{' '}
+          {shipWarehouse
+            ? `#${shipWarehouse.id} · ${shipWarehouse.name}`
+            : `#${order.warehouse_id}`}
+        </p>
+      </div>
+
       <div className="p-4">
         <h2 className="mb-2 text-sm font-semibold">{t('orders.products')}</h2>
         <div className="overflow-x-auto rounded-lg border">
@@ -160,13 +182,32 @@ export function OrderDetailReadOnly({
         {order.payment_installments.length === 0 ? (
           <p className="text-sm text-muted-foreground">—</p>
         ) : (
-          <ul className="space-y-1 text-sm">
-            {order.payment_installments.map((p) => (
-              <li key={p.id} className="flex justify-between tabular-nums">
-                <span>{paymentLabel(p.method, t)}</span>
-                <span>{fc(p.amount)}</span>
-              </li>
-            ))}
+          <ul className="space-y-2 text-sm">
+            {order.payment_installments.map((p, i) => {
+              const rwId = paymentRegisterIds?.[i]
+              const rwName =
+                rwId != null
+                  ? warehouses.find((w) => w.id === rwId)?.name
+                  : undefined
+              return (
+                <li key={p.id}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 tabular-nums">
+                    <span>{paymentLabel(p.method, t)}</span>
+                    <span>{fc(p.amount)}</span>
+                  </div>
+                  {paymentRegistersLoading ? (
+                    <div className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    </div>
+                  ) : rwId != null ? (
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {t('orders.paymentRegister')}: #{rwId}
+                      {rwName ? ` · ${rwName}` : ''}
+                    </p>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         )}
         {paymentOperationLinkSlot != null && paymentOperationLinkSlot !== false && (

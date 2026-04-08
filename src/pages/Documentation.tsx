@@ -11,6 +11,7 @@ type DocAreaKey =
   | 'header'
   | 'dashboard'
   | 'inventoryHub'
+  | 'warehouses'
   | 'products'
   | 'categories'
   | 'brands'
@@ -35,6 +36,7 @@ const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
       titleKey: 'documentation.mapGroups.catalog',
       areaKeys: [
         'inventoryHub',
+        'warehouses',
         'products',
         'categories',
         'brands',

@@ -11,6 +11,7 @@
     "categories": "Categories",
     "brands": "Brands",
     "warehouses": "Warehouses",
+    "inventoryTransfers": "Stock transfers",
     "stockMovements": "Stock Movements",
     "reports": "Reports",
     "control": "Control",
@@ -93,6 +94,9 @@
       "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
       "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
       "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings.",
+      "noInventoryTransferShortcuts": "All stock transfer shortcuts are turned off in Control settings.",
+      "newInventoryTransfer": "Creating new stock transfers is turned off in Control settings.",
+      "inventoryTransfersList": "The stock transfer list is turned off in Control settings.",
       "warehouses": "Warehouses are turned off in Control settings.",
       "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
       "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
@@ -107,6 +111,7 @@
       "categories": "Categories",
       "brands": "Brands",
       "purchaseOrders": "Purchase orders",
+      "inventoryTransfers": "Stock transfers",
       "orders": "Sales orders",
       "reports": "Reports",
       "paymentsApp": "Payments",
@@ -248,7 +253,11 @@
       },
       "warehouses": {
         "title": "Warehouses card",
-        "desc": "Link from the inventory hub to manage warehouses and the default location."
+        "desc": "Link from the inventory hub to manage warehouses: display codes from location, optional register per site, default location, and safe register turn-off when the drawer is empty."
+      },
+      "transfers": {
+        "title": "Stock transfers card",
+        "desc": "Link from the inventory hub to move quantity between warehouses (no pricing)."
       }
     },
     "people": {
@@ -350,6 +359,17 @@
       "editNote": {
         "title": "Edit purchase order note",
         "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
+      }
+    },
+    "inventoryTransfers": {
+      "group": "Stock transfers",
+      "create": {
+        "title": "Create stock transfer",
+        "desc": "Shows the new transfer shortcut and the form to move products between two warehouses (quantities only)."
+      },
+      "list": {
+        "title": "Stock transfer list",
+        "desc": "Shows the list of past transfers and links to each transfer detail."
       }
     },
     "orders": {
@@ -535,6 +555,8 @@
     "addWarehouse": "Add warehouse",
     "editWarehouse": "Edit warehouse",
     "colId": "ID",
+    "colCode": "Code",
+    "colInternalId": "Internal ID",
     "colLocation": "Location",
     "colDefault": "Default",
     "setAsDefault": "Set as default warehouse",
@@ -543,10 +565,29 @@
     "searchByIdOrName": "Search by ID or name…",
     "empty": "No warehouses found.",
     "validationIdName": "ID and name are required.",
+    "validationName": "Name is required.",
+    "validationLocation": "Location is required.",
+    "codeAutoHint": "Location is required. A display code (e.g. NASR-CITY-01) is assigned automatically from the location text.",
+    "locationPlaceholder": "e.g. Nasr City",
+    "registerNotEmptyTitle": "Register is not empty",
+    "registerNotEmptyBody": "Withdraw or zero out every tender before turning off the register for this warehouse.",
+    "withdrawAllRegisterShortcut": "Withdraw everything from register",
     "toastCreated": "Warehouse created",
     "toastUpdated": "Warehouse updated",
     "toastDefaultUpdated": "Default warehouse updated",
+    "toastDeleted": "Warehouse deleted",
     "toastError": "Something went wrong",
+    "colHasRegister": "Register",
+    "hasRegisterLabel": "Has cash register",
+    "hasRegisterHint": "POS and register payments can only use locations with a register.",
+    "defaultMustHaveRegister": "The default warehouse always has a register.",
+    "primaryWarehouseMustHaveRegister": "The primary warehouse (ID 1) always has a register.",
+    "deleteWarehouse": "Delete warehouse",
+    "deleteWarehouseTitle": "Delete warehouse?",
+    "deleteWarehouseConfirm": "This will permanently remove the warehouse. It must have no stock and no register payment history.",
+    "deleteBlockedStock": "This location still has stock. Transfer everything out, then try again.",
+    "deleteBlockedRegister": "Payments are still attributed to this register. It cannot be removed while ledger history references it.",
+    "openTransferToEmpty": "Open transfer to move stock",
     "quantityAtWarehouse": "Qty (this warehouse)",
     "poLabel": "Receive into warehouse",
     "orderLabel": "Ship from warehouse"
@@ -661,6 +702,8 @@
     "paymentNone": "None",
     "paymentAmount": "Amount",
     "paymentBreakdown": "Payment breakdown",
+    "inventoryForDocument": "Inventory / warehouse",
+    "paymentRegister": "Register",
     "paymentRemaining": "Remaining",
     "validationPaymentTotal": "Payment total must equal order total ({{total}})",
     "noteOptional": "Note (optional)",
@@ -724,6 +767,11 @@
     "confirmReceiveDraft": "Confirm & receive",
     "checkoutTitle": "Purchase order checkout",
     "confirmCreatePo": "Confirm purchase order",
+    "paymentRegisterWarehouse": "Register for payments",
+    "registerPaymentGateTitle": "Where should payments be registered?",
+    "registerPaymentGateDescription": "This receiving warehouse has no cash register. Choose which register should record supplier payments. The supplier’s balance and payables are still correct; only the cash register drawer is affected.",
+    "selectRegisterWarehouse": "Register (search by ID or name)",
+    "registerPaymentGateContinue": "Continue to checkout",
     "addToBalanceHint": "Select a supplier to carry the remainder on their account (payables).",
     "searchPlaceholder": "Search by order number...",
     "filterStatusAll": "All",
@@ -794,6 +842,40 @@
     "emptyOrders": "No purchase orders match your filters.",
     "selectSupplier": "Supplier",
     "supplierBalance": "Supplier balance"
+  },
+  "inventoryTransfers": {
+    "title": "Stock transfers",
+    "subtitle": "Move products between warehouses. No prices—only quantities.",
+    "allTransfers": "All transfers",
+    "allTransfersSubtitle": "Review past moves between locations.",
+    "newTransfer": "New transfer",
+    "newTransferSubtitle": "Choose source and destination, add lines, confirm.",
+    "backToTransfers": "Back to stock transfers",
+    "backToList": "Back to list",
+    "fromWarehouse": "From warehouse",
+    "toWarehouse": "To warehouse",
+    "sameWarehouseError": "Pick two different warehouses.",
+    "note": "Note",
+    "notePlaceholder": "Optional reference for this transfer",
+    "lines": "Lines",
+    "addLine": "Add line",
+    "colProduct": "Product",
+    "colAvailable": "Available (source)",
+    "colNumber": "#",
+    "colDate": "Date",
+    "exceedsAvailable": "Exceeds available quantity at source.",
+    "submitTransfer": "Complete transfer",
+    "toastCreated": "Transfer completed",
+    "toastError": "Transfer failed",
+    "emptyList": "No transfers yet.",
+    "detailTitle": "Transfer #{{n}}",
+    "detailHeading": "Transfer #{{n}}",
+    "notFound": "Transfer not found.",
+    "print": "Print",
+    "openTransferDetail": "Open transfer number {{n}}",
+    "promptDeleteWarehouseTitle": "Delete this warehouse?",
+    "promptDeleteWarehouseDescription": "The source warehouse has no stock left. Remove it from your locations?",
+    "keepWarehouse": "Keep warehouse"
   },
   "people": {
     "title": "People",
@@ -960,6 +1042,11 @@
     "listBalanceImpactHint": "Default view: for sales orders, negative means the customer still owes (or net balance down), positive means credit or overpayment. Purchase orders keep signed payable remainder. Full ledger: raw signed ledger line. Green/red matches the sign of this column for linked people.",
     "listRegisterImpact": "Register impact",
     "listRegisterImpactHint": "Net effect on the register (cash drawer and tender accounts): positive when money comes in, negative when paid out.",
+    "listRegisterWarehouse": "Register / inventory",
+    "registerWarehouseLegacy": "Legacy",
+    "operationRegisterWarehouse": "Register warehouse",
+    "recordPaymentRegisterWarehouse": "Register for this payment",
+    "noRegisterWarehouseForPayments": "No warehouse with a register is configured. Add one under Inventory → Warehouses.",
     "splitHint": "Enable each method you use and enter the amount (e.g. cash + card).",
     "totalTendered": "Total tendered",
     "overpaymentWarning": "You are paying more than the total amount",
@@ -1035,7 +1122,21 @@
     "activityLinkOrder": "Order {{ref}}",
     "activityLinkPO": "{{ref}}",
     "activityLinkPayment": "Payment",
-    "activityLinkRegister": "Register movement"
+    "activityLinkRegister": "Register movement",
+    "registerWarehouseLabel": "Register location",
+    "noRegisterWarehouse": "No warehouse is set up with a cash register.",
+    "withdrawAllDisabled": "Withdraw from register is turned off in Control settings.",
+    "withdrawAllConfirmTitle": "Withdraw everything from this register?",
+    "withdrawAllConfirmDescription": "One withdrawal will be recorded for each tender that has a balance. The register will read zero when finished.",
+    "withdrawAllConfirmAction": "Withdraw all",
+    "withdrawAllLedgerNote": "Withdraw all (clear register)",
+    "toastWithdrawAllDone": "All register balances withdrawn",
+    "disableRegisterPromptTitle": "Turn off register for this warehouse?",
+    "disableRegisterPromptDescription": "The register for “{{name}}” is empty. Do you want to disable the cash register for this location?",
+    "disableRegisterConfirm": "Turn off register",
+    "disableRegisterKeep": "Keep register",
+    "disableRegisterNotAllowed": "The primary or default warehouse must keep a register.",
+    "disableRegisterWarehouseMissing": "Warehouse not found."
   },
   "reports": {
     "title": "Reports",
@@ -1106,8 +1207,15 @@
       "inventoryHub": {
         "title": "Inventory hub",
         "items": [
-          "Cards to Products, Purchase orders, Movements, Categories, Brands",
+          "Cards to Products, Purchase orders, Stock transfers, Warehouses, Movements, Categories, Brands",
           "Entry point for catalog and stock workflows"
+        ]
+      },
+      "warehouses": {
+        "title": "Warehouses",
+        "items": [
+          "Locations with mandatory location text; human-facing codes auto-generated from location (e.g. NASR-CITY-01)",
+          "Optional cash register per warehouse; turning it off requires an empty register (shortcut to withdraw all, then confirm disable)"
         ]
       },
       "products": {
@@ -1167,8 +1275,9 @@
       "register": {
         "title": "Register",
         "items": [
-          "Cash-drawer balances by tender",
-          "Deposit and withdraw when enabled"
+          "Cash-drawer balances by tender, scoped per warehouse register",
+          "Deposit, withdraw, and withdraw-all flow (e.g. from warehouses when disabling a register)",
+          "Deposit and withdraw when enabled in Control"
         ]
       },
       "reports": {

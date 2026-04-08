@@ -18,6 +18,8 @@ import {
   roundMoney,
   supabaseErrorMessage,
 } from '@/services/peopleService'
+import { listWarehouses } from '@/services/warehouseService'
+import { fetchRegisterIdsForPoPayments } from '@/services/paymentRegisterDisplayService'
 import type { PaymentMethod, PurchaseOrderPayment } from '@/types'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -40,6 +42,7 @@ import {
 import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 import { PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
+import { PoRegisterPaymentGateDialog } from '@/components/purchaseOrders/PoRegisterPaymentGateDialog'
 
 export function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -71,7 +74,10 @@ export function PurchaseOrderDetail() {
   })
   const [allowRemaining, setAllowRemaining] = useState(false)
   const [confirmNote, setConfirmNote] = useState('')
+  const [paymentRegisterWarehouseId, setPaymentRegisterWarehouseId] =
+    useState(1)
 
+  const [registerGateOpen, setRegisterGateOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelSettlement, setCancelSettlement] =
     useState<CancelPurchaseOrderSettlement>('reverse_payments')
@@ -92,6 +98,42 @@ export function PurchaseOrderDetail() {
     queryFn: () => getAllPeople(),
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+
+  const poWarehouseId = useMemo(() => {
+    if (!po) return 1
+    return po.warehouse_id != null && Number.isFinite(Number(po.warehouse_id))
+      ? Math.trunc(Number(po.warehouse_id))
+      : 1
+  }, [po])
+
+  const poWarehouse = useMemo(
+    () => warehouses.find((w) => w.id === poWarehouseId) ?? null,
+    [warehouses, poWarehouseId]
+  )
+
+  const needsPaymentRegister = Boolean(poWarehouse && !poWarehouse.has_register)
+
+  const registerOnlyWarehouses = useMemo(
+    () => warehouses.filter((w) => w.has_register),
+    [warehouses]
+  )
+
+  useEffect(() => {
+    if (registerOnlyWarehouses.length === 0) return
+    if (
+      !registerOnlyWarehouses.some((w) => w.id === paymentRegisterWarehouseId)
+    ) {
+      const d =
+        registerOnlyWarehouses.find((w) => w.is_default) ??
+        registerOnlyWarehouses[0]
+      setPaymentRegisterWarehouseId(d.id)
+    }
+  }, [registerOnlyWarehouses, paymentRegisterWarehouseId])
+
   const supplierPerson = useMemo(() => {
     if (!po?.person_id) return null
     return people.find((p) => p.id === po.person_id) ?? null
@@ -109,6 +151,14 @@ export function PurchaseOrderDetail() {
       queryKey: ['poLedgerPaymentOpRoute', po?.id],
       queryFn: () => getLedgerPaymentOperationRouteIdForPo(po!.id),
       enabled: showPoPaymentOpLink,
+    })
+
+  const { data: poPaymentRegisterIds, isFetching: poPayRegFetching } =
+    useQuery({
+      queryKey: ['poPaymentRegisters', po?.id, po?.payments?.length ?? 0],
+      queryFn: () =>
+        fetchRegisterIdsForPoPayments(po!.id, po!.payments ?? []),
+      enabled: !!po && (po.payments?.length ?? 0) > 0,
     })
 
   useEffect(() => {
@@ -131,8 +181,21 @@ export function PurchaseOrderDetail() {
     const total = roundMoney(po.total_amount)
     const rem = roundMoney(total - paidPreview)
     if (rem > 0.01 && !allowRemaining) return false
+    if (
+      needsPaymentRegister &&
+      paidPreview > 0.01 &&
+      registerOnlyWarehouses.length === 0
+    ) {
+      return false
+    }
     return true
-  }, [po, paidPreview, allowRemaining])
+  }, [
+    po,
+    paidPreview,
+    allowRemaining,
+    needsPaymentRegister,
+    registerOnlyWarehouses.length,
+  ])
 
   useEffect(() => {
     if (po) {
@@ -180,6 +243,15 @@ export function PurchaseOrderDetail() {
     })
     setAllowRemaining(false)
     setConfirmNote(po.note ?? '')
+    if (needsPaymentRegister && registerOnlyWarehouses.length > 0) {
+      setRegisterGateOpen(true)
+    } else {
+      setConfirmOpen(true)
+    }
+  }
+
+  const continuePoRegisterGateToConfirm = () => {
+    setRegisterGateOpen(false)
     setConfirmOpen(true)
   }
 
@@ -201,6 +273,9 @@ export function PurchaseOrderDetail() {
         payments: buildPaymentsFromState(),
         allow_remaining_on_account: allowRemaining,
         note: confirmNote,
+        register_warehouse_id: needsPaymentRegister
+          ? paymentRegisterWarehouseId
+          : undefined,
       })
       invalidatePO()
       setConfirmOpen(false)
@@ -327,17 +402,47 @@ export function PurchaseOrderDetail() {
                 dateStyle: 'medium',
               }).format(new Date(po.created_at))}
             </p>
+            <p>
+              <span className="text-muted-foreground">
+                {t('orders.inventoryForDocument')}:
+              </span>{' '}
+              {poWarehouse
+                ? `#${poWarehouse.id} · ${poWarehouse.name}`
+                : `#${poWarehouseId}`}
+            </p>
             {po.payments && po.payments.length > 0 && (
               <p className="sm:col-span-2">
                 <span className="text-muted-foreground">
                   {t('orders.paymentMethod')}:
                 </span>
                 <span className="mt-1 block">
-                  {po.payments.map((p: PurchaseOrderPayment) => (
-                    <span key={p.id ?? p.payment_method} className="block">
-                      {paymentLabelPO(p.payment_method, t)}: {fc(p.amount)}
-                    </span>
-                  ))}
+                  {po.payments.map((p: PurchaseOrderPayment, i: number) => {
+                    const rwId = poPaymentRegisterIds?.[i]
+                    const rwName =
+                      rwId != null
+                        ? warehouses.find((w) => w.id === rwId)?.name
+                        : undefined
+                    return (
+                      <span
+                        key={p.id ?? `${p.payment_method}-${i}`}
+                        className="block"
+                      >
+                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <span>
+                            {paymentLabelPO(p.payment_method, t)}: {fc(p.amount)}
+                          </span>
+                          {poPayRegFetching ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                          ) : rwId != null ? (
+                            <span className="text-muted-foreground">
+                              {t('orders.paymentRegister')}: #{rwId}
+                              {rwName ? ` · ${rwName}` : ''}
+                            </span>
+                          ) : null}
+                        </span>
+                      </span>
+                    )
+                  })}
                 </span>
                 {showPoPaymentOpLink && (
                   <span className="mt-2 block text-muted-foreground">
@@ -435,6 +540,15 @@ export function PurchaseOrderDetail() {
         </div>
       </div>
 
+      <PoRegisterPaymentGateDialog
+        open={registerGateOpen}
+        onOpenChange={setRegisterGateOpen}
+        isRTL={isRTL}
+        registerWarehouses={registerOnlyWarehouses}
+        value={paymentRegisterWarehouseId}
+        onChange={setPaymentRegisterWarehouseId}
+        onContinue={continuePoRegisterGateToConfirm}
+      />
       <PurchaseOrderCheckoutModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -455,6 +569,7 @@ export function PurchaseOrderDetail() {
         canConfirm={canConfirmDraft}
         confirming={confirming}
         onConfirm={handleConfirmDraftSubmit}
+        registerPaymentPicker={null}
       />
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>

@@ -20,6 +20,7 @@ const INVENTORY_PATHS = [
   '/categories',
   '/brands',
   '/warehouses',
+  '/inventory-transfers',
 ] as const
 
 const ORDERS_PREFIX = '/orders'

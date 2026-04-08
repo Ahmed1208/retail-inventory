@@ -34,6 +34,7 @@ import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
 import { SupplierBrowserModal } from '@/components/purchaseOrders/SupplierBrowserModal'
 import { QuickCreatePersonDialog } from '@/components/people/QuickCreatePersonDialog'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
+import { PoRegisterPaymentGateDialog } from '@/components/purchaseOrders/PoRegisterPaymentGateDialog'
 import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import {
   findProductByInput,
@@ -86,6 +87,7 @@ export function PurchaseOrderForm() {
     string | null
   >(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
+  const [registerGateOpen, setRegisterGateOpen] = useState(false)
   const [costOverrideLineKey, setCostOverrideLineKey] = useState<string | null>(
     null
   )
@@ -109,6 +111,8 @@ export function PurchaseOrderForm() {
   const [lines, setLines] = useState<POLineRow[]>(() => [emptyPOLine()])
   const warehouseInitRef = useRef(false)
   const [warehouseId, setWarehouseId] = useState(1)
+  const [paymentRegisterWarehouseId, setPaymentRegisterWarehouseId] =
+    useState(1)
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
   const [focusCellPos, setFocusCellPos] = useState({ row: 0, col: 0 })
@@ -133,6 +137,30 @@ export function PurchaseOrderForm() {
     setWarehouseId(d?.id ?? 1)
     warehouseInitRef.current = true
   }, [warehouses])
+
+  const selectedWarehouse = useMemo(
+    () => warehouses.find((w) => w.id === warehouseId) ?? null,
+    [warehouses, warehouseId]
+  )
+  const needsPaymentRegister = Boolean(
+    selectedWarehouse && !selectedWarehouse.has_register
+  )
+  const registerOnlyWarehouses = useMemo(
+    () => warehouses.filter((w) => w.has_register),
+    [warehouses]
+  )
+
+  useEffect(() => {
+    if (registerOnlyWarehouses.length === 0) return
+    if (
+      !registerOnlyWarehouses.some((w) => w.id === paymentRegisterWarehouseId)
+    ) {
+      const d =
+        registerOnlyWarehouses.find((w) => w.is_default) ??
+        registerOnlyWarehouses[0]
+      setPaymentRegisterWarehouseId(d.id)
+    }
+  }, [registerOnlyWarehouses, paymentRegisterWarehouseId])
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
     queryFn: getAllCategories,
@@ -177,8 +205,23 @@ export function PurchaseOrderForm() {
     if (remainingPreview > 0.01) {
       if (!allowRemaining) return false
     }
+    if (
+      needsPaymentRegister &&
+      paidPreview > 0.01 &&
+      registerOnlyWarehouses.length === 0
+    ) {
+      return false
+    }
     return true
-  }, [hasValidLines, remainingPreview, allowRemaining, supplierPersonId])
+  }, [
+    hasValidLines,
+    remainingPreview,
+    allowRemaining,
+    supplierPersonId,
+    needsPaymentRegister,
+    paidPreview,
+    registerOnlyWarehouses.length,
+  ])
 
   useEffect(() => {
     if (!selectedSupplier) {
@@ -687,6 +730,7 @@ export function PurchaseOrderForm() {
         supplierBrowserOpen ||
         productBrowserOpen ||
         checkoutOpen ||
+        registerGateOpen ||
         saveDraftMut.isPending ||
         costOverrideLineKey ||
         catalogPricesLineKey
@@ -711,6 +755,7 @@ export function PurchaseOrderForm() {
     supplierBrowserOpen,
     productBrowserOpen,
     checkoutOpen,
+    registerGateOpen,
     lines,
     focusCellPos.row,
     saveDraftMut.isPending,
@@ -732,6 +777,15 @@ export function PurchaseOrderForm() {
       return
     }
     if (!validateLines()) return
+    if (needsPaymentRegister && registerOnlyWarehouses.length > 0) {
+      setRegisterGateOpen(true)
+    } else {
+      setCheckoutOpen(true)
+    }
+  }
+
+  const continueRegisterGateToCheckout = () => {
+    setRegisterGateOpen(false)
     setCheckoutOpen(true)
   }
 
@@ -748,6 +802,9 @@ export function PurchaseOrderForm() {
         payments,
         items: linesToApiItems(),
         warehouse_id: warehouseId,
+        register_warehouse_id: needsPaymentRegister
+          ? paymentRegisterWarehouseId
+          : undefined,
       })
       invalidatePO()
       toast.success(t('purchaseOrders.toastCreated'))
@@ -837,6 +894,15 @@ export function PurchaseOrderForm() {
         isRTL={isRTL}
         onPick={onPickProduct}
       />
+      <PoRegisterPaymentGateDialog
+        open={registerGateOpen}
+        onOpenChange={setRegisterGateOpen}
+        isRTL={isRTL}
+        registerWarehouses={registerOnlyWarehouses}
+        value={paymentRegisterWarehouseId}
+        onChange={setPaymentRegisterWarehouseId}
+        onContinue={continueRegisterGateToCheckout}
+      />
       <PurchaseOrderCheckoutModal
         open={checkoutOpen}
         onOpenChange={setCheckoutOpen}
@@ -857,6 +923,7 @@ export function PurchaseOrderForm() {
         canConfirm={canConfirm}
         confirming={submitting}
         onConfirm={handleConfirmCreate}
+        registerPaymentPicker={null}
       />
 
       <header className="flex shrink-0 flex-wrap items-center gap-1.5 border-b bg-background px-2 py-1.5">
@@ -916,6 +983,7 @@ export function PurchaseOrderForm() {
                 supplierBrowserOpen ||
                 productBrowserOpen ||
                 checkoutOpen ||
+                registerGateOpen ||
                 saveDraftMut.isPending ||
                 costOverrideLineKey ||
                 catalogPricesLineKey

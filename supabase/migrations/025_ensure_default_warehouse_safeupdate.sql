@@ -1,5 +1,4 @@
--- Idempotent repair: always have warehouse id = 1 ("default"), optional default flag,
--- backfill product_warehouse_stock for warehouse 1, repoint orphan document FKs.
+-- pg-safeupdate rejects UPDATE with no WHERE; repair RPC for "no default" branch.
 
 CREATE OR REPLACE FUNCTION public.ensure_default_warehouse()
 RETURNS void
@@ -43,7 +42,3 @@ BEGIN
   WHERE NOT EXISTS (SELECT 1 FROM public.warehouses w WHERE w.id = sm.warehouse_id);
 END;
 $$;
-
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO anon;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.ensure_default_warehouse() TO service_role;

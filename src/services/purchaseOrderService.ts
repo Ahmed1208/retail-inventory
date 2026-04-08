@@ -1,6 +1,11 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
-import { DEFAULT_WAREHOUSE_ID } from '@/services/warehouseService'
+import {
+  DEFAULT_WAREHOUSE_ID,
+  fetchActiveTenderRegistersForDocument,
+  resolveRegisterWarehouseForRetainedPayment,
+  takeRegisterFromTenderPool,
+} from '@/services/warehouseService'
 import { getProductById } from '@/services/productService'
 import { updateProduct } from '@/services/productService'
 import {
@@ -428,6 +433,8 @@ export async function createPurchaseOrder(data: {
   /** Save as draft: no stock, ledger, or payments until confirmed. */
   asDraft?: boolean
   warehouse_id?: number
+  /** When PO warehouse has no register, pick which register books supplier payments. */
+  register_warehouse_id?: number | null
 }): Promise<PurchaseOrderWithItems> {
   if (!data.items.length) {
     throw new Error('At least one product is required')
@@ -633,6 +640,8 @@ export async function createPurchaseOrder(data: {
       orderNumber: order_number,
       totalAmount: total,
       payments,
+      poWarehouseId: warehouse_id,
+      registerWarehouseId: data.register_warehouse_id,
     })
   }
 
@@ -648,6 +657,7 @@ export async function confirmPurchaseOrder(
     payments?: { payment_method: PaymentMethod; amount: number }[]
     allow_remaining_on_account?: boolean
     note?: string | null
+    register_warehouse_id?: number | null
   }
 ): Promise<PurchaseOrderWithItems> {
   const order = await getPurchaseOrderById(id)
@@ -742,6 +752,8 @@ export async function confirmPurchaseOrder(
     orderNumber: order.order_number,
     totalAmount: total,
     payments,
+    poWarehouseId: whId,
+    registerWarehouseId: data.register_warehouse_id,
   })
 
   const noteUp =
@@ -832,6 +844,20 @@ export async function cancelPurchaseOrder(
       )
     }
 
+    const poWhId =
+      order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
+        ? Math.trunc(Number(order.warehouse_id))
+        : DEFAULT_WAREHOUSE_ID
+
+    const tenderRegisterPoolWorking =
+      retainWalletCredit && paidAtPo > 0.01
+        ? [...(await fetchActiveTenderRegistersForDocument(order.id, 'payment_out'))]
+        : []
+    const firstLedgerRegister =
+      tenderRegisterPoolWorking.length > 0
+        ? tenderRegisterPoolWorking[0].register_warehouse_id
+        : null
+
     const routeIds = await listActiveLedgerPaymentOperationRouteIdsForDocument(
       order.id,
       refPo,
@@ -847,6 +873,19 @@ export async function cancelPurchaseOrder(
 
     if (retainWalletCredit && paidAtPo > 0.01) {
       const anchorIso = poLedgerAnchor ?? new Date().toISOString()
+
+      const registerForRetainedLine = async (
+        method: PaymentMethod,
+        lineAmount: number
+      ) => {
+        const matched = takeRegisterFromTenderPool(
+          tenderRegisterPoolWorking,
+          method,
+          lineAmount
+        )
+        const prior = matched ?? firstLedgerRegister
+        return resolveRegisterWarehouseForRetainedPayment(poWhId, prior ?? null)
+      }
 
       const { data: balRow0, error: b0e } = await supabase
         .from('people')
@@ -884,6 +923,10 @@ export async function cancelPurchaseOrder(
             payment_group_id: paymentGroupId,
             wallet_direction: null,
             created_at: retainedPaymentCreatedAt(anchorIso),
+            register_warehouse_id: await registerForRetainedLine(
+              p.payment_method,
+              toward
+            ),
           })
           bal = roundMoney(bal + toward)
           remainingLiability = roundMoney(remainingLiability - toward)

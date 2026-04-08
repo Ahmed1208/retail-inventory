@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 
-import type { PaymentMethod } from '@/types'
+import type { PaymentMethod, Warehouse } from '@/types'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -41,6 +42,12 @@ type Props = {
   canConfirm: boolean
   confirming: boolean
   onConfirm: () => void
+  /** When the PO receiving warehouse has no register, pick which register books supplier payments. */
+  registerPaymentPicker?: {
+    warehouses: Warehouse[]
+    value: number
+    onChange: (id: number) => void
+  } | null
 }
 
 export function PurchaseOrderCheckoutModal({
@@ -63,6 +70,7 @@ export function PurchaseOrderCheckoutModal({
   canConfirm,
   confirming,
   onConfirm,
+  registerPaymentPicker,
 }: Props) {
   const { t } = useTranslation()
 
@@ -134,6 +142,17 @@ export function PurchaseOrderCheckoutModal({
               {t('payments.selectPersonForOverpayment')}
             </div>
           )}
+
+          {registerPaymentPicker &&
+          registerPaymentPicker.warehouses.length > 0 ? (
+            <WarehouseCombobox
+              id="po-checkout-register-wh"
+              label={t('purchaseOrders.paymentRegisterWarehouse')}
+              warehouses={registerPaymentPicker.warehouses}
+              value={registerPaymentPicker.value}
+              onChange={registerPaymentPicker.onChange}
+            />
+          ) : null}
 
           <div>
             <p className="mb-2 text-sm font-medium">
