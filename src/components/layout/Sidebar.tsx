@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 const INVENTORY_PATHS = [
@@ -71,24 +72,29 @@ interface SidebarProps {
 export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
+  const { isAdmin } = useAuth()
+  const sidebarControl = useFeatureEnabled('sidebar.control')
+  const sidebarAdminFlag = useFeatureEnabled('sidebar.admin')
 
-  const showControlNav = useFeatureEnabled('sidebar.control')
+  const showControlNav = isAdmin && sidebarControl
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
   const showPaymentsNav = useFeatureEnabled('sidebar.payments')
   const showRegisterNav = useFeatureEnabled('sidebar.register')
-  const showAdminGroup = useFeatureEnabled('sidebar.admin')
+  const showAdminGroup = isAdmin && sidebarAdminFlag
   const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
   const showDocumentationNav = useFeatureEnabled('sidebar.documentation')
   const showReportsShortcut = useFeatureEnabled('sidebar.reports')
   const showHubMovements = useFeatureEnabled('inventory.hubMovements')
+  const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
 
   const anyAdminChild =
     showDashboardNav ||
     showDocumentationNav ||
     showReportsShortcut ||
-    showHubMovements
+    showHubMovements ||
+    showMigrationGuide
   const showAdminNav = showAdminGroup && anyAdminChild
 
   const content = (

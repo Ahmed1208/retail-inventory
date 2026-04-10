@@ -19,8 +19,85 @@
     "register": "Register",
     "admin": "Admin",
     "documentation": "Documentation",
-    "adminHubDescription": "Open dashboard, documentation, or reports from here.",
-    "backToAdmin": "Back to Admin"
+    "adminHubDescription": "Open dashboard, documentation, migration checklist, or reports from here.",
+    "migrationGuide": "Migration checklist",
+    "backToAdmin": "Back to Admin",
+    "members": "Members"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginSubtitle": "Use your operator username and password.",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "logout": "Log out"
+  },
+  "members": {
+    "listTitle": "Members",
+    "listSubtitle": "Operators who can sign in to StockPilot.",
+    "addMember": "Add member",
+    "newTitle": "Add member",
+    "newSubtitle": "Create credentials and choose what this operator may do.",
+    "backToList": "Back to members",
+    "fieldUsername": "Username",
+    "fieldPassword": "Password",
+    "fieldPasswordConfirm": "Confirm password",
+    "next": "Next",
+    "back": "Back",
+    "reviewTitle": "Review",
+    "reviewUsername": "Username",
+    "reviewPermissionsHint": "Permissions follow the answers you gave; Admin and Control stay off for new members.",
+    "createMember": "Create member",
+    "createSuccess": "Member created.",
+    "loadError": "Could not load members.",
+    "empty": "No members yet.",
+    "colUsername": "Username",
+    "colAdmin": "Admin",
+    "colCreated": "Created",
+    "errorUsername": "Enter a username (letters, numbers, dot, underscore, hyphen; at least 2 characters).",
+    "errorPasswordShort": "Password must be at least 8 characters.",
+    "errorPasswordMatch": "Passwords do not match.",
+    "questionProgress": "Question {{current}} of {{total}}",
+    "onboard": {
+      "q": {
+        "salesPos": {
+          "title": "Sales & POS",
+          "desc": "Allow opening the orders hub, new orders, editing drafts, checkout, and printing invoices?"
+        },
+        "ordersManage": {
+          "title": "Order management",
+          "desc": "Allow canceling orders, adding payments, and editing order notes?"
+        },
+        "ordersCsv": {
+          "title": "Orders CSV",
+          "desc": "Allow importing and exporting orders via CSV?"
+        },
+        "purchaseOrders": {
+          "title": "Purchase orders (core)",
+          "desc": "Allow PO list, creating POs, receiving stock, and editing PO notes?"
+        },
+        "poAdvanced": {
+          "title": "Purchase orders (advanced)",
+          "desc": "Allow cost overrides, canceling POs, and PO CSV import/export?"
+        },
+        "inventoryCatalog": {
+          "title": "Catalog & stock",
+          "desc": "Allow product and category/brand CRUD and stock adjustments?"
+        },
+        "inventoryTransfers": {
+          "title": "Stock transfers",
+          "desc": "Allow creating and listing warehouse transfers?"
+        },
+        "peoplePayments": {
+          "title": "People, payments & register",
+          "desc": "Allow people CRUD, recording payments, ledger/payments app, and register deposit/withdraw?"
+        },
+        "reportsMovements": {
+          "title": "Reports & movements",
+          "desc": "Allow report CSV export and the stock movements shortcut?"
+        }
+      }
+    }
   },
   "common": {
     "search": "Search",
@@ -42,7 +119,8 @@
     "submit": "Submit",
     "close": "Close",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "exportCsv": "Export CSV"
   },
   "notes": {
     "editNote": "Edit note",
@@ -115,7 +193,8 @@
       "orders": "Sales orders",
       "reports": "Reports",
       "paymentsApp": "Payments",
-      "register": "Register"
+      "register": "Register",
+      "adminHub": "Admin hub"
     },
     "sidebar": {
       "groupNav": "Sidebar links",
@@ -149,7 +228,7 @@
       },
       "admin": {
         "title": "Admin menu",
-        "desc": "Shows the Admin link in the sidebar; opens the Admin hub with shortcuts to Dashboard, Documentation, and Reports."
+        "desc": "Shows the Admin link in the sidebar; opens the Admin hub with shortcuts to Dashboard, Documentation, Migration checklist, and Reports."
       },
       "documentation": {
         "title": "Documentation page",
@@ -158,6 +237,13 @@
       "reports": {
         "title": "Reports shortcut (sidebar)",
         "desc": "Shows the Reports link under Admin (opens the dashboard Reports tab)."
+      }
+    },
+    "admin": {
+      "group": "Migration & onboarding",
+      "migrationGuide": {
+        "title": "Migration checklist (Admin)",
+        "desc": "Shows the Migration checklist card on the Admin hub and the /admin/migration route with a resumable import-order guide."
       }
     },
     "header": {
@@ -359,6 +445,14 @@
       "editNote": {
         "title": "Edit purchase order note",
         "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
+      },
+      "importCsv": {
+        "title": "Import purchase orders from CSV",
+        "desc": "Shows Import CSV on the purchase order list (mapping, live draft vs historical snapshot)."
+      },
+      "exportCsv": {
+        "title": "Export purchase orders to CSV",
+        "desc": "Shows Export CSV on the purchase order list (one row per line, matches import shape)."
       }
     },
     "inventoryTransfers": {
@@ -411,6 +505,14 @@
       "editNote": {
         "title": "Edit order note",
         "desc": "Allows editing the order note field on the detail page."
+      },
+      "importCsv": {
+        "title": "Import sales orders from CSV",
+        "desc": "Shows Import CSV on the orders list (column mapping, live drafts vs historical snapshots)."
+      },
+      "exportCsv": {
+        "title": "Export sales orders to CSV",
+        "desc": "Shows Export CSV on the orders list (long format, one row per line)."
       }
     },
     "reports": {
@@ -474,6 +576,15 @@
     "backToList": "Back to products",
     "detailSectionInfo": "Product details",
     "detailUpdated": "Last updated",
+    "detailSectionByWarehouse": "By location",
+    "detailByWarehouseHint": "On-hand quantity is current. Sales and purchases use the same date range as Sales analytics below (completed orders and received purchase orders).",
+    "detailColLocation": "Location",
+    "detailColQtyOnHand": "Qty on hand",
+    "detailColSalesUnits": "Sales (units)",
+    "detailColSalesRevenue": "Sales (revenue)",
+    "detailColPurchaseUnits": "Purchases (units)",
+    "detailColPurchaseAmount": "Purchases (amount)",
+    "detailRowTotal": "Total",
     "detailSectionSales": "Sales analytics",
     "detailKpiUnitsSold": "Units sold",
     "detailKpiLineRevenue": "Line revenue",
@@ -509,7 +620,67 @@
     "grossProfitSoldHint": "From completed orders only: line revenue minus units sold × current average unit cost (WAC). Uses today’s WAC as an estimate of cost of goods sold.",
     "detailPricingTableTitle": "Pricing & margins",
     "totalProfitFromSales": "Gross profit (sales)",
-    "totalProfitFromSalesHint": "All completed orders (retail + wholesale): total line revenue minus total units sold × current average unit cost (WAC). Same method as the table rows; WAC is an estimate of COGS."
+    "totalProfitFromSalesHint": "All completed orders (retail + wholesale): total line revenue minus total units sold × current average unit cost (WAC). Same method as the table rows; WAC is an estimate of COGS.",
+    "exportCsvHint": "Download the product list with prices and quantities. Choose one warehouse or all locations.",
+    "qtyAtWarehouseCode": "Qty ({{code}})",
+    "defaultWarehouseForAdjustments": "Default warehouse for stock adjustments",
+    "exportCsvDialog": {
+      "title": "Export products as CSV",
+      "description": "Choose whether quantities are for one warehouse or all warehouses (one column per location code).",
+      "scopeLabel": "Quantities to export",
+      "scopeAll": "All warehouses (one column per code)",
+      "scopeOne": "Single warehouse",
+      "selectWarehouse": "Warehouse",
+      "export": "Download CSV"
+    },
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import products from CSV",
+      "uploadHint": "Upload a UTF-8 CSV. You will map columns to product fields; new brand and category names are created automatically when needed.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Match each product field to a column from your file. Required fields are marked with *.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s). Fix issues or discard rows you do not want to import.",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import products",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldProductCode": "Product ID / code",
+      "fieldBrandName": "Brand (name)",
+      "fieldCategoryName": "Category (name)",
+      "fieldQuantity": "Quantity (selected warehouse)",
+      "importWarehouseLabel": "Apply imported quantities to",
+      "importWarehouseHint": "The quantity column from your file updates on-hand stock at this location only. Product catalog fields are shared across all warehouses.",
+      "stockMovementNote": "CSV import — initial stock",
+      "noWarehouses": "Add at least one warehouse before importing products with quantities.",
+      "fieldLowStock": "Low stock threshold",
+      "fieldDescription": "Description",
+      "toastAllOk": "Imported {{count}} product(s).",
+      "toastPartial": "Imported {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No products imported ({{count}} failed).",
+      "issue": {
+        "missing_name": "Name required",
+        "name_too_short": "Name too short",
+        "invalid_customer_price": "Invalid retail price",
+        "invalid_business_price": "Invalid wholesale price",
+        "invalid_cost_price": "Invalid cost",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_low_stock": "Invalid low stock",
+        "duplicate_code_in_file": "Duplicate code in file",
+        "duplicate_code_in_db": "Code exists",
+        "duplicate_name_in_file": "Duplicate name in file",
+        "duplicate_name_in_db": "Name exists"
+      }
+    }
   },
   "categories": {
     "title": "Categories",
@@ -732,6 +903,11 @@
     "pendingOrders": "Pending",
     "cancelledOrders": "Cancelled",
     "emptyOrders": "No orders match your filters.",
+    "historicalImportBadge": "Historical import",
+    "historicalFilterLabel": "Import data",
+    "historicalFilterAll": "All orders",
+    "historicalFilterExclude": "Exclude historical imports",
+    "historicalFilterOnly": "Historical import only",
     "customer": "Customer",
     "selectCustomer": "Customer (optional)",
     "searchPeople": "Search people...",
@@ -740,7 +916,77 @@
     "availableCredit": "Available credit",
     "creditBlocked": "This order exceeds the customer's credit limit.",
     "subtotal": "Subtotal",
-    "discountedTotal": "After discount"
+    "discountedTotal": "After discount",
+    "exportCsvHint": "Download the orders in the current list as CSV (one row per line; same columns as import).",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import sales orders from CSV",
+      "modeIntro": "Choose how imported rows should behave. You can change this before uploading a file.",
+      "modeLiveTitle": "Live (draft orders)",
+      "modeLiveDesc": "Creates normal draft orders. Stock and register only change when you confirm, complete, or checkout like any other order.",
+      "modeHistoricalTitle": "Historical (analysis only)",
+      "modeHistoricalDesc": "Creates completed orders for charts and reports only. Does not move stock or post register/ledger entries.",
+      "continueToUpload": "Continue",
+      "backToMode": "Back",
+      "uploadHint": "Use one row per line. Rows that share the same group id belong to one order.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map CSV columns to fields. Group id, order type, warehouse, quantity, and unit price are required. Map at least one of product code or product name.",
+      "productKeyHint": "Map at least one column to product code or product name so each line can resolve a catalog item.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review rows before import ({{mode}}). Fix issues or discard lines you do not want.",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import orders",
+      "ingesting": "Importing {{done}} / {{total}} order group(s)…",
+      "fieldGroupId": "Group id (same on every line of one order)",
+      "fieldOrderType": "Order type (retail / wholesale)",
+      "fieldWarehouseCode": "Warehouse (code or name)",
+      "fieldCustomerPhone": "Customer phone",
+      "fieldCustomerName": "Customer name",
+      "fieldOrderNote": "Order note",
+      "fieldOrderDiscountRate": "Order discount % (0–100)",
+      "fieldOrderDate": "Document date (optional, historical)",
+      "fieldProductCode": "Product code",
+      "fieldProductName": "Product name",
+      "fieldBrandName": "Brand (new products)",
+      "fieldCategoryName": "Category (new products)",
+      "fieldQuantity": "Quantity",
+      "fieldUnitPrice": "Unit price",
+      "fieldLineDiscountRate": "Line discount % (0–100)",
+      "fieldProductCustomerPrice": "Catalog retail (new product)",
+      "fieldProductBusinessPrice": "Catalog wholesale (new product)",
+      "fieldProductCostPrice": "Catalog cost (new product)",
+      "toastAllOk": "Imported {{count}} order group(s).",
+      "toastPartial": "Imported {{ok}} group(s); {{fail}} failed.",
+      "toastAllFailed": "No groups imported ({{count}} failed).",
+      "groupFailed": "Group",
+      "errorGeneric": "Import failed",
+      "errorUnknownWarehouse": "Warehouse code or name not found.",
+      "errorInvalidOrderType": "Order type must be retail or wholesale.",
+      "errorCustomerNameNoPhone": "Customer name without phone: add a phone column or use a single matching customer in People.",
+      "issue": {
+        "missing_group_id": "Missing group id",
+        "missing_order_type": "Missing order type",
+        "invalid_order_type": "Invalid order type",
+        "missing_warehouse_code": "Missing warehouse",
+        "missing_product_key": "Product code or name required",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_unit_price": "Invalid unit price",
+        "invalid_line_discount": "Invalid line discount",
+        "invalid_order_discount": "Invalid order discount",
+        "inconsistent_headers_within_group": "Headers differ within group",
+        "unknown_warehouse": "Unknown warehouse"
+      }
+    }
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
@@ -830,6 +1076,8 @@
     "detailTitle": "Purchase Order #{{number}}",
     "note": "Note",
     "costPricePaid": "Cost price paid",
+    "applySupplierDiscount": "Apply supplier discount",
+    "invalidLineDiscount": "Line discount must be between 0 and 100.",
     "previousCostPrice": "Previous cost price",
     "costPriceUpdated": "Default updated",
     "cancelConfirmTitle": "Cancel Purchase Order",
@@ -840,8 +1088,80 @@
     "cancelSettlementReverse": "Reverse payments on the ledger (default)",
     "cancelSettlementRetain": "Keep total paid as supplier wallet credit (one ledger line)",
     "emptyOrders": "No purchase orders match your filters.",
+    "historicalImportBadge": "Historical import",
+    "historicalFilterLabel": "Import data",
+    "historicalFilterAll": "All purchase orders",
+    "historicalFilterExclude": "Exclude historical imports",
+    "historicalFilterOnly": "Historical import only",
     "selectSupplier": "Supplier",
-    "supplierBalance": "Supplier balance"
+    "supplierBalance": "Supplier balance",
+    "exportCsvHint": "Download the purchase orders in the current list as CSV (one row per line; same columns as import).",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import purchase orders from CSV",
+      "modeIntro": "Choose how imported rows should behave before you upload a file.",
+      "modeLiveTitle": "Live (draft PO)",
+      "modeLiveDesc": "Creates draft purchase orders. Stock and supplier balance only change when you confirm and receive from the PO screen.",
+      "modeHistoricalTitle": "Historical (analysis only)",
+      "modeHistoricalDesc": "Creates received POs for purchase analytics only. Does not receive stock, update catalog costs, or post supplier ledger/register entries.",
+      "continueToUpload": "Continue",
+      "backToMode": "Back",
+      "uploadHint": "One row per line. The same group id on every row of one purchase order.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map columns. Group id, warehouse, supplier phone, quantity, and cost price are required. Map at least one of product code or product name.",
+      "productKeyHint": "Map product code or product name (or both) so each line resolves to a catalog item.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review rows ({{mode}}).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import purchase orders",
+      "ingesting": "Importing {{done}} / {{total}} PO group(s)…",
+      "fieldGroupId": "Group id",
+      "fieldWarehouseCode": "Warehouse (code or name)",
+      "fieldSupplierPhone": "Supplier phone",
+      "fieldSupplierName": "Supplier name",
+      "fieldPoNote": "PO note",
+      "fieldOrderDiscountRate": "PO discount % (0–100)",
+      "fieldPoDate": "Document date (optional)",
+      "fieldProductCode": "Product code",
+      "fieldProductName": "Product name",
+      "fieldBrandName": "Brand (new products)",
+      "fieldCategoryName": "Category (new products)",
+      "fieldQuantity": "Quantity",
+      "fieldCostPrice": "Unit cost",
+      "fieldLineDiscountRate": "Line discount % (0–100)",
+      "fieldUpdateDefaultCostPrice": "Update default cost on receive (yes/no)",
+      "fieldCatalogCustomerPrice": "Catalog retail (with full catalog update)",
+      "fieldCatalogBusinessPrice": "Catalog wholesale (with full catalog update)",
+      "toastAllOk": "Imported {{count}} PO group(s).",
+      "toastPartial": "Imported {{ok}} group(s); {{fail}} failed.",
+      "toastAllFailed": "No groups imported ({{count}} failed).",
+      "groupFailed": "Group",
+      "errorGeneric": "Import failed",
+      "errorUnknownWarehouse": "Warehouse not found.",
+      "errorSupplierPhone": "Supplier phone is required.",
+      "issue": {
+        "missing_group_id": "Missing group id",
+        "missing_warehouse_code": "Missing warehouse",
+        "missing_product_key": "Product code or name required",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_cost_price": "Invalid cost",
+        "invalid_line_discount": "Invalid line discount",
+        "invalid_order_discount": "Invalid PO discount",
+        "missing_supplier_phone": "Missing supplier phone",
+        "inconsistent_headers_within_group": "Headers differ within group",
+        "unknown_warehouse": "Unknown warehouse"
+      }
+    }
   },
   "inventoryTransfers": {
     "title": "Stock transfers",
@@ -903,6 +1223,45 @@
     "madePayment": "Made Payment",
     "balanceHistory": "Balance History",
     "addPerson": "Add Person",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import people from CSV",
+      "uploadHint": "Choose a UTF-8 CSV file with a header row. You will match each column to a person field next.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not read this CSV file.",
+      "emptyFile": "This file has no data rows.",
+      "matchHint": "For each person field, pick the CSV column that contains it. Required fields are marked with *.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused CSV columns:",
+      "continueToPreview": "Continue to preview",
+      "backToUpload": "Choose another file",
+      "backToMatch": "Back to column match",
+      "previewHint": "Review and edit rows below. {{count}} row(s) will be imported (discarded rows are excluded). Fix warnings before importing.",
+      "colStatus": "Status",
+      "fieldInitialBalance": "Opening balance",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "startIngesting": "Start importing",
+      "ingesting": "Importing… {{done}} / {{total}}",
+      "toastAllOk": "Imported {{count}} person(s).",
+      "toastPartial": "Imported {{ok}} person(s); {{fail}} failed.",
+      "toastAllFailed": "Import failed for all {{count}} row(s).",
+      "issue": {
+        "missing_name": "Name required",
+        "name_too_short": "Name too short",
+        "missing_phone": "Phone required",
+        "missing_roles": "Role required",
+        "invalid_roles": "Invalid role text",
+        "invalid_discount": "Invalid discount",
+        "invalid_credit": "Invalid credit limit",
+        "invalid_initial_balance": "Invalid opening balance",
+        "duplicate_in_file": "Duplicate phone in file",
+        "duplicate_in_db": "Phone already in system"
+      }
+    },
+    "exportCsvHint": "Download all people in the current list as CSV (same columns as import).",
     "editPerson": "Edit Person",
     "deletePerson": "Delete Person",
     "viewProfile": "View Profile",
@@ -1087,7 +1446,51 @@
     "toastOperationNoteSaved": "Note updated",
     "operationNoteReadOnly": "Editing payment notes is turned off in Control settings.",
     "notePreview": "Preview",
-    "operationNoteLinkHint": "Order and PO references like O-12 or PO-3 link when the note ends with a document marker from the system."
+    "operationNoteLinkHint": "Order and PO references like O-12 or PO-3 link when the note ends with a document marker from the system.",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import standalone payments from CSV",
+      "uploadHint": "Each row is one payment to a person (received or made), with one tender method. Match columns below; person can be found by phone or unique name.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map CSV columns to payment fields. Type, method, and amount are required. Map at least one of phone or name.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import payments",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldPersonPhone": "Person phone",
+      "fieldPersonName": "Person name",
+      "fieldPaymentType": "Direction (payment_in / payment_out)",
+      "fieldPaymentMethod": "Method (cash, visa, …)",
+      "fieldAmount": "Amount",
+      "fieldNote": "Note",
+      "fieldRegisterWarehouse": "Register warehouse (code or name)",
+      "needPersonColumn": "Map at least one column to person phone or person name.",
+      "exportStandaloneHint": "Export standalone person payments (not tied to orders) for backup or migration.",
+      "toastAllOk": "Recorded {{count}} payment(s).",
+      "toastPartial": "Recorded {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No payments recorded ({{count}} failed).",
+      "issue": {
+        "missing_person": "Phone or name required",
+        "ambiguous_name": "Multiple people match",
+        "person_not_found": "Person not found",
+        "invalid_type": "Invalid direction",
+        "invalid_method": "Invalid method",
+        "invalid_amount": "Invalid amount",
+        "warehouse_missing": "Register warehouse required",
+        "warehouse_not_found": "Warehouse not found"
+      }
+    }
   },
   "register": {
     "title": "Register",
@@ -1136,7 +1539,47 @@
     "disableRegisterConfirm": "Turn off register",
     "disableRegisterKeep": "Keep register",
     "disableRegisterNotAllowed": "The primary or default warehouse must keep a register.",
-    "disableRegisterWarehouseMissing": "Warehouse not found."
+    "disableRegisterWarehouseMissing": "Warehouse not found.",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import register movements from CSV",
+      "uploadHint": "Each row is a deposit (+) or withdrawal (−) at a register warehouse, by tender type.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map columns: action (deposit/withdraw), warehouse code or name, method, amount, optional note.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import movements",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldAction": "Action (deposit / withdraw)",
+      "fieldWarehouse": "Warehouse (code or name)",
+      "fieldPaymentMethod": "Method",
+      "fieldAmount": "Amount",
+      "fieldNote": "Note",
+      "exportActivityHint": "Download recent register activity for this location as CSV.",
+      "toastAllOk": "Imported {{count}} movement(s).",
+      "toastPartial": "Imported {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No movements imported ({{count}} failed).",
+      "issue": {
+        "invalid_action": "Invalid action",
+        "invalid_method": "Invalid method",
+        "invalid_amount": "Invalid amount",
+        "warehouse_missing": "Warehouse required",
+        "warehouse_not_found": "Warehouse not found",
+        "deposit_forbidden": "Deposit not allowed",
+        "withdraw_forbidden": "Withdraw not allowed"
+      }
+    }
   },
   "reports": {
     "title": "Reports",
@@ -1173,8 +1616,11 @@
       "catalog": "Catalog & inventory",
       "commerce": "Purchasing & sales",
       "money": "People, payments & register",
-      "insights": "Reports & notes"
+      "insights": "Reports & notes",
+      "security": "Sign-in, members & security"
     },
+    "securityCallout": "Operators sign in with Supabase Auth.",
+    "securityCalloutHint": "Open the “Sign-in, members & security” card below for setup and best practices.",
     "areas": {
       "nav": {
         "title": "Navigation & admin",
@@ -1293,7 +1739,131 @@
           "Rich notes on orders, POs, and people with @mentions",
           "Links to related documents when supported"
         ]
+      },
+      "security": {
+        "title": "Sign-in, members & security",
+        "items": [
+          "Every operator is a Supabase Auth user; the app loads a profiles row (is_admin, feature_overrides) after sign-in.",
+          "Only admins may open /admin and /control; route checks use profiles.is_admin, not Control toggles alone.",
+          "Control toggles and localStorage shape default UI for this browser; non-admin permissions also merge feature_overrides from the server.",
+          "Sign-in uses a synthetic email: username@members.stockpilot.local — create the Auth user with that email pattern.",
+          "Never put the service role key or plaintext operator passwords in VITE_* env or bundled client code; member creation uses the create-member Edge Function with the service role on the server.",
+          "Bootstrap the fixed admin in Supabase Dashboard (Auth → Users) or a one-off script: set user_metadata username and is_admin true; password only in Auth.",
+          "Logout clears the session from this browser; see Supabase Auth docs for refresh tokens and RLS."
+        ]
       }
+    }
+  },
+  "migrationGuide": {
+    "title": "Migration checklist",
+    "browserTitle": "Migration checklist | StockPilot",
+    "subtitle": "Move from your old system into StockPilot in a safe order. Check items off as you go.",
+    "intro": "Follow these steps to load master data before documents and money. Use CSV import where the app offers it; export from each list first if you want a column template. You can leave this page anytime—your checks are saved in this browser.",
+    "savedLocallyHint": "Progress is stored only on this device (localStorage). It is not synced to your account or other browsers.",
+    "progressLabel": "{{done}} of {{total}} steps complete",
+    "markAllComplete": "Mark all complete",
+    "resetProgress": "Reset progress",
+    "resetConfirmTitle": "Reset migration checklist?",
+    "resetConfirmDescription": "This clears all checkmarks in this browser. It does not delete any data in StockPilot.",
+    "resetConfirm": "Reset",
+    "cancel": "Cancel",
+    "markAllConfirmTitle": "Mark every step complete?",
+    "markAllConfirmDescription": "Use this if you have already finished migration and only want the checklist to show 100% complete.",
+    "markAllConfirm": "Mark all",
+    "documentationCallout": "Migrating from another system?",
+    "documentationLink": "Open the migration checklist",
+    "phasePrepare": {
+      "title": "1. Prepare"
+    },
+    "phaseFoundation": {
+      "title": "2. Locations & registers"
+    },
+    "phaseMaster": {
+      "title": "3. Master data (catalog & people)"
+    },
+    "phaseOptional": {
+      "title": "4. Optional: opening balances"
+    },
+    "phaseTransactions": {
+      "title": "5. Purchase orders & sales orders"
+    },
+    "phaseMoney": {
+      "title": "6. Register & cash"
+    },
+    "phaseCutover": {
+      "title": "7. Go live"
+    },
+    "steps": {
+      "plan_exports": {
+        "title": "Export and clean data from the old system",
+        "body": "Pull customer/supplier lists with consistent phone numbers (used for matching), product codes/SKUs, units, and any opening stock figures. Normalize dates and currencies to match how you will import. Decide what is truly “historical only” vs what you will operate going forward."
+      },
+      "env_schema": {
+        "title": "Database and app environment ready",
+        "body": "Ensure Supabase (or your hosted project) has all migrations applied so draft POs, warehouses, registers, and CSV features work. Configure environment variables and sign in. Admins may use the dashboard Connect string for schema pushes; routine data loading should stay in the app."
+      },
+      "warehouses": {
+        "title": "Create warehouses and registers",
+        "body": "Define each location with a clear code and name. Mark which warehouses have a cash register—orders, payments, and register activity depend on this. Do this before order/PO CSV so every row can map to a warehouse code."
+      },
+      "categories_brands": {
+        "title": "Categories and brands (if needed)",
+        "body": "Create categories and brands before or during product import. Product CSV can create missing brand/category names on the fly; pre-creating them keeps naming tidy."
+      },
+      "people": {
+        "title": "Import or add customers and suppliers",
+        "body": "Load People before order and PO CSV. Phone is the primary match key and is required when creating a new person from CSV. Suppliers must exist (with supplier role) before purchase order import creates linked POs."
+      },
+      "products": {
+        "title": "Import products and opening stock",
+        "body": "Use Products → Import CSV. Set opening quantities per warehouse when you want live on-hand stock from day one. Export CSV from the products page if you need a template. Resolve cost and list prices so later sales and PO lines are coherent."
+      },
+      "payments_optional": {
+        "title": "Optional: standalone payments for opening balances",
+        "body": "If you need opening customer or supplier balances on the ledger without tying to an order, use Payments → Import CSV where available. Complex split tenders from the old system are often easier to recreate in the UI than in bulk."
+      },
+      "po_csv": {
+        "title": "Purchase orders (CSV)",
+        "body": "On Purchase orders → list, use Import CSV after suppliers and products exist. Choose Live (draft) for POs you will receive in the app—stock and payables update on confirm/receive. Choose Historical for backfill analytics only (no stock or supplier ledger). Use Export CSV on the same page for column headers."
+      },
+      "orders_csv": {
+        "title": "Sales orders (CSV)",
+        "body": "On Orders → list, use Import CSV after customers and products exist. Live creates drafts—stock and register change only when you complete/checkout like a normal order. Historical adds completed orders for charts without moving stock or posting register lines. Export CSV for a matching template."
+      },
+      "register": {
+        "title": "Reconcile the register / cash drawer",
+        "body": "Historical imports do not set physical cash. After cutover, compare the Register screen to your actual drawer and use deposits or withdrawals (if your process allows) so tender balances match reality. Link payments to the correct register warehouse when recording money in."
+      },
+      "smoke_test": {
+        "title": "Smoke test in the live flows",
+        "body": "Create one small draft sale and one draft PO in the normal screens, then complete them end-to-end. Verify stock movement, person balance, and register lines match expectations before relying on bulk data."
+      },
+      "control_review": {
+        "title": "Review Control (feature flags)",
+        "body": "Open Control and confirm which CSV imports, hub shortcuts, and POS actions are enabled for your team. Turn off anything you do not want clerks to see during stabilization."
+      }
+    },
+    "importShortcut": {
+      "people": "Import people (CSV)",
+      "products": "Import products (CSV)",
+      "payments": "Import payments (CSV)",
+      "orders": "Import orders (CSV)",
+      "purchaseOrders": "Import purchase orders (CSV)",
+      "register": "Import register (CSV)"
+    },
+    "link": {
+      "warehouses": "Open Warehouses",
+      "categories": "Categories",
+      "brands": "Brands",
+      "people": "People",
+      "products": "Products",
+      "payments": "Payments",
+      "purchaseOrdersList": "Purchase orders list",
+      "ordersList": "Orders list",
+      "register": "Register",
+      "newOrder": "New order",
+      "newPo": "New purchase order",
+      "control": "Control"
     }
   },
   "errorBoundary": {

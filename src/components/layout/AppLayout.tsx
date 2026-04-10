@@ -1,8 +1,9 @@
 import { useQuery, useIsMutating } from '@tanstack/react-query'
-import { useLocation, Link } from 'react-router-dom'
+import { useLocation, Link, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Bell, Menu } from 'lucide-react'
+import { Bell, LogOut, Menu } from 'lucide-react'
 
+import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { useIsMobile } from '@/hooks/useIsMobile'
 import { getLowStockProducts } from '@/services/productService'
@@ -33,10 +34,11 @@ const pathToTitleKey: Record<string, string> = {
   '/purchase-orders': 'purchaseOrders.title',
 }
 
-export function AppLayout({ children }: { children: React.ReactNode }) {
+export function AppLayout() {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage()
   const { pathname } = useLocation()
   const { t } = useTranslation()
+  const { signOut, profile } = useAuth()
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const isMutating = useIsMutating() > 0
@@ -56,8 +58,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         ? 'reports.title'
       : pathname === '/admin/documentation'
         ? 'documentation.title'
+      : pathname === '/admin/migration'
+        ? 'migrationGuide.title'
       : pathname === '/admin/movements'
         ? 'stockMovements.title'
+      : pathname === '/admin/members/new'
+        ? 'members.newTitle'
+      : pathname === '/admin/members'
+        ? 'members.listTitle'
       : pathname.startsWith('/products/')
         ? 'products.detailTitle'
       : /^\/people\/[^/]+$/.test(pathname)
@@ -142,10 +150,23 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             >
               {currentLanguage === 'en' ? 'العربية' : 'English'}
             </button>
+
+            {profile && (
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+              >
+                <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                {t('auth.logout')}
+              </button>
+            )}
           </div>
         </header>
 
-        <main className="p-4 md:p-6 relative">{children}</main>
+        <main className="p-4 md:p-6 relative">
+          <Outlet />
+        </main>
 
         {/* Global mutation loading indicator */}
         {isMutating && (

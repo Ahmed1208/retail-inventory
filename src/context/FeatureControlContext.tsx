@@ -12,6 +12,7 @@ import {
   mergeFeatureState,
   buildDefaultFeatureState,
 } from '@/config/featureControls'
+import { useAuth } from '@/context/AuthContext'
 
 const STORAGE_KEY = 'stockpilot-feature-controls'
 
@@ -47,27 +48,38 @@ const FeatureControlContext = createContext<FeatureControlContextValue | null>(
 )
 
 export function FeatureControlProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<Record<FeatureControlId, boolean>>(() =>
-    mergeFeatureState(readStored())
-  )
+  const { profile, isAdmin, loading: authLoading } = useAuth()
+  const [storageVersion, setStorageVersion] = useState(0)
+
+  const state = useMemo(() => {
+    const stored = readStored()
+    if (authLoading) return mergeFeatureState(stored)
+    if (isAdmin) return mergeFeatureState(stored)
+    return mergeFeatureState({
+      ...stored,
+      ...(profile?.feature_overrides ?? {}),
+    })
+  }, [authLoading, isAdmin, profile?.feature_overrides, storageVersion])
 
   const setEnabled = useCallback((id: FeatureControlId, enabled: boolean) => {
-    setState((prev) => {
-      const next = { ...prev, [id]: enabled }
-      writeStored(next)
-      return next
-    })
+    const prev = mergeFeatureState(readStored())
+    const next = { ...prev, [id]: enabled }
+    writeStored(next)
+    setStorageVersion((v) => v + 1)
   }, [])
 
   const resetToDefaults = useCallback(() => {
     const next = buildDefaultFeatureState()
     writeStored(next)
-    setState(next)
+    setStorageVersion((v) => v + 1)
   }, [])
 
   const isEnabled = useCallback(
-    (id: FeatureControlId) => state[id] !== false,
-    [state]
+    (id: FeatureControlId) => {
+      if (isAdmin) return true
+      return state[id] !== false
+    },
+    [isAdmin, state]
   )
 
   const value = useMemo(

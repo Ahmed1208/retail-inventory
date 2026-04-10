@@ -1,7 +1,14 @@
 import { useEffect } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeftRight, BookOpen, LayoutDashboard, LineChart } from 'lucide-react'
+import {
+  ArrowLeftRight,
+  BookOpen,
+  LayoutDashboard,
+  LineChart,
+  ListChecks,
+  Users,
+} from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -20,6 +27,12 @@ const sections = [
     feature: 'sidebar.documentation' as const,
   },
   {
+    to: '/admin/migration',
+    icon: ListChecks,
+    key: 'nav.migrationGuide',
+    feature: 'admin.migrationGuide' as const,
+  },
+  {
     to: '/admin/reports',
     icon: LineChart,
     key: 'nav.reports',
@@ -31,22 +44,30 @@ const sections = [
     key: 'nav.stockMovements',
     feature: 'inventory.hubMovements' as const,
   },
+  {
+    to: '/admin/members',
+    icon: Users,
+    key: 'nav.members',
+    feature: 'sidebar.admin' as const,
+  },
 ] as const
 
 export function AdminHub() {
   const { t } = useTranslation()
-  const canAdmin = useFeatureEnabled('sidebar.admin')
   const showDashboard = useFeatureEnabled('sidebar.dashboard')
   const showDocs = useFeatureEnabled('sidebar.documentation')
   const showReports = useFeatureEnabled('sidebar.reports')
 
   const showMovements = useFeatureEnabled('inventory.hubMovements')
+  const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
 
   const flags = {
     'sidebar.dashboard': showDashboard,
     'sidebar.documentation': showDocs,
     'sidebar.reports': showReports,
     'inventory.hubMovements': showMovements,
+    'admin.migrationGuide': showMigrationGuide,
+    'sidebar.admin': true,
   } as const
 
   const visibleSections = sections.filter((s) => flags[s.feature])
@@ -57,8 +78,6 @@ export function AdminHub() {
       document.title = 'StockPilot'
     }
   }, [t])
-
-  if (!canAdmin) return <Navigate to="/admin/dashboard" replace />
 
   return (
     <div className="space-y-6">

@@ -19,8 +19,85 @@
     "register": "الصندوق",
     "admin": "الإدارة",
     "documentation": "التوثيق",
-    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو التقارير من هنا.",
-    "backToAdmin": "العودة للإدارة"
+    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو قائمة الهجرة أو التقارير من هنا.",
+    "migrationGuide": "قائمة الهجرة",
+    "backToAdmin": "العودة للإدارة",
+    "members": "الأعضاء"
+  },
+  "auth": {
+    "loginTitle": "تسجيل الدخول",
+    "loginSubtitle": "استخدم اسم المستخدم وكلمة مرور المشغّل.",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "signIn": "دخول",
+    "logout": "خروج"
+  },
+  "members": {
+    "listTitle": "الأعضاء",
+    "listSubtitle": "المشغّلون الذين يمكنهم تسجيل الدخول إلى StockPilot.",
+    "addMember": "إضافة عضو",
+    "newTitle": "إضافة عضو",
+    "newSubtitle": "إنشاء بيانات الدخول واختيار صلاحيات المشغّل.",
+    "backToList": "العودة إلى الأعضاء",
+    "fieldUsername": "اسم المستخدم",
+    "fieldPassword": "كلمة المرور",
+    "fieldPasswordConfirm": "تأكيد كلمة المرور",
+    "next": "التالي",
+    "back": "رجوع",
+    "reviewTitle": "مراجعة",
+    "reviewUsername": "اسم المستخدم",
+    "reviewPermissionsHint": "الصلاحيات تعتمد على إجاباتك؛ الإدارة والتحكم يبقيان معطّلين للأعضاء الجدد.",
+    "createMember": "إنشاء العضو",
+    "createSuccess": "تم إنشاء العضو.",
+    "loadError": "تعذّر تحميل الأعضاء.",
+    "empty": "لا يوجد أعضاء بعد.",
+    "colUsername": "اسم المستخدم",
+    "colAdmin": "مسؤول",
+    "colCreated": "تاريخ الإنشاء",
+    "errorUsername": "أدخل اسم مستخدم (حروف وأرقام ونقطة وشرطة سفلية وشرطة؛ حرفان على الأقل).",
+    "errorPasswordShort": "كلمة المرور يجب أن تكون 8 أحرف على الأقل.",
+    "errorPasswordMatch": "كلمتا المرور غير متطابقتين.",
+    "questionProgress": "سؤال {{current}} من {{total}}",
+    "onboard": {
+      "q": {
+        "salesPos": {
+          "title": "المبيعات ونقطة البيع",
+          "desc": "السماح بمركز الطلبات وطلبات جديدة وتعديل المسودات والدفع وطباعة الفواتير؟"
+        },
+        "ordersManage": {
+          "title": "إدارة الطلبات",
+          "desc": "السماح بإلغاء الطلبات وإضافة المدفوعات وتعديل ملاحظات الطلب؟"
+        },
+        "ordersCsv": {
+          "title": "CSV للطلبات",
+          "desc": "السماح باستيراد وتصدير الطلبات عبر CSV؟"
+        },
+        "purchaseOrders": {
+          "title": "أوامر الشراء (الأساس)",
+          "desc": "السماح بقائمة أوامر الشراء وإنشائها واستلام المخزون وتعديل الملاحظات؟"
+        },
+        "poAdvanced": {
+          "title": "أوامر الشراء (متقدم)",
+          "desc": "السماح بتجاوز التكلفة وإلغاء أوامر الشراء واستيراد/تصدير CSV؟"
+        },
+        "inventoryCatalog": {
+          "title": "الكتالوج والمخزون",
+          "desc": "السماح بإدارة المنتجات والفئات والعلامات وتعديلات الكمية؟"
+        },
+        "inventoryTransfers": {
+          "title": "تحويلات المخزون",
+          "desc": "السماح بإنشاء وعرض التحويلات بين المستودعات؟"
+        },
+        "peoplePayments": {
+          "title": "الأشخاص والمدفوعات والصندوق",
+          "desc": "السماح بإدارة الأشخاص وتسجيل المدفوعات وسجل المدفوعات وإيداع/سحب الصندوق؟"
+        },
+        "reportsMovements": {
+          "title": "التقارير والحركات",
+          "desc": "السماح بتصدير CSV للتقارير واختصار حركات المخزون؟"
+        }
+      }
+    }
   },
   "common": {
     "search": "بحث",
@@ -42,7 +119,8 @@
     "submit": "إرسال",
     "close": "إغلاق",
     "yes": "نعم",
-    "no": "لا"
+    "no": "لا",
+    "exportCsv": "تصدير CSV"
   },
   "notes": {
     "editNote": "تعديل الملاحظة",
@@ -115,7 +193,8 @@
       "orders": "طلبات المبيعات",
       "reports": "التقارير",
       "paymentsApp": "المدفوعات",
-      "register": "الصندوق"
+      "register": "الصندوق",
+      "adminHub": "مركز الإدارة"
     },
     "sidebar": {
       "groupNav": "روابط الشريط الجانبي",
@@ -149,7 +228,7 @@
       },
       "admin": {
         "title": "قائمة الإدارة",
-        "desc": "إظهار رابط الإدارة في الشريط الجانبي؛ يفتح مركز الإدارة باختصارات لوحة التحكم والتوثيق والتقارير."
+        "desc": "إظهار رابط الإدارة في الشريط الجانبي؛ يفتح مركز الإدارة باختصارات لوحة التحكم والتوثيق وقائمة الهجرة والتقارير."
       },
       "documentation": {
         "title": "صفحة التوثيق",
@@ -158,6 +237,13 @@
       "reports": {
         "title": "اختصار التقارير (الشريط الجانبي)",
         "desc": "إظهار رابط التقارير تحت الإدارة (يفتح تبويب التقارير في لوحة التحكم)."
+      }
+    },
+    "admin": {
+      "group": "الهجرة والإعداد",
+      "migrationGuide": {
+        "title": "قائمة الهجرة (الإدارة)",
+        "desc": "إظهار بطاقة قائمة الهجرة في مركز الإدارة ومسار /admin/migration مع دليل ترتيب الاستيراد القابل للاستئناف."
       }
     },
     "header": {
@@ -359,6 +445,14 @@
       "editNote": {
         "title": "تعديل ملاحظة أمر الشراء",
         "desc": "السماح بتعديل الملاحظة المحفوظة في صفحة تفاصيل أمر الشراء (أيقونة القلم والحفظ)."
+      },
+      "importCsv": {
+        "title": "استيراد أوامر شراء من CSV",
+        "desc": "إظهار «استيراد CSV» في قائمة أوامر الشراء (مطابقة الأعمدة، مسودة حية أو لقطة تاريخية)."
+      },
+      "exportCsv": {
+        "title": "تصدير أوامر الشراء إلى CSV",
+        "desc": "إظهار «تصدير CSV» في قائمة أوامر الشراء (صف لكل بند، نفس شكل الاستيراد)."
       }
     },
     "inventoryTransfers": {
@@ -411,6 +505,14 @@
       "editNote": {
         "title": "تعديل ملاحظة الطلب",
         "desc": "تعديل حقل الملاحظة في صفحة التفاصيل."
+      },
+      "importCsv": {
+        "title": "استيراد طلبات مبيعات من CSV",
+        "desc": "إظهار «استيراد CSV» في قائمة الطلبات (مطابقة الأعمدة، مسودات حية أو لقطات تاريخية)."
+      },
+      "exportCsv": {
+        "title": "تصدير طلبات المبيعات إلى CSV",
+        "desc": "إظهار «تصدير CSV» في قائمة الطلبات (تنسيق طويل، صف لكل بند)."
       }
     },
     "reports": {
@@ -474,6 +576,15 @@
     "backToList": "العودة إلى المنتجات",
     "detailSectionInfo": "تفاصيل المنتج",
     "detailUpdated": "آخر تحديث",
+    "detailSectionByWarehouse": "حسب الموقع",
+    "detailByWarehouseHint": "الكمية المتوفرة حالية. المبيعات والمشتريات تستخدم نفس نطاق التواريخ كتحليلات المبيعات أدناه (طلبات مكتملة وأوامر شراء مستلمة).",
+    "detailColLocation": "الموقع",
+    "detailColQtyOnHand": "الكمية المتوفرة",
+    "detailColSalesUnits": "مبيعات (وحدات)",
+    "detailColSalesRevenue": "مبيعات (إيراد)",
+    "detailColPurchaseUnits": "مشتريات (وحدات)",
+    "detailColPurchaseAmount": "مشتريات (مبلغ)",
+    "detailRowTotal": "الإجمالي",
     "detailSectionSales": "تحليلات المبيعات",
     "detailKpiUnitsSold": "الوحدات المباعة",
     "detailKpiLineRevenue": "إيراد السطور",
@@ -509,7 +620,67 @@
     "grossProfitSoldHint": "من الطلبات المكتملة فقط: إيراد السطور ناقص الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). يُستخدم WAC الحالي كتقريب لتكلفة البضاعة المباعة.",
     "detailPricingTableTitle": "التسعير والهوامش",
     "totalProfitFromSales": "ربح إجمالي (المبيعات)",
-    "totalProfitFromSalesHint": "جميع الطلبات المكتملة (تجزئة + جملة): إجمالي إيراد السطور ناقص إجمالي الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). نفس منطق صفوف الجدول؛ WAC تقدير لتكلفة البضاعة."
+    "totalProfitFromSalesHint": "جميع الطلبات المكتملة (تجزئة + جملة): إجمالي إيراد السطور ناقص إجمالي الوحدات المباعة × متوسط تكلفة الوحدة الحالي (WAC). نفس منطق صفوف الجدول؛ WAC تقدير لتكلفة البضاعة.",
+    "exportCsvHint": "تنزيل قائمة المنتجات مع الأسعار والكميات. اختر مستودعاً واحداً أو كل المواقع.",
+    "qtyAtWarehouseCode": "الكمية ({{code}})",
+    "defaultWarehouseForAdjustments": "المستودع الافتراضي لتعديلات المخزون",
+    "exportCsvDialog": {
+      "title": "تصدير المنتجات كملف CSV",
+      "description": "اختر ما إذا كانت الكميات لمستودع واحد أم لكل المستودعات (عمود لكل رمز موقع).",
+      "scopeLabel": "الكميات المراد تصديرها",
+      "scopeAll": "كل المستودعات (عمود لكل رمز)",
+      "scopeOne": "مستودع واحد",
+      "selectWarehouse": "المستودع",
+      "export": "تنزيل CSV"
+    },
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد منتجات من CSV",
+      "uploadHint": "ارفع ملف CSV بترميز UTF-8. ستربط الأعمدة بحقول المنتج؛ تُنشأ العلامات والفئات الجديدة تلقائياً عند الحاجة.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر تحليل هذا الملف.",
+      "emptyFile": "لا توجد صفوف بيانات في الملف.",
+      "matchHint": "طابق كل حقل منتج مع عمود من الملف. الحقول المطلوبة مُعلَّمة بـ *.",
+      "notImported": "— لا يُستورد —",
+      "sample": "عيّنة: {{value}}",
+      "sampleEmpty": "لا عيّنة في الصفوف الأولى",
+      "unusedColumns": "أعمدة غير مستخدمة:",
+      "previewHint": "راجع {{count}} صف(وفق). أصلح التحذيرات أو تجاهل الصفوف.",
+      "colStatus": "الحالة",
+      "discard": "تجاهل",
+      "discarded": "متجاهل",
+      "backToUpload": "رجوع",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToMatch": "رجوع للربط",
+      "startIngesting": "استيراد المنتجات",
+      "ingesting": "جاري الاستيراد {{done}} / {{total}}…",
+      "fieldProductCode": "معرّف المنتج / الكود",
+      "fieldBrandName": "العلامة (الاسم)",
+      "fieldCategoryName": "الفئة (الاسم)",
+      "fieldQuantity": "الكمية (المستودع المحدد)",
+      "importWarehouseLabel": "تطبيق الكميات المستوردة على",
+      "importWarehouseHint": "عمود الكمية في ملفك يحدّث المخزون في هذا الموقع فقط. حقول الكتالوج مشتركة بين كل المستودعات.",
+      "stockMovementNote": "استيراد CSV — مخزون أولي",
+      "noWarehouses": "أضف مستودعاً واحداً على الأقل قبل استيراد منتجات بكميات.",
+      "fieldLowStock": "حد المخزون المنخفض",
+      "fieldDescription": "الوصف",
+      "toastAllOk": "تم استيراد {{count}} منتج(ات).",
+      "toastPartial": "تم {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "لم يُستورد أي منتج ({{count}} فشل).",
+      "issue": {
+        "missing_name": "الاسم مطلوب",
+        "name_too_short": "الاسم قصير جداً",
+        "invalid_customer_price": "سعر التجزئة غير صالح",
+        "invalid_business_price": "سعر الجملة غير صالح",
+        "invalid_cost_price": "التكلفة غير صالحة",
+        "invalid_quantity": "كمية غير صالحة",
+        "invalid_low_stock": "حد المخزون غير صالح",
+        "duplicate_code_in_file": "كود مكرر في الملف",
+        "duplicate_code_in_db": "الكود موجود",
+        "duplicate_name_in_file": "اسم مكرر في الملف",
+        "duplicate_name_in_db": "الاسم موجود"
+      }
+    }
   },
   "categories": {
     "title": "الفئات",
@@ -732,6 +903,11 @@
     "pendingOrders": "قيد الانتظار",
     "cancelledOrders": "ملغي",
     "emptyOrders": "لا توجد طلبات تطابق الفلاتر.",
+    "historicalImportBadge": "استيراد تاريخي",
+    "historicalFilterLabel": "بيانات الاستيراد",
+    "historicalFilterAll": "كل الطلبات",
+    "historicalFilterExclude": "بدون الاستيراد التاريخي",
+    "historicalFilterOnly": "استيراد تاريخي فقط",
     "customer": "عميل",
     "selectCustomer": "عميل (اختياري)",
     "searchPeople": "ابحث عن الأشخاص...",
@@ -740,7 +916,77 @@
     "availableCredit": "الائتمان المتاح",
     "creditBlocked": "هذا الطلب يتجاوز حد الائتمان للعميل.",
     "subtotal": "المجموع الفرعي",
-    "discountedTotal": "بعد الخصم"
+    "discountedTotal": "بعد الخصم",
+    "exportCsvHint": "تنزيل الطلبات في القائمة الحالية كملف CSV (صف لكل بند؛ نفس أعمدة الاستيراد).",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد طلبات مبيعات من CSV",
+      "modeIntro": "اختر سلوك الصفوف المستوردة. يمكنك تغيير ذلك قبل رفع الملف.",
+      "modeLiveTitle": "حي (مسودات)",
+      "modeLiveDesc": "ينشئ مسودات طلبات عادية. المخزون والصندوق يتأثران فقط عند التأكيد أو الإتمام أو الدفع كأي طلب آخر.",
+      "modeHistoricalTitle": "تاريخي (تحليل فقط)",
+      "modeHistoricalDesc": "ينشئ طلبات مكتملة للمخططات والتقارير فقط. لا يحرك المخزون ولا يسجل صفوف صندوق/دفتر.",
+      "continueToUpload": "متابعة",
+      "backToMode": "رجوع",
+      "uploadHint": "صف لكل بند. نفس معرّف المجموعة لكل صفوف طلب واحد.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر تحليل ملف CSV.",
+      "emptyFile": "الملف لا يحتوي صفوف بيانات.",
+      "matchHint": "اربط أعمدة CSV بالحقول. معرّف المجموعة، نوع الطلب، المستودع، الكمية، وسعر الوحدة مطلوبة. اربط رمز المنتج أو الاسم على الأقل.",
+      "productKeyHint": "اربط عمود رمز المنتج أو الاسم (أو كليهما) لكل بند.",
+      "notImported": "— غير مستورد —",
+      "sample": "عينة: {{value}}",
+      "sampleEmpty": "لا عينة في الصفوف الأولى",
+      "unusedColumns": "أعمدة غير مستخدمة:",
+      "previewHint": "راجع الصفوف قبل الاستيراد ({{mode}}).",
+      "colStatus": "الحالة",
+      "discard": "تجاهل",
+      "discarded": "متجاهل",
+      "backToUpload": "رجوع",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToMatch": "رجوع للربط",
+      "startIngesting": "استيراد الطلبات",
+      "ingesting": "جاري الاستيراد {{done}} / {{total}} مجموعة طلب…",
+      "fieldGroupId": "معرّف المجموعة (نفسه لكل بنود الطلب)",
+      "fieldOrderType": "نوع الطلب (تجزئة / جملة)",
+      "fieldWarehouseCode": "المستودع (رمز أو اسم)",
+      "fieldCustomerPhone": "هاتف العميل",
+      "fieldCustomerName": "اسم العميل",
+      "fieldOrderNote": "ملاحظة الطلب",
+      "fieldOrderDiscountRate": "خصم الطلب % (0–100)",
+      "fieldOrderDate": "تاريخ المستند (اختياري، تاريخي)",
+      "fieldProductCode": "رمز المنتج",
+      "fieldProductName": "اسم المنتج",
+      "fieldBrandName": "العلامة (منتجات جديدة)",
+      "fieldCategoryName": "الفئة (منتجات جديدة)",
+      "fieldQuantity": "الكمية",
+      "fieldUnitPrice": "سعر الوحدة",
+      "fieldLineDiscountRate": "خصم السطر % (0–100)",
+      "fieldProductCustomerPrice": "سعر التجزئة (منتج جديد)",
+      "fieldProductBusinessPrice": "سعر الجملة (منتج جديد)",
+      "fieldProductCostPrice": "التكلفة (منتج جديد)",
+      "toastAllOk": "تم استيراد {{count}} مجموعة طلب.",
+      "toastPartial": "تم استيراد {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "لم يُستورد شيء ({{count}} فشل).",
+      "groupFailed": "المجموعة",
+      "errorGeneric": "فشل الاستيراد",
+      "errorUnknownWarehouse": "لم يُعثر على المستودع.",
+      "errorInvalidOrderType": "نوع الطلب يجب أن يكون تجزئة أو جملة.",
+      "errorCustomerNameNoPhone": "اسم عميل بدون هاتف: أضف عمود هاتف أو استخدم عميلاً واحداً مطابقاً في الأشخاص.",
+      "issue": {
+        "missing_group_id": "مفقود معرّف المجموعة",
+        "missing_order_type": "مفقود نوع الطلب",
+        "invalid_order_type": "نوع طلب غير صالح",
+        "missing_warehouse_code": "مفقود المستودع",
+        "missing_product_key": "رمز أو اسم المنتج مطلوب",
+        "invalid_quantity": "كمية غير صالحة",
+        "invalid_unit_price": "سعر وحدة غير صالح",
+        "invalid_line_discount": "خصم سطر غير صالح",
+        "invalid_order_discount": "خصم طلب غير صالح",
+        "inconsistent_headers_within_group": "ترويسات مختلفة داخل المجموعة",
+        "unknown_warehouse": "مستودع غير معروف"
+      }
+    }
   },
   "purchaseOrders": {
     "title": "أوامر الشراء",
@@ -830,6 +1076,8 @@
     "detailTitle": "أمر شراء #{{number}}",
     "note": "ملاحظة",
     "costPricePaid": "سعر التكلفة المدفوع",
+    "applySupplierDiscount": "تطبيق خصم المورد",
+    "invalidLineDiscount": "يجب أن يكون خصم السطر بين 0 و 100.",
     "previousCostPrice": "سعر التكلفة السابق",
     "costPriceUpdated": "تم تحديث الافتراضي",
     "cancelConfirmTitle": "إلغاء أمر الشراء",
@@ -840,8 +1088,80 @@
     "cancelSettlementReverse": "عكس المدفوعات في الدفتر (افتراضي)",
     "cancelSettlementRetain": "الإبقاء على إجمالي المدفوع كرصيد محفظة للمورد (سطر واحد في الدفتر)",
     "emptyOrders": "لا توجد أوامر شراء تطابق الفلاتر.",
+    "historicalImportBadge": "استيراد تاريخي",
+    "historicalFilterLabel": "بيانات الاستيراد",
+    "historicalFilterAll": "كل أوامر الشراء",
+    "historicalFilterExclude": "بدون الاستيراد التاريخي",
+    "historicalFilterOnly": "استيراد تاريخي فقط",
     "selectSupplier": "مورد",
-    "supplierBalance": "رصيد المورد"
+    "supplierBalance": "رصيد المورد",
+    "exportCsvHint": "تنزيل أوامر الشراء في القائمة الحالية كملف CSV (صف لكل بند؛ نفس أعمدة الاستيراد).",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد أوامر شراء من CSV",
+      "modeIntro": "اختر سلوك الصفوف قبل رفع الملف.",
+      "modeLiveTitle": "حي (مسودة أمر شراء)",
+      "modeLiveDesc": "ينشئ مسودات أوامر شراء. المخزون ورصيد المورد يتأثران فقط عند التأكيد والاستلام من شاشة أمر الشراء.",
+      "modeHistoricalTitle": "تاريخي (تحليل فقط)",
+      "modeHistoricalDesc": "ينشئ أوامر شراء مستلمة لتحليلات الشراء فقط. لا يستلم مخزوناً ولا يحدّث تكاليف الكتالوج ولا يسجل دفتر المورد/الصندوق.",
+      "continueToUpload": "متابعة",
+      "backToMode": "رجوع",
+      "uploadHint": "صف لكل بند. نفس معرّف المجموعة لكل صفوف أمر شراء واحد.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر تحليل ملف CSV.",
+      "emptyFile": "الملف لا يحتوي صفوف بيانات.",
+      "matchHint": "اربط الأعمدة. المجموعة، المستودع، هاتف المورد، الكمية، وتكلفة الوحدة مطلوبة. اربط رمز المنتج أو الاسم.",
+      "productKeyHint": "اربط رمز المنتج أو الاسم (أو كليهما).",
+      "notImported": "— غير مستورد —",
+      "sample": "عينة: {{value}}",
+      "sampleEmpty": "لا عينة في الصفوف الأولى",
+      "unusedColumns": "أعمدة غير مستخدمة:",
+      "previewHint": "راجع الصفوف ({{mode}}).",
+      "colStatus": "الحالة",
+      "discard": "تجاهل",
+      "discarded": "متجاهل",
+      "backToUpload": "رجوع",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToMatch": "رجوع للربط",
+      "startIngesting": "استيراد أوامر الشراء",
+      "ingesting": "جاري الاستيراد {{done}} / {{total}} مجموعة أمر شراء…",
+      "fieldGroupId": "معرّف المجموعة",
+      "fieldWarehouseCode": "المستودع (رمز أو اسم)",
+      "fieldSupplierPhone": "هاتف المورد",
+      "fieldSupplierName": "اسم المورد",
+      "fieldPoNote": "ملاحظة أمر الشراء",
+      "fieldOrderDiscountRate": "خصم أمر الشراء % (0–100)",
+      "fieldPoDate": "تاريخ المستند (اختياري)",
+      "fieldProductCode": "رمز المنتج",
+      "fieldProductName": "اسم المنتج",
+      "fieldBrandName": "العلامة (منتجات جديدة)",
+      "fieldCategoryName": "الفئة (منتجات جديدة)",
+      "fieldQuantity": "الكمية",
+      "fieldCostPrice": "تكلفة الوحدة",
+      "fieldLineDiscountRate": "خصم السطر % (0–100)",
+      "fieldUpdateDefaultCostPrice": "تحديث التكلفة الافتراضية عند الاستلام (نعم/لا)",
+      "fieldCatalogCustomerPrice": "سعر التجزئة (مع تحديث كامل للكتالوج)",
+      "fieldCatalogBusinessPrice": "سعر الجملة (مع تحديث كامل للكتالوج)",
+      "toastAllOk": "تم استيراد {{count}} مجموعة أمر شراء.",
+      "toastPartial": "تم استيراد {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "لم يُستورد شيء ({{count}} فشل).",
+      "groupFailed": "المجموعة",
+      "errorGeneric": "فشل الاستيراد",
+      "errorUnknownWarehouse": "لم يُعثر على المستودع.",
+      "errorSupplierPhone": "هاتف المورد مطلوب.",
+      "issue": {
+        "missing_group_id": "مفقود معرّف المجموعة",
+        "missing_warehouse_code": "مفقود المستودع",
+        "missing_product_key": "رمز أو اسم المنتج مطلوب",
+        "invalid_quantity": "كمية غير صالحة",
+        "invalid_cost_price": "تكلفة غير صالحة",
+        "invalid_line_discount": "خصم سطر غير صالح",
+        "invalid_order_discount": "خصم أمر الشراء غير صالح",
+        "missing_supplier_phone": "مفقود هاتف المورد",
+        "inconsistent_headers_within_group": "ترويسات مختلفة داخل المجموعة",
+        "unknown_warehouse": "مستودع غير معروف"
+      }
+    }
   },
   "inventoryTransfers": {
     "title": "تحويلات المخزون",
@@ -903,6 +1223,45 @@
     "madePayment": "دفعة مدفوعة",
     "balanceHistory": "سجل الرصيد",
     "addPerson": "إضافة شخص",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد أشخاص من CSV",
+      "uploadHint": "اختر ملف CSV بترميز UTF-8 مع صف عناوين. في الخطوة التالية ستربط كل عمود بحقل الشخص.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر قراءة ملف CSV.",
+      "emptyFile": "الملف لا يحتوي صفوف بيانات.",
+      "matchHint": "لكل حقل شخص اختر عمود CSV المناسب. الحقول المطلوبة مميزة بـ *.",
+      "notImported": "— غير مستورد —",
+      "sample": "عيّنة: {{value}}",
+      "sampleEmpty": "لا عيّنة في الصفوف الأولى",
+      "unusedColumns": "أعمدة CSV غير مستخدمة:",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToUpload": "اختيار ملف آخر",
+      "backToMatch": "رجوع لمطابقة الأعمدة",
+      "previewHint": "راجع الصفوف وعدّلها. سيتم استيراد {{count}} صف (الصفوف المستبعدة لا تُحتسب). أصلح التحذيرات قبل الاستيراد.",
+      "colStatus": "الحالة",
+      "fieldInitialBalance": "الرصيد الافتتاحي",
+      "discard": "استبعاد",
+      "discarded": "مستبعد",
+      "startIngesting": "بدء الاستيراد",
+      "ingesting": "جاري الاستيراد… {{done}} / {{total}}",
+      "toastAllOk": "تم استيراد {{count}} شخصاً.",
+      "toastPartial": "تم استيراد {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "فشل الاستيراد لجميع الصفوف ({{count}}).",
+      "issue": {
+        "missing_name": "الاسم مطلوب",
+        "name_too_short": "الاسم قصير جداً",
+        "missing_phone": "الهاتف مطلوب",
+        "missing_roles": "الدور مطلوب",
+        "invalid_roles": "نص دور غير صالح",
+        "invalid_discount": "خصم غير صالح",
+        "invalid_credit": "حد ائتمان غير صالح",
+        "invalid_initial_balance": "رصيد افتتاحي غير صالح",
+        "duplicate_in_file": "هاتف مكرر في الملف",
+        "duplicate_in_db": "الهاتف موجود مسبقاً"
+      }
+    },
+    "exportCsvHint": "تنزيل كل الأشخاص في القائمة الحالية كملف CSV (نفس أعمدة الاستيراد).",
     "editPerson": "تعديل بيانات",
     "deletePerson": "حذف شخص",
     "viewProfile": "عرض الملف",
@@ -1087,7 +1446,51 @@
     "toastOperationNoteSaved": "تم تحديث الملاحظة",
     "operationNoteReadOnly": "تعديل ملاحظات الدفعات معطّل في إعدادات التحكم.",
     "notePreview": "معاينة",
-    "operationNoteLinkHint": "مراجع الأوامر مثل O-12 أو PO-3 تصبح روابط عندما تنتهي الملاحظة بعلامة مستند من النظام."
+    "operationNoteLinkHint": "مراجع الأوامر مثل O-12 أو PO-3 تصبح روابط عندما تنتهي الملاحظة بعلامة مستند من النظام.",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد دفعات مستقلة من CSV",
+      "uploadHint": "كل صف دفعة لشخص (واردة أو صادرة) بطريقة دفع واحدة. طابق الأعمدة؛ يُعثر على الشخص بالهاتف أو بالاسم الفريد.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر تحليل الملف.",
+      "emptyFile": "لا توجد صفوف بيانات.",
+      "matchHint": "اربط أعمدة الملف. النوع والطريقة والمبلغ مطلوبة. اربط عمود هاتف أو اسم على الأقل.",
+      "notImported": "— لا يُستورد —",
+      "sample": "عيّنة: {{value}}",
+      "sampleEmpty": "لا عيّنة في الصفوف الأولى",
+      "unusedColumns": "أعمدة غير مستخدمة:",
+      "previewHint": "راجع {{count}} صف(وفق).",
+      "colStatus": "الحالة",
+      "discard": "تجاهل",
+      "discarded": "متجاهل",
+      "backToUpload": "رجوع",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToMatch": "رجوع للربط",
+      "startIngesting": "استيراد الدفعات",
+      "ingesting": "جاري الاستيراد {{done}} / {{total}}…",
+      "fieldPersonPhone": "هاتف الشخص",
+      "fieldPersonName": "اسم الشخص",
+      "fieldPaymentType": "الاتجاه (payment_in / payment_out)",
+      "fieldPaymentMethod": "الطريقة (cash, visa, …)",
+      "fieldAmount": "المبلغ",
+      "fieldNote": "ملاحظة",
+      "fieldRegisterWarehouse": "مستودع الصندوق (كود أو اسم)",
+      "needPersonColumn": "اربط عموداً لهاتف الشخص أو اسمه على الأقل.",
+      "exportStandaloneHint": "تصدير الدفعات المستقلة (غير المرتبطة بطلبات) للنسخ الاحتياطي أو النقل.",
+      "toastAllOk": "تم تسجيل {{count}} دفعة(ات).",
+      "toastPartial": "تم {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "لم تُسجَّل دفعات ({{count}} فشل).",
+      "issue": {
+        "missing_person": "الهاتف أو الاسم مطلوب",
+        "ambiguous_name": "أكثر من شخص يطابق",
+        "person_not_found": "الشخص غير موجود",
+        "invalid_type": "اتجاه غير صالح",
+        "invalid_method": "طريقة غير صالحة",
+        "invalid_amount": "مبلغ غير صالح",
+        "warehouse_missing": "مستودع الصندوق مطلوب",
+        "warehouse_not_found": "المستودع غير موجود"
+      }
+    }
   },
   "register": {
     "title": "الصندوق",
@@ -1136,7 +1539,47 @@
     "disableRegisterConfirm": "إيقاف الصندوق",
     "disableRegisterKeep": "الإبقاء على الصندوق",
     "disableRegisterNotAllowed": "المستودع الأساسي أو الافتراضي يجب أن يبقى بصندوق.",
-    "disableRegisterWarehouseMissing": "المستودع غير موجود."
+    "disableRegisterWarehouseMissing": "المستودع غير موجود.",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد حركات الصندوق من CSV",
+      "uploadHint": "كل صف إيداع (+) أو سحب (−) في مستودع له صندوق، حسب نوع التحصيل.",
+      "chooseFile": "اختر ملف CSV",
+      "parseError": "تعذّر تحليل الملف.",
+      "emptyFile": "لا توجد صفوف بيانات.",
+      "matchHint": "اربط الأعمدة: الإجراء (إيداع/سحب)، كود أو اسم المستودع، الطريقة، المبلغ، ملاحظة اختيارية.",
+      "notImported": "— لا يُستورد —",
+      "sample": "عيّنة: {{value}}",
+      "sampleEmpty": "لا عيّنة في الصفوف الأولى",
+      "unusedColumns": "أعمدة غير مستخدمة:",
+      "previewHint": "راجع {{count}} صف(وفق).",
+      "colStatus": "الحالة",
+      "discard": "تجاهل",
+      "discarded": "متجاهل",
+      "backToUpload": "رجوع",
+      "continueToPreview": "متابعة للمعاينة",
+      "backToMatch": "رجوع للربط",
+      "startIngesting": "استيراد الحركات",
+      "ingesting": "جاري الاستيراد {{done}} / {{total}}…",
+      "fieldAction": "الإجراء (إيداع / سحب)",
+      "fieldWarehouse": "المستودع (كود أو اسم)",
+      "fieldPaymentMethod": "الطريقة",
+      "fieldAmount": "المبلغ",
+      "fieldNote": "ملاحظة",
+      "exportActivityHint": "تنزيل نشاط الصندوق الأخير لهذا الموقع كملف CSV.",
+      "toastAllOk": "تم استيراد {{count}} حركة(ات).",
+      "toastPartial": "تم {{ok}}؛ فشل {{fail}}.",
+      "toastAllFailed": "لم تُستورد حركات ({{count}} فشل).",
+      "issue": {
+        "invalid_action": "إجراء غير صالح",
+        "invalid_method": "طريقة غير صالحة",
+        "invalid_amount": "مبلغ غير صالح",
+        "warehouse_missing": "المستودع مطلوب",
+        "warehouse_not_found": "المستودع غير موجود",
+        "deposit_forbidden": "الإيداع غير مسموح",
+        "withdraw_forbidden": "السحب غير مسموح"
+      }
+    }
   },
   "reports": {
     "title": "التقارير",
@@ -1173,8 +1616,11 @@
       "catalog": "الكتالوج والمخزون",
       "commerce": "الشراء والمبيعات",
       "money": "الأشخاص والمدفوعات والصندوق",
-      "insights": "التقارير والملاحظات"
+      "insights": "التقارير والملاحظات",
+      "security": "تسجيل الدخول والأعضاء والأمان"
     },
+    "securityCallout": "المشغّلون يسجّلون الدخول عبر مصادقة Supabase.",
+    "securityCalloutHint": "افتح بطاقة «تسجيل الدخول والأعضاء والأمان» أدناه لإعداد المنصة وأفضل الممارسات.",
     "areas": {
       "nav": {
         "title": "التنقل والإدارة",
@@ -1293,7 +1739,131 @@
           "ملاحظات غنية على الطلبات وأوامر الشراء والأشخاص مع @",
           "روابط لمستندات ذات صلة عند الدعم"
         ]
+      },
+      "security": {
+        "title": "تسجيل الدخول والأعضاء والأمان",
+        "items": [
+          "كل مشغّل مستخدم في مصادقة Supabase؛ يحمّل التطبيق صف profiles (is_admin، feature_overrides) بعد الدخول.",
+          "المسؤولون فقط يفتحون /admin و /control؛ التحقق يعتمد على profiles.is_admin وليس أعلام التحكم وحدها.",
+          "أعلام التحكم وlocalStorage يحددان الواجهة الافتراضية لهذا المتصفح؛ يُدمج للغير مسؤولين feature_overrides من الخادم أيضاً.",
+          "تسجيل الدخول يستخدم بريداً تركيبياً: username@members.stockpilot.local — أنشئ مستخدم Auth بهذا النمط.",
+          "لا تضع مفتاح الخدمة (service role) أو كلمات مرور المشغّلين بصيغة نصية في متغيرات VITE_* أو في كود العميل؛ إنشاء الأعضاء يستخدم دالة create-member على الحافة مع مفتاح الخدمة في الخادم.",
+          "أنشئ المسؤول الثابت من لوحة Supabase (المصادقة ← المستخدمون) أو سكربت لمرة واحدة: user_metadata فيها username و is_admin true؛ كلمة المرور فقط في المصادقة.",
+          "تسجيل الخروج يمسح الجلسة من هذا المتصفح؛ راجع وثائق Supabase Auth بخصوص رموز التحديث وسياسات RLS."
+        ]
       }
+    }
+  },
+  "migrationGuide": {
+    "title": "قائمة الهجرة",
+    "browserTitle": "قائمة الهجرة | ستوك بايلوت",
+    "subtitle": "انتقل من نظامك القديم إلى ستوك بايلوت بترتيب آمن. ضع علامة على كل خطوة عند إنجازها.",
+    "intro": "اتبع هذه الخطوات لتحميل البيانات الأساسية قبل المستندات والأموال. استخدم استيراد CSV حيث يوفّر التطبيق ذلك؛ صدّر من كل قائمة أولاً إن أردت قالب الأعمدة. يمكنك مغادرة هذه الصفحة في أي وقت—تُحفظ علاماتك في هذا المتصفح.",
+    "savedLocallyHint": "التقدم يُخزَّن على هذا الجهاز فقط (localStorage). لا يُزامَن مع حسابك أو متصفحات أخرى.",
+    "progressLabel": "{{done}} من {{total}} خطوات مكتملة",
+    "markAllComplete": "تعليم الكل كمكتمل",
+    "resetProgress": "إعادة تعيين التقدم",
+    "resetConfirmTitle": "إعادة تعيين قائمة الهجرة؟",
+    "resetConfirmDescription": "يمسح جميع علامات الاختيار في هذا المتصفح. لا يحذف أي بيانات في ستوك بايلوت.",
+    "resetConfirm": "إعادة التعيين",
+    "cancel": "إلغاء",
+    "markAllConfirmTitle": "تعليم كل الخطوات كمكتملة؟",
+    "markAllConfirmDescription": "استخدم ذلك إذا أنهيت الهجرة فعلياً وتريد فقط أن تظهر القائمة مكتملة بالكامل.",
+    "markAllConfirm": "تعليم الكل",
+    "documentationCallout": "تهاجر من نظام آخر؟",
+    "documentationLink": "افتح قائمة الهجرة",
+    "phasePrepare": {
+      "title": "١. التحضير"
+    },
+    "phaseFoundation": {
+      "title": "٢. المواقع والصناديق"
+    },
+    "phaseMaster": {
+      "title": "٣. البيانات الأساسية (الكتالوج والأشخاص)"
+    },
+    "phaseOptional": {
+      "title": "٤. اختياري: أرصدة افتتاحية"
+    },
+    "phaseTransactions": {
+      "title": "٥. أوامر الشراء وطلبات المبيعات"
+    },
+    "phaseMoney": {
+      "title": "٦. الصندوق والنقد"
+    },
+    "phaseCutover": {
+      "title": "٧. التشغيل الفعلي"
+    },
+    "steps": {
+      "plan_exports": {
+        "title": "تصدير وتنظيف البيانات من النظام القديم",
+        "body": "اسحب قوائم العملاء/الموردين بأرقام هواتف متسقة (تُستخدم للمطابقة)، ورموز المنتجات، والوحدات، وأي كميات افتتاحية. وحّد التواريخ والعملات مع أسلوب الاستيراد. قرّر ما هو «تاريخي للتحليل فقط» مقابل ما ستشغّله فعلياً."
+      },
+      "env_schema": {
+        "title": "قاعدة البيانات والبيئة جاهزة",
+        "body": "تأكد من تطبيق جميع الهجرات على Supabase حتى تعمل مسودات أوامر الشراء والمستودعات والصناديق وميزات CSV. اضبط متغيرات البيئة وسجّل الدخول. المسؤولون قد يستخدمون سلسلة Connect للدفع؛ أما تحميل البيانات اليومي فيبقى داخل التطبيق."
+      },
+      "warehouses": {
+        "title": "إنشاء المستودعات والصناديق",
+        "body": "عرّف كل موقع برمز واسم واضحين. حدّد أي مستودعات لها صندوق نقدي—الطلبات والمدفوعات والصندوق تعتمد على ذلك. نفّذ ذلك قبل CSV الطلبات/أوامر الشراء ليرتبط كل صف بمستودع."
+      },
+      "categories_brands": {
+        "title": "الفئات والعلامات (عند الحاجة)",
+        "body": "أنشئ الفئات والعلامات قبل أو أثناء استيراد المنتجات. يمكن لـ CSV المنتجات إنشاء علامة/فئة ناقصة؛ الإنشاء المسبق يحافظ على تسمية موحّدة."
+      },
+      "people": {
+        "title": "استيراد أو إضافة العملاء والموردين",
+        "body": "حمّل الأشخاص قبل CSV الطلبات وأوامر الشراء. الهاتف هو مفتاح المطابقة الأساسي ومطلوب لإنشاء شخص جديد من CSV. يجب أن يوجد الموردون (بدور المورد) قبل ربط استيراد أوامر الشراء."
+      },
+      "products": {
+        "title": "استيراد المنتجات والمخزون الافتتاحي",
+        "body": "استخدم المنتجات ← استيراد CSV. اضبط الكميات الافتتاحية لكل مستودع عندما تريد رصيداً حياً من اليوم الأول. صدّر CSV من صفحة المنتجات لقالب. اضبط التكاليف وأسعار القائمة ليتسق البيع والشراء لاحقاً."
+      },
+      "payments_optional": {
+        "title": "اختياري: مدفوعات مستقلة للأرصدة الافتتاحية",
+        "body": "إذا احتجت أرصدة افتتاحية على الدفتر دون ربط بطلب، استخدم المدفوعات ← استيراد CSV حيث يتوفر. الدفعات المجزّأة المعقّدة من النظام القديم غالباً أسهل في الواجهة منها دفعة واحدة بالجملة."
+      },
+      "po_csv": {
+        "title": "أوامر الشراء (CSV)",
+        "body": "من قائمة أوامر الشراء استخدم الاستيراد بعد وجود الموردين والمنتجات. «حي» ينشئ مسودات—المخزون والذمم عند التأكيد/الاستلام. «تاريخي» للتحليل فقط بلا مخزون أو دفتر مورد. صدّر CSV من نفس الصفحة لرؤوس الأعمدة."
+      },
+      "orders_csv": {
+        "title": "طلبات المبيعات (CSV)",
+        "body": "من قائمة الطلبات استخدم الاستيراد بعد العملاء والمنتجات. «حي» ينشئ مسودات—المخزون والصندوق يتغيران عند الإتمام/الدفع كأي طلب. «تاريخي» يضيف طلبات مكتملة للمخططات دون تحريك مخزون أو صندوق. صدّر CSV لقالب مطابق."
+      },
+      "register": {
+        "title": "تسوية الصندوق/الدرج النقدي",
+        "body": "الاستيراد التاريخي لا يضبط النقد الفعلي. بعد التحويل قارن شاشة الصندوق بالدرج الفعلي واستخدم الإيداع أو السحب (حسب سياساتك). اربط المدفوعات بمستودع الصندوق الصحيح."
+      },
+      "smoke_test": {
+        "title": "اختبار سريع في التدفقات الحية",
+        "body": "أنشئ مسودة بيع صغيرة ومسودة أمر شراء من الشاشات العادية ثم أكملهما حتى النهاية. تحقق من حركة المخزون ورصيد الشخص وسطور الصندوق قبل الاعتماد على البيانات المجمّعة."
+      },
+      "control_review": {
+        "title": "مراجعة التحكم (مفاتيح الميزات)",
+        "body": "افتح التحكم وتأكد من تفعيل استيراد CSV والاختصارات وإجراءات نقطة البيع المناسبة لفريقك. عطّل ما لا تريد للموظفين أثناء الاستقرار."
+      }
+    },
+    "importShortcut": {
+      "people": "استيراد الأشخاص (CSV)",
+      "products": "استيراد المنتجات (CSV)",
+      "payments": "استيراد المدفوعات (CSV)",
+      "orders": "استيراد الطلبات (CSV)",
+      "purchaseOrders": "استيراد أوامر الشراء (CSV)",
+      "register": "استيراد الصندوق (CSV)"
+    },
+    "link": {
+      "warehouses": "فتح المستودعات",
+      "categories": "الفئات",
+      "brands": "العلامات",
+      "people": "الأشخاص",
+      "products": "المنتجات",
+      "payments": "المدفوعات",
+      "purchaseOrdersList": "قائمة أوامر الشراء",
+      "ordersList": "قائمة الطلبات",
+      "register": "الصندوق",
+      "newOrder": "طلب جديد",
+      "newPo": "أمر شراء جديد",
+      "control": "التحكم"
     }
   },
   "errorBoundary": {

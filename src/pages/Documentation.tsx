@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown } from 'lucide-react'
 
@@ -23,6 +23,7 @@ type DocAreaKey =
   | 'register'
   | 'reports'
   | 'notes'
+  | 'security'
 
 const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
   [
@@ -58,6 +59,11 @@ const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
       titleKey: 'documentation.mapGroups.insights',
       areaKeys: ['reports', 'notes'],
     },
+    {
+      id: 'governance',
+      titleKey: 'documentation.mapGroups.security',
+      areaKeys: ['security'],
+    },
   ]
 
 const summaryClass =
@@ -66,6 +72,8 @@ const summaryClass =
 export function Documentation() {
   const { t } = useTranslation()
   const canView = useFeatureEnabled('sidebar.documentation')
+  const canAdmin = useFeatureEnabled('sidebar.admin')
+  const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
 
   useEffect(() => {
     document.title = t('documentation.pageTitle')
@@ -81,6 +89,31 @@ export function Documentation() {
       <h1 className="text-2xl font-semibold tracking-tight">
         {t('documentation.title')}
       </h1>
+
+      {canAdmin && showMigrationGuide && (
+        <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+          <span className="text-muted-foreground">
+            {t('migrationGuide.documentationCallout')}{' '}
+          </span>
+          <Link
+            to="/admin/migration"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t('migrationGuide.documentationLink')}
+          </Link>
+        </div>
+      )}
+
+      {canAdmin && (
+        <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+          <span className="text-muted-foreground">
+            {t('documentation.securityCallout')}{' '}
+          </span>
+          <span className="font-medium text-foreground">
+            {t('documentation.securityCalloutHint')}
+          </span>
+        </div>
+      )}
 
       <section aria-labelledby="doc-map-heading">
         <h2 id="doc-map-heading" className="mb-1 text-lg font-medium">
