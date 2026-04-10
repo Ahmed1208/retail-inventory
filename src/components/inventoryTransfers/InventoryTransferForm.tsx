@@ -22,6 +22,7 @@ import { deleteWarehouse, listWarehouses } from '@/services/warehouseService'
 import { getAllCategories } from '@/services/categoryService'
 import type { ProductWithRelations } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useQtyInputDraft } from '@/hooks/useQtyInputDraft'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -819,6 +820,13 @@ function TransferLineRowView({
       ? t('orders.onlyXUnitsAvailable', { count: line.stock })
       : undefined
 
+  const qtyInput = useQtyInputDraft(
+    line.key,
+    line.product_id,
+    line.qty,
+    (p) => onChange(p)
+  )
+
   const rowBg = cn(
     'grid items-center gap-1 border-b border-border/50 px-2 py-0.5 sm:py-1',
     TRANSFER_TABLE_GRID,
@@ -916,16 +924,13 @@ function TransferLineRowView({
           'px-1 tabular-nums',
           stockWarn && 'border-destructive'
         )}
-        value={line.qty}
-        onChange={(e) => {
-          const raw = e.target.value.replace(/\D/g, '')
-          if (raw === '') {
-            onChange({ qty: 1 })
-            return
-          }
-          onChange({ qty: Math.max(1, parseInt(raw, 10) || 1) })
+        value={qtyInput.displayValue}
+        onChange={qtyInput.onQtyChange}
+        onFocus={() => {
+          qtyInput.onQtyFocus()
+          onFocusCell(3)
         }}
-        onFocus={() => onFocusCell(3)}
+        onBlur={qtyInput.onQtyBlur}
         onKeyDown={(e) => onGridKeyDown(e, rowIndex, 3, line.key)}
       />
       <Button

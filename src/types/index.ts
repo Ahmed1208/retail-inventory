@@ -192,6 +192,8 @@ export interface Order {
   subtotal: number
   allow_remaining_on_account: boolean
   warehouse_id: number
+  /** True when imported as historical snapshot: analytics only, no stock/register effects. */
+  is_historical_snapshot: boolean
   created_at: string
   updated_at: string
 }
@@ -246,12 +248,20 @@ export interface PurchaseOrder {
   order_number: number
   supplier_name: string | null
   note: string | null
+  /** Sum of line totals after line-level discount % */
+  subtotal: number
+  /** Order-level discount amount (subtotal × discount_rate) */
+  discount_amount: number
+  /** Order-level discount % (0–100) */
+  discount_rate: number
   total_amount: number
   paid_amount: number
   remaining_amount: number
   status: PurchaseOrderStatus
   person_id: string | null
   warehouse_id: number
+  /** True when imported as historical snapshot: analytics only, no stock/register effects. */
+  is_historical_snapshot: boolean
   created_at: string
   updated_at: string
 }
@@ -262,6 +272,8 @@ export interface PurchaseOrderItem {
   product_id: string
   quantity: number
   cost_price: number
+  /** Line-level discount % (0–100), same idea as order line_discount_rate */
+  line_discount_rate: number
   total_price: number
   previous_cost_price: number | null
   cost_price_updated: boolean

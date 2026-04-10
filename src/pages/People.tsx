@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Pencil, Trash2, Users } from 'lucide-react'
+import { FileDown, FileUp, Pencil, Trash2, Users } from 'lucide-react'
 
 import {
   getAllPeople,
@@ -12,6 +12,7 @@ import {
 } from '@/services/peopleService'
 import type { Person, PersonRole } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { useLanguage } from '@/hooks/useLanguage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +38,8 @@ import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PersonFormDialog } from '@/components/people/PersonFormDialog'
+import { PersonCsvImportDialog } from '@/components/people/PersonCsvImportDialog'
+import { downloadCsv } from '@/utils/csvDownload'
 
 const DEBOUNCE_MS = 300
 
@@ -70,6 +73,7 @@ export function People() {
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
 
   const [formOpen, setFormOpen] = useState(false)
+  const [importCsvOpen, setImportCsvOpen] = useState(false)
   const [editing, setEditing] = useState<Person | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
 
@@ -77,6 +81,8 @@ export function People() {
   const canEditPerson = useFeatureEnabled('people.editPerson')
   const canDeletePerson = useFeatureEnabled('people.deletePerson')
   const canAddPerson = useFeatureEnabled('people.addPerson')
+
+  useMigrationImportDialog(setImportCsvOpen, true, canAddPerson)
 
   useEffect(() => {
     document.title = 'People | StockPilot'
@@ -140,6 +146,23 @@ export function People() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['people'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
+  }
+
+  const exportPeopleCsv = () => {
+    const rows = people.map((p) => ({
+      name: p.name,
+      phone: p.phone ?? '',
+      roles: p.roles.join(','),
+      address: p.address ?? '',
+      notes: p.notes ?? '',
+      discount_rate: p.discount_rate,
+      credit_limit: p.credit_limit ?? '',
+      initial_balance: p.balance,
+    }))
+    downloadCsv(
+      `people-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows
+    )
   }
 
   return (
@@ -208,15 +231,37 @@ export function People() {
             <SelectItem value="has">{t('people.filterDiscountHas')}</SelectItem>
           </SelectContent>
         </Select>
-        {canAddPerson && (
+        {people.length > 0 && (
           <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
+            type="button"
+            variant="outline"
+            className="gap-2"
+            title={t('people.exportCsvHint')}
+            onClick={exportPeopleCsv}
           >
-            {t('people.addPerson')}
+            <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+            {t('common.exportCsv')}
           </Button>
+        )}
+        {canAddPerson && (
+          <>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setImportCsvOpen(true)}
+            >
+              <FileUp className="h-4 w-4 shrink-0" />
+              {t('people.importCsv.button')}
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              {t('people.addPerson')}
+            </Button>
+          </>
         )}
       </div>
 
@@ -386,6 +431,16 @@ export function People() {
           </div>
         )}
       </div>
+
+      <PersonCsvImportDialog
+        open={importCsvOpen}
+        onOpenChange={setImportCsvOpen}
+        existingPeople={rawPeople}
+        isRTL={isRTL}
+        onComplete={() => {
+          invalidate()
+        }}
+      />
 
       <PersonFormDialog
         open={formOpen}

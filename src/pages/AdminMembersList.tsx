@@ -13,7 +13,8 @@ async function fetchProfiles(): Promise<OperatorProfile[]> {
     .select('id, username, is_admin, feature_overrides, created_at')
     .order('created_at', { ascending: false })
 
-  if (error || !data) return []
+  if (error) throw new Error(error.message)
+  if (!data) return []
   return data.map((row) => ({
     id: row.id,
     username: row.username,
@@ -77,6 +78,7 @@ export function AdminMembersList() {
                 <th className="px-4 py-3 font-medium">{t('members.colUsername')}</th>
                 <th className="px-4 py-3 font-medium">{t('members.colAdmin')}</th>
                 <th className="px-4 py-3 font-medium">{t('members.colCreated')}</th>
+                <th className="px-4 py-3 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -88,6 +90,14 @@ export function AdminMembersList() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(r.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link
+                      to={`/admin/members/${r.id}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                    >
+                      {t('common.edit')}
+                    </Link>
                   </td>
                 </tr>
               ))}

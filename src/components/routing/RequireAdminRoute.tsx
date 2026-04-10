@@ -2,9 +2,9 @@ import { Navigate } from 'react-router-dom'
 
 import { useAuth } from '@/context/AuthContext'
 
-/** Only `profiles.is_admin`; use inside routes for /admin/* and /control. */
+/** Uses `profiles.is_admin` and falls back to JWT `user_metadata.is_admin` when profile is missing. */
 export function RequireAdminRoute({ children }: { children: React.ReactNode }) {
-  const { profile, loading, session } = useAuth()
+  const { loading, profileLoading, session, isAdmin } = useAuth()
 
   if (loading || !session) {
     return (
@@ -14,7 +14,15 @@ export function RequireAdminRoute({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!profile?.is_admin) {
+  if (profileLoading) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center p-8 text-muted-foreground">
+        Loading…
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
     return <Navigate to="/inventory" replace />
   }
 

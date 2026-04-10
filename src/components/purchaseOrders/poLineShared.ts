@@ -5,7 +5,7 @@ const PRICE_EPS = 0.005
 
 export type PoCostOverrideChoice = 'unset' | 'once' | 'catalog'
 
-/** Purchase order line — same grid model as POS (minus line discount %). */
+/** Purchase order line — grid model aligned with POS (incl. line discount %). */
 export type POLineRow = {
   key: string
   product_id: string
@@ -19,6 +19,8 @@ export type POLineRow = {
   listCustomerPrice: number
   listBusinessPrice: number
   costOverridden: boolean
+  /** Line-level discount % (0–100), same as sales order line */
+  discountPct: number
   stock: number
   /** When cost differs from catalog, optionally update product default cost on save (legacy checkbox path) */
   updateDefaultCostPrice: boolean
@@ -42,6 +44,7 @@ export function emptyPOLine(): POLineRow {
     listCustomerPrice: 0,
     listBusinessPrice: 0,
     costOverridden: false,
+    discountPct: 0,
     stock: 0,
     updateDefaultCostPrice: false,
     costOverrideChoice: 'unset',
@@ -52,7 +55,21 @@ export function emptyPOLine(): POLineRow {
 
 export function poLineTotal(l: POLineRow): number {
   if (!l.product_id) return 0
-  return roundMoney(l.qty * l.costPrice)
+  const gross = l.qty * l.costPrice
+  const d = Math.min(100, Math.max(0, l.discountPct))
+  return roundMoney(gross * (1 - d / 100))
+}
+
+/** Subtotal after line discounts, then PO-level discount % (same shape as sales `computePreview`). */
+export function computePoPreview(
+  lines: POLineRow[],
+  orderDiscountRate: number
+): { subtotal: number; discountAmount: number; total: number } {
+  const subtotal = roundMoney(lines.reduce((s, l) => s + poLineTotal(l), 0))
+  const dr = Math.min(100, Math.max(0, orderDiscountRate))
+  const discountAmount = roundMoney(subtotal * (dr / 100))
+  const total = roundMoney(subtotal - discountAmount)
+  return { subtotal, discountAmount, total }
 }
 
 export function costDiffersFromList(line: POLineRow): boolean {
@@ -74,12 +91,12 @@ export function costCellShowsDiffWarning(
   return true
 }
 
-/** Focusable cells: id, name, stock, qty, cost+btn, line total (6) */
-export const PO_LINE_CELL_COLS = 6 as const
+/** Focusable cells: id, name, stock, qty, cost+btn, disc %, line total (7) */
+export const PO_LINE_CELL_COLS = 7 as const
 
-/** Grid: # · ID · name · stock · qty · cost+btn · total · delete */
+/** Grid: # · ID · name · stock · qty · cost+btn · % · total · delete */
 export const PO_TABLE_GRID =
-  'grid-cols-[2rem_7rem_minmax(0,1fr)_3rem_3.5rem_9rem_4.5rem_2.25rem]'
+  'grid-cols-[2rem_7rem_minmax(0,1fr)_3rem_3.5rem_9rem_3.25rem_4.5rem_2.25rem]'
 
 export function applyProductCostDefaults(
   p: ProductWithRelations,
@@ -137,6 +154,7 @@ export function clearedProductLinePatch(): Pick<
   | 'costOverrideChoice'
   | 'catalogCustomerPrice'
   | 'catalogBusinessPrice'
+  | 'discountPct'
 > {
   return {
     product_id: '',
@@ -152,5 +170,6 @@ export function clearedProductLinePatch(): Pick<
     costOverrideChoice: 'unset',
     catalogCustomerPrice: null,
     catalogBusinessPrice: null,
+    discountPct: 0,
   }
 }

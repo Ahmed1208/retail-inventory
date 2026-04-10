@@ -17,20 +17,24 @@ import {
   ArrowLeftRight,
   AlertTriangle,
   Package,
+  FileUp,
+  FileDown,
 } from 'lucide-react'
 
 import {
   getAllProducts,
   deleteProduct,
-  getProductQuantitiesByWarehouse,
+  getAllProductWarehouseStock,
 } from '@/services/productService'
 import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories as getCategories } from '@/services/categoryService'
 import { getAllBrands as getBrands } from '@/services/brandService'
 import type { ProductWithRelations } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +45,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -55,10 +67,21 @@ import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/hooks/useLanguage'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { ProductCsvImportDialog } from '@/components/products/ProductCsvImportDialog'
+import { downloadCsv } from '@/utils/csvDownload'
+
+function sanitizeCsvWarehouseCode(code: string): string {
+  const s = String(code)
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return s || 'warehouse'
+}
 
 export function Products() {
   const { t, i18n } = useTranslation()
+  const { isRTL } = useLanguage()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -73,14 +96,20 @@ export function Products() {
   const [stockProduct, setStockProduct] = useState<ProductWithRelations | null>(null)
   const [deleteProductState, setDeleteProductState] =
     useState<ProductWithRelations | null>(null)
+  const [productCsvOpen, setProductCsvOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
-  const warehouseInitRef = useRef(false)
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(1)
+  const defaultWarehouseInitRef = useRef(false)
+  const [defaultStockWarehouseId, setDefaultStockWarehouseId] = useState(1)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportScope, setExportScope] = useState<'all' | 'one'>('all')
+  const [exportWarehouseId, setExportWarehouseId] = useState(1)
 
   const canAddProduct = useFeatureEnabled('products.addProduct')
   const canEditProduct = useFeatureEnabled('products.editProduct')
   const canDeleteProduct = useFeatureEnabled('products.deleteProduct')
   const canStockAdjust = useFeatureEnabled('products.stockAdjust')
+
+  useMigrationImportDialog(setProductCsvOpen, true, canAddProduct)
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -111,16 +140,35 @@ export function Products() {
     queryFn: listWarehouses,
   })
 
-  const { data: whStockMap = new Map<string, number>() } = useQuery({
-    queryKey: ['warehouseStock', selectedWarehouseId],
-    queryFn: () => getProductQuantitiesByWarehouse(selectedWarehouseId),
+  const { data: pwsRows = [] } = useQuery({
+    queryKey: ['allWarehouseStock'],
+    queryFn: getAllProductWarehouseStock,
   })
 
+  const sortedWarehouses = useMemo(
+    () => [...warehouses].sort((a, b) => a.name.localeCompare(b.name)),
+    [warehouses]
+  )
+
+  const stockByProduct = useMemo(() => {
+    const m = new Map<string, Map<number, number>>()
+    for (const r of pwsRows) {
+      let inner = m.get(r.product_id)
+      if (!inner) {
+        inner = new Map()
+        m.set(r.product_id, inner)
+      }
+      inner.set(r.warehouse_id, r.quantity)
+    }
+    return m
+  }, [pwsRows])
+
   useEffect(() => {
-    if (warehouseInitRef.current || warehouses.length === 0) return
+    if (defaultWarehouseInitRef.current || warehouses.length === 0) return
     const d = warehouses.find((w) => w.is_default)
-    setSelectedWarehouseId(d?.id ?? 1)
-    warehouseInitRef.current = true
+    const id = d?.id ?? warehouses[0]?.id ?? 1
+    setDefaultStockWarehouseId(id)
+    defaultWarehouseInitRef.current = true
   }, [warehouses])
 
   const filteredProducts = useMemo(() => {
@@ -132,9 +180,12 @@ export function Products() {
         p.product_code.toLowerCase().includes(q)
       const matchCategory = !categoryId || p.category?.id === categoryId
       const matchBrand = !brandId || p.brand?.id === brandId
-      const whQty = whStockMap.get(p.id) ?? 0
       const matchLowStock =
-        !lowStockOnly || whQty <= p.low_stock_threshold
+        !lowStockOnly ||
+        sortedWarehouses.some((w) => {
+          const whQty = stockByProduct.get(p.id)?.get(w.id) ?? 0
+          return whQty <= p.low_stock_threshold
+        })
       return matchSearch && matchCategory && matchBrand && matchLowStock
     })
   }, [
@@ -143,7 +194,8 @@ export function Products() {
     categoryId,
     brandId,
     lowStockOnly,
-    whStockMap,
+    sortedWarehouses,
+    stockByProduct,
   ])
 
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
@@ -191,23 +243,54 @@ export function Products() {
         header: t('products.customerPrice'),
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
+      ...sortedWarehouses.map(
+        (w) =>
+          ({
+            id: `wh_${w.id}`,
+            accessorFn: (row: ProductWithRelations) =>
+              stockByProduct.get(row.id)?.get(w.id) ?? 0,
+            header: t('products.qtyAtWarehouseCode', { code: w.code }),
+            cell: ({
+              row,
+            }: {
+              row: { original: ProductWithRelations }
+            }) => {
+              const p = row.original
+              const qty = stockByProduct.get(p.id)?.get(w.id) ?? 0
+              const threshold = p.low_stock_threshold
+              const isLow = qty <= threshold
+              return (
+                <span
+                  title={t('products.quantityManagedByPurchaseOrders')}
+                  className={cn(
+                    'inline-flex items-center gap-1 cursor-help tabular-nums',
+                    isLow ? 'text-red-600 font-medium' : 'text-green-600'
+                  )}
+                >
+                  {isLow && <AlertTriangle className="h-4 w-4 shrink-0" />}
+                  {qty}
+                </span>
+              )
+            },
+          }) satisfies ColumnDef<ProductWithRelations>
+      ),
       {
-        id: 'quantityWh',
-        accessorFn: (row) => whStockMap.get(row.id) ?? 0,
-        header: t('warehouses.quantityAtWarehouse'),
+        id: 'quantityTotal',
+        accessorKey: 'quantity',
+        header: t('products.totalAcrossLocations'),
         cell: ({ row }) => {
-          const qty = whStockMap.get(row.original.id) ?? 0
-          const threshold = row.original.low_stock_threshold
-          const isLow = qty <= threshold
+          const p = row.original
+          const qty = p.quantity
+          const isLow = qty <= p.low_stock_threshold
           return (
             <span
               title={t('products.quantityManagedByPurchaseOrders')}
               className={cn(
-                'inline-flex items-center gap-1 cursor-help',
-                isLow ? 'text-red-600 font-medium' : 'text-green-600'
+                'inline-flex items-center gap-1 cursor-help font-medium tabular-nums',
+                isLow ? 'text-red-600' : 'text-green-600'
               )}
             >
-              {isLow && <AlertTriangle className="h-4 w-4" />}
+              {isLow && <AlertTriangle className="h-4 w-4 shrink-0" />}
               {qty}
             </span>
           )
@@ -270,7 +353,8 @@ export function Products() {
       canEditProduct,
       canStockAdjust,
       canDeleteProduct,
-      whStockMap,
+      sortedWarehouses,
+      stockByProduct,
     ]
   )
 
@@ -283,14 +367,73 @@ export function Products() {
     getSortedRowModel: getSortedRowModel(),
   })
 
+  const runExportDownload = () => {
+    if (
+      exportScope === 'one' &&
+      !warehouses.some((w) => w.id === exportWarehouseId)
+    ) {
+      return
+    }
+
+    const baseCols = (p: ProductWithRelations) => ({
+      product_code: p.product_code,
+      name: p.name,
+      brand_name: p.brand?.name ?? '',
+      category_name: p.category?.name ?? '',
+      customer_price: p.customer_price,
+      business_price: p.business_price,
+      cost_price: p.cost_price,
+      low_stock_threshold: p.low_stock_threshold,
+      unit: p.unit,
+      description: p.description ?? '',
+    })
+
+    let rows: Record<string, unknown>[]
+    let filenameSuffix: string
+
+    if (exportScope === 'all') {
+      rows = products.map((p) => {
+        const row: Record<string, unknown> = {
+          ...baseCols(p),
+          quantity_total: p.quantity,
+        }
+        for (const w of sortedWarehouses) {
+          row[`quantity_${sanitizeCsvWarehouseCode(w.code)}`] =
+            stockByProduct.get(p.id)?.get(w.id) ?? 0
+        }
+        return row
+      })
+      filenameSuffix = 'all-wh'
+    } else {
+      const wh = warehouses.find((w) => w.id === exportWarehouseId)
+      rows = products.map((p) => ({
+        ...baseCols(p),
+        warehouse_code: wh?.code ?? String(exportWarehouseId),
+        quantity_at_warehouse:
+          stockByProduct.get(p.id)?.get(exportWarehouseId) ?? 0,
+        quantity_total: p.quantity,
+      }))
+      filenameSuffix = `wh-${exportWarehouseId}`
+    }
+
+    downloadCsv(
+      `products-export-${filenameSuffix}-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows
+    )
+    setExportDialogOpen(false)
+  }
+
   const invalidateProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
     queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
+    queryClient.invalidateQueries({ queryKey: ['allWarehouseStock'] })
     queryClient.invalidateQueries({ queryKey: ['productWhStock'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
     queryClient.invalidateQueries({ queryKey: ['productPriceHistory'] })
+    queryClient.invalidateQueries({ queryKey: ['categories'] })
+    queryClient.invalidateQueries({ queryKey: ['brands'] })
   }
 
   return (
@@ -337,17 +480,44 @@ export function Products() {
           </SelectContent>
         </Select>
         <WarehouseCombobox
-          id="products-list-warehouse"
-          label={t('warehouses.title')}
+          id="products-stock-default-warehouse"
+          label={t('products.defaultWarehouseForAdjustments')}
           warehouses={warehouses}
-          value={selectedWarehouseId}
-          onChange={setSelectedWarehouseId}
+          value={defaultStockWarehouseId}
+          onChange={setDefaultStockWarehouseId}
           className="min-w-[220px] max-w-xs"
         />
-        {canAddProduct && (
-          <Button onClick={() => setAddOpen(true)}>
-            {t('products.addProduct')}
+        {products.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            title={t('products.exportCsvHint')}
+            onClick={() => {
+              setExportScope('all')
+              setExportWarehouseId(defaultStockWarehouseId)
+              setExportDialogOpen(true)
+            }}
+          >
+            <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+            {t('common.exportCsv')}
           </Button>
+        )}
+        {canAddProduct && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setProductCsvOpen(true)}
+            >
+              <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+              {t('products.importCsv.button')}
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              {t('products.addProduct')}
+            </Button>
+          </>
         )}
       </div>
 
@@ -357,9 +527,12 @@ export function Products() {
           <div className="p-4">
             <LoadingSkeleton
               rows={8}
-              columns={
-                canEditProduct || canStockAdjust || canDeleteProduct ? 9 : 8
-              }
+              columns={Math.min(
+                16,
+                8 +
+                  sortedWarehouses.length +
+                  (canEditProduct || canStockAdjust || canDeleteProduct ? 1 : 0)
+              )}
             />
           </div>
         ) : filteredProducts.length === 0 ? (
@@ -437,6 +610,22 @@ export function Products() {
         onError={() => toast.error(t('products.toastError'))}
       />
 
+      <ProductCsvImportDialog
+        open={productCsvOpen}
+        onOpenChange={setProductCsvOpen}
+        existingProducts={products.map((p) => ({
+          product_code: p.product_code,
+          name: p.name,
+        }))}
+        initialBrands={brands}
+        initialCategories={categories}
+        warehouses={warehouses}
+        isRTL={isRTL}
+        onComplete={() => {
+          invalidateProducts()
+        }}
+      />
+
       {editProduct && (
         <ProductFormDialog
           open={!!editProduct}
@@ -460,7 +649,7 @@ export function Products() {
           onOpenChange={(open) => !open && setStockProduct(null)}
           product={stockProduct}
           warehouses={warehouses}
-          initialWarehouseId={selectedWarehouseId}
+          initialWarehouseId={defaultStockWarehouseId}
           onSuccess={() => {
             invalidateProducts()
             toast.success(t('products.toastStockAdjusted'))
@@ -509,6 +698,77 @@ export function Products() {
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('products.exportCsvDialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('products.exportCsvDialog.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t('products.exportCsvDialog.scopeLabel')}</Label>
+              <Select
+                value={exportScope}
+                onValueChange={(v) => setExportScope(v as 'all' | 'one')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    {t('products.exportCsvDialog.scopeAll')}
+                  </SelectItem>
+                  <SelectItem value="one">
+                    {t('products.exportCsvDialog.scopeOne')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {exportScope === 'one' && warehouses.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t('products.exportCsvDialog.selectWarehouse')}</Label>
+                <Select
+                  value={String(exportWarehouseId)}
+                  onValueChange={(v) => setExportWarehouseId(Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>
+                        {w.name} ({w.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExportDialogOpen(false)}
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => runExportDownload()}
+              disabled={
+                exportScope === 'one' &&
+                !warehouses.some((w) => w.id === exportWarehouseId)
+              }
+            >
+              {t('products.exportCsvDialog.export')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

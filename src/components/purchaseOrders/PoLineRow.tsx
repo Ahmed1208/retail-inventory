@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useQtyInputDraft } from '@/hooks/useQtyInputDraft'
 import {
   type POLineRow,
   PO_TABLE_GRID,
@@ -87,6 +88,13 @@ export function PoLineRow({
   const clearPatch = clearedProductLinePatch()
   const showCostWarning = costCellShowsDiffWarning(line, useCostOverrideDialog)
 
+  const qtyInput = useQtyInputDraft(
+    line.key,
+    line.product_id,
+    line.qty,
+    (p) => onChange(p)
+  )
+
   return (
     <>
       <div className={rowBg}>
@@ -165,16 +173,13 @@ export function PoLineRow({
           inputMode="numeric"
           pattern="[0-9]*"
           className={cn(focusRing(focusedCol === 3), 'px-1 tabular-nums')}
-          value={line.qty}
-          onChange={(e) => {
-            const raw = e.target.value.replace(/\D/g, '')
-            if (raw === '') {
-              onChange({ qty: 1 })
-              return
-            }
-            onChange({ qty: Math.max(1, parseInt(raw, 10) || 1) })
+          value={qtyInput.displayValue}
+          onChange={qtyInput.onQtyChange}
+          onFocus={() => {
+            qtyInput.onQtyFocus()
+            onFocusCell(3)
           }}
-          onFocus={() => onFocusCell(3)}
+          onBlur={qtyInput.onQtyBlur}
           onKeyDown={(e) => onGridKeyDown(e, rowIndex, 3, line.key)}
         />
         <div className="flex min-w-0 items-center gap-0.5">
@@ -252,15 +257,34 @@ export function PoLineRow({
             {t('orders.originalPrice')}
           </Button>
         </div>
-        <div
+        <Input
           ref={(el) => setCellRef(line.key, 5, el)}
-          tabIndex={0}
-          className={cn(
-            focusRing(focusedCol === 5),
-            'flex h-8 items-center justify-end bg-muted/50 px-1 tabular-nums'
-          )}
+          type="number"
+          min={0}
+          max={100}
+          step="0.01"
+          className={cn(focusRing(focusedCol === 5), 'px-1')}
+          value={line.discountPct}
+          onChange={(e) =>
+            onChange({
+              discountPct: Math.min(
+                100,
+                Math.max(0, parseFloat(e.target.value) || 0)
+              ),
+            })
+          }
           onFocus={() => onFocusCell(5)}
           onKeyDown={(e) => onGridKeyDown(e, rowIndex, 5, line.key)}
+        />
+        <div
+          ref={(el) => setCellRef(line.key, 6, el)}
+          tabIndex={0}
+          className={cn(
+            focusRing(focusedCol === 6),
+            'flex h-8 items-center justify-end bg-muted/50 px-1 tabular-nums'
+          )}
+          onFocus={() => onFocusCell(6)}
+          onKeyDown={(e) => onGridKeyDown(e, rowIndex, 6, line.key)}
         >
           {line.product_id ? fc(lt) : '—'}
         </div>

@@ -299,6 +299,34 @@ export async function getProductQuantitiesByWarehouse(
   return m
 }
 
+export type ProductWarehouseStockRow = {
+  warehouse_id: number
+  product_id: string
+  quantity: number
+}
+
+/** All `product_warehouse_stock` rows (for building per-location columns client-side). */
+export async function getAllProductWarehouseStock(): Promise<
+  ProductWarehouseStockRow[]
+> {
+  const { data, error } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .select('warehouse_id, product_id, quantity')
+  if (error) throw error
+  return (data ?? []).map((row) => {
+    const r = row as {
+      warehouse_id: number
+      product_id: string
+      quantity: number
+    }
+    return {
+      warehouse_id: Math.trunc(Number(r.warehouse_id)),
+      product_id: String(r.product_id),
+      quantity: Math.trunc(Number(r.quantity)),
+    }
+  })
+}
+
 export async function getProductQuantityInWarehouse(
   productId: string,
   warehouseId: number
@@ -312,6 +340,23 @@ export async function getProductQuantityInWarehouse(
   if (error) throw error
   if (!data) return 0
   return Number((data as { quantity: number }).quantity)
+}
+
+/** Current on-hand quantity per warehouse row for one product. */
+export async function getProductStockByWarehouse(
+  productId: string
+): Promise<{ warehouse_id: number; quantity: number }[]> {
+  const { data, error } = await supabase
+    .from(PRODUCT_WAREHOUSE_STOCK)
+    .select('warehouse_id, quantity')
+    .eq('product_id', productId)
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    warehouse_id: Math.trunc(
+      Number((row as { warehouse_id: number }).warehouse_id)
+    ),
+    quantity: Math.trunc(Number((row as { quantity: number }).quantity)),
+  }))
 }
 
 export async function adjustStock(

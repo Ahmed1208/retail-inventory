@@ -67,6 +67,8 @@ export const FEATURE_CONTROL_IDS = [
   'purchaseOrders.confirmReceive',
   'purchaseOrders.cancel',
   'purchaseOrders.editNote',
+  'purchaseOrders.importCsv',
+  'purchaseOrders.exportCsv',
   // Orders / POS
   'orders.hubList',
   'orders.hubNew',
@@ -77,8 +79,12 @@ export const FEATURE_CONTROL_IDS = [
   'orders.cancelOrder',
   'orders.addPayment',
   'orders.editNote',
+  'orders.importCsv',
+  'orders.exportCsv',
   // Reports
   'reports.exportCsv',
+  // Admin hub
+  'admin.migrationGuide',
 ] as const
 
 export type FeatureControlId = (typeof FEATURE_CONTROL_IDS)[number]
@@ -556,6 +562,18 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             titleKey: 'control.purchaseOrders.editNote.title',
             descriptionKey: 'control.purchaseOrders.editNote.desc',
           },
+          {
+            id: 'purchaseOrders.importCsv',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.importCsv.title',
+            descriptionKey: 'control.purchaseOrders.importCsv.desc',
+          },
+          {
+            id: 'purchaseOrders.exportCsv',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.exportCsv.title',
+            descriptionKey: 'control.purchaseOrders.exportCsv.desc',
+          },
         ],
       },
     ],
@@ -629,6 +647,34 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.orders.editNote.title',
             descriptionKey: 'control.orders.editNote.desc',
+          },
+          {
+            id: 'orders.importCsv',
+            defaultEnabled: true,
+            titleKey: 'control.orders.importCsv.title',
+            descriptionKey: 'control.orders.importCsv.desc',
+          },
+          {
+            id: 'orders.exportCsv',
+            defaultEnabled: true,
+            titleKey: 'control.orders.exportCsv.title',
+            descriptionKey: 'control.orders.exportCsv.desc',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    titleKey: 'control.area.adminHub',
+    groups: [
+      {
+        titleKey: 'control.admin.group',
+        items: [
+          {
+            id: 'admin.migrationGuide',
+            defaultEnabled: true,
+            titleKey: 'control.admin.migrationGuide.title',
+            descriptionKey: 'control.admin.migrationGuide.desc',
           },
         ],
       },

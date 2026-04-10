@@ -51,7 +51,10 @@ Deno.serve(async (req) => {
 
   const { data: userData, error: userErr } = await userClient.auth.getUser(jwt)
   if (userErr || !userData.user) {
-    return new Response(JSON.stringify({ error: 'Invalid session' }), {
+    const detail =
+      userErr?.message ||
+      (jwt.length < 20 ? 'Missing or invalid bearer token' : 'Invalid or expired session')
+    return new Response(JSON.stringify({ error: detail }), {
       status: 401,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -67,11 +70,34 @@ Deno.serve(async (req) => {
     .eq('id', userData.user.id)
     .maybeSingle()
 
-  if (profErr || !profile?.is_admin) {
-    return new Response(JSON.stringify({ error: 'Forbidden' }), {
-      status: 403,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+  if (profErr) {
+    return new Response(
+      JSON.stringify({ error: `Profile lookup failed: ${profErr.message}` }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
+  }
+
+  const metaAdmin =
+    userData.user.user_metadata?.is_admin === true ||
+    userData.user.user_metadata?.is_admin === 'true'
+
+  const isCallerAdmin =
+    profile?.is_admin === true || (profile === null && metaAdmin)
+
+  if (!isCallerAdmin) {
+    return new Response(
+      JSON.stringify({
+        error:
+          'Forbidden: only admins can create members. Set public.profiles.is_admin = true for your user (and ensure a profiles row exists), or set user_metadata.is_admin in Auth and sign in again.',
+      }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   let body: {

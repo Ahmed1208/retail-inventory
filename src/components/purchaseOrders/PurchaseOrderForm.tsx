@@ -27,6 +27,7 @@ import {
 } from '@/services/peopleService'
 import type { PaymentMethod, Person, ProductWithRelations } from '@/types'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
@@ -53,9 +54,9 @@ import {
   PO_TABLE_GRID,
   applyProductCostDefaults,
   clearedProductLinePatch,
+  computePoPreview,
   costDiffersFromList,
   emptyPOLine,
-  poLineTotal,
 } from '@/components/purchaseOrders/poLineShared'
 
 function isPurchaseOrderDraftStatusConstraintError(err: unknown): boolean {
@@ -108,6 +109,8 @@ export function PurchaseOrderForm() {
     instapay: '',
   })
   const [allowRemaining, setAllowRemaining] = useState(false)
+  const [applySupplierDiscount, setApplySupplierDiscount] = useState(true)
+  const [discountRate, setDiscountRate] = useState(0)
   const [lines, setLines] = useState<POLineRow[]>(() => [emptyPOLine()])
   const warehouseInitRef = useRef(false)
   const [warehouseId, setWarehouseId] = useState(1)
@@ -175,10 +178,16 @@ export function PurchaseOrderForm() {
     [people]
   )
 
-  const runningTotal = useMemo(
-    () => roundMoney(lines.reduce((sum, l) => sum + poLineTotal(l), 0)),
-    [lines]
+  const poPreview = useMemo(
+    () => computePoPreview(lines, discountRate),
+    [lines, discountRate]
   )
+
+  useEffect(() => {
+    if (applySupplierDiscount && selectedSupplier) {
+      setDiscountRate(selectedSupplier.discount_rate)
+    }
+  }, [selectedSupplier, applySupplierDiscount])
 
   const paidPreview = useMemo(() => {
     let s = 0
@@ -190,7 +199,7 @@ export function PurchaseOrderForm() {
     return roundMoney(s)
   }, [payUse, payAmounts])
 
-  const remainingPreview = roundMoney(runningTotal - paidPreview)
+  const remainingPreview = roundMoney(poPreview.total - paidPreview)
 
   const supplierPersonId = selectedSupplier?.id ?? null
 
@@ -389,6 +398,9 @@ export function PurchaseOrderForm() {
           product_id: l.product_id,
           quantity: l.qty,
           cost_price: l.costPrice,
+          line_discount_rate: roundMoney(
+            Math.min(100, Math.max(0, l.discountPct))
+          ),
           update_default_cost_price: updateCatalog,
         }
         if (
@@ -449,7 +461,7 @@ export function PurchaseOrderForm() {
       setCostOverrideLineKey(null)
     })
     if (rowIndex >= 0) {
-      setFocusCellPos({ row: rowIndex, col: 5 })
+      setFocusCellPos({ row: rowIndex, col: 6 })
     }
   }, [costOverrideLineKey, lines])
 
@@ -483,7 +495,7 @@ export function PurchaseOrderForm() {
         setCatalogPricesLineKey(null)
       })
       if (rowIndex >= 0) {
-        setFocusCellPos({ row: rowIndex, col: 5 })
+        setFocusCellPos({ row: rowIndex, col: 6 })
       }
     },
     [catalogPricesLineKey, lines]
@@ -534,6 +546,7 @@ export function PurchaseOrderForm() {
             ...first,
             key: crypto.randomUUID(),
             qty,
+            discountPct: first.discountPct,
             lookupInvalid: false,
           })
         }
@@ -647,9 +660,11 @@ export function PurchaseOrderForm() {
     for (const line of lines) {
       if (!line.product_id) continue
       if (line.qty < 1) {
-        errors[line.product_id] = t('purchaseOrders.validationQuantityMin')
+        errors[line.key] = t('purchaseOrders.validationQuantityMin')
       } else if (line.costPrice < 0) {
-        errors[line.product_id] = t('purchaseOrders.validationCostPriceMin')
+        errors[line.key] = t('purchaseOrders.validationCostPriceMin')
+      } else if (line.discountPct < 0 || line.discountPct > 100) {
+        errors[line.key] = t('purchaseOrders.invalidLineDiscount')
       }
     }
     setLineErrors(errors)
@@ -684,6 +699,8 @@ export function PurchaseOrderForm() {
         asDraft: true,
         items: linesToApiItems(),
         warehouse_id: warehouseId,
+        apply_supplier_discount: applySupplierDiscount,
+        order_discount_rate: discountRate,
       })
     },
     onSuccess: (created) => {
@@ -805,6 +822,10 @@ export function PurchaseOrderForm() {
         register_warehouse_id: needsPaymentRegister
           ? paymentRegisterWarehouseId
           : undefined,
+        apply_supplier_discount: applySupplierDiscount,
+        order_discount_rate: applySupplierDiscount
+          ? undefined
+          : discountRate,
       })
       invalidatePO()
       toast.success(t('purchaseOrders.toastCreated'))
@@ -908,7 +929,8 @@ export function PurchaseOrderForm() {
         onOpenChange={setCheckoutOpen}
         isRTL={isRTL}
         formatCurrency={fc}
-        total={runningTotal}
+        preview={poPreview}
+        discountRate={discountRate}
         paidPreview={paidPreview}
         supplierName={selectedSupplier?.name ?? null}
         payUse={payUse}
@@ -1013,6 +1035,40 @@ export function PurchaseOrderForm() {
         )}
       </div>
 
+      {selectedSupplier && (
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b bg-background px-2 py-1.5 text-[10px] text-muted-foreground sm:text-xs">
+          <span>
+            {t('orders.discount')}: {selectedSupplier.discount_rate}%
+          </span>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              className="h-3.5 w-3.5"
+              checked={applySupplierDiscount}
+              onChange={(e) => setApplySupplierDiscount(e.target.checked)}
+            />
+            <span className="whitespace-nowrap">
+              {t('purchaseOrders.applySupplierDiscount')}
+            </span>
+          </label>
+          <div className="flex items-center gap-1.5">
+            <Label className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">
+              {t('orders.discount')} %
+            </Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.01"
+              className="h-8 w-[4.25rem] px-1.5 text-xs"
+              disabled={applySupplierDiscount && !!selectedSupplier}
+              value={discountRate}
+              onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
+            />
+          </div>
+        </div>
+      )}
+
       {showDupBanner && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -1067,6 +1123,7 @@ export function PurchaseOrderForm() {
               <span className="text-center">{t('orders.availableStock')}</span>
               <span>{t('common.quantity')}</span>
               <span>{t('purchaseOrders.costPrice')}</span>
+              <span>%</span>
               <span className="text-end">{t('purchaseOrders.lineTotal')}</span>
               <span />
             </div>
@@ -1120,9 +1177,23 @@ export function PurchaseOrderForm() {
 
       <footer className="shrink-0 border-t bg-background/95 py-2 ps-2 pe-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs tabular-nums sm:text-sm">
-            <span className="font-semibold">{t('orders.totalAmount')}</span>
-            <span className="font-semibold">{fc(runningTotal)}</span>
+          <div className="flex min-w-0 flex-col gap-0.5 text-xs tabular-nums sm:text-sm">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <span className="text-muted-foreground">{t('orders.subtotal')}</span>
+              <span>{fc(poPreview.subtotal)}</span>
+            </div>
+            {poPreview.discountAmount > 0.005 && (
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-emerald-600">
+                <span>
+                  {t('orders.discount')} ({discountRate}%)
+                </span>
+                <span>−{fc(poPreview.discountAmount)}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-border pt-0.5 font-semibold">
+              <span>{t('orders.totalAmount')}</span>
+              <span>{fc(poPreview.total)}</span>
+            </div>
           </div>
           {canCheckout && (
             <Button

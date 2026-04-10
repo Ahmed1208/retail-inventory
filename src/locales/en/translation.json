@@ -51,6 +51,18 @@
     "createSuccess": "Member created.",
     "loadError": "Could not load members.",
     "empty": "No members yet.",
+    "notFound": "Member not found.",
+    "editTitle": "Edit member",
+    "editSubtitle": "Update password and feature access for {{username}}.",
+    "sectionPassword": "Password",
+    "passwordHint": "Leave blank until you want to set a new password. Passwords are stored securely in Supabase Auth (hashed), not in the members table.",
+    "updatePassword": "Update password",
+    "sectionFeatures": "Feature access",
+    "featuresHint": "Checked means the operator may use that capability. Matches the Control panel list for the whole system.",
+    "saveFeatures": "Save feature access",
+    "featuresSaved": "Feature access saved.",
+    "saveError": "Could not save.",
+    "passwordUpdated": "Password updated.",
     "colUsername": "Username",
     "colAdmin": "Admin",
     "colCreated": "Created",
@@ -74,23 +86,31 @@
         },
         "purchaseOrders": {
           "title": "Purchase orders (core)",
-          "desc": "Allow PO list, creating POs, receiving stock, and editing PO notes?"
+          "desc": "Allow PO list, creating POs, and receiving stock?"
         },
-        "poAdvanced": {
-          "title": "Purchase orders (advanced)",
-          "desc": "Allow cost overrides, canceling POs, and PO CSV import/export?"
+        "poManage": {
+          "title": "Purchase orders (edit & advanced)",
+          "desc": "Allow editing PO notes, canceling POs, cost overrides, and PO CSV import/export? Turn off for receive-only operators."
         },
-        "inventoryCatalog": {
-          "title": "Catalog & stock",
-          "desc": "Allow product and category/brand CRUD and stock adjustments?"
+        "inventoryAdd": {
+          "title": "Catalog — add new",
+          "desc": "Allow adding new products, categories, and brands?"
+        },
+        "inventoryEditDelete": {
+          "title": "Catalog — edit, delete & stock",
+          "desc": "Allow editing or deleting products/categories/brands and stock adjustments? Turn off if they should only create new records."
         },
         "inventoryTransfers": {
           "title": "Stock transfers",
           "desc": "Allow creating and listing warehouse transfers?"
         },
-        "peoplePayments": {
-          "title": "People, payments & register",
-          "desc": "Allow people CRUD, recording payments, ledger/payments app, and register deposit/withdraw?"
+        "peopleAccess": {
+          "title": "People, payments & register (access)",
+          "desc": "Allow viewing people, adding people, recording payments, payments list, full ledger view, and register deposit/withdraw?"
+        },
+        "peopleEditDelete": {
+          "title": "People & payments (edit & risk)",
+          "desc": "Allow editing/deleting people and ledger note edits or reversals? Turn off for staff who only add customers or take payments."
         },
         "reportsMovements": {
           "title": "Reports & movements",

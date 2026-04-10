@@ -1,19 +1,27 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, FileDown, FileUp } from 'lucide-react'
 
+import { getAllBrands } from '@/services/brandService'
+import { getAllCategories } from '@/services/categoryService'
 import { getAllPurchaseOrders } from '@/services/purchaseOrderService'
 import { getAllPeople } from '@/services/peopleService'
+import { getAllProducts } from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import type { PurchaseOrderStatus } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { buttonVariants } from '@/components/ui/button'
+import { PurchaseOrderCsvImportDialog } from '@/components/purchaseOrders/PurchaseOrderCsvImportDialog'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { downloadCsv } from '@/utils/csvDownload'
+import { flattenPurchaseOrdersForCsvExport } from '@/utils/purchaseOrderCsvImport'
 import {
   POStatusBadge,
   formatPOPaymentSummary,
@@ -23,18 +31,32 @@ const DEBOUNCE_MS = 300
 
 type StatusFilter = 'all' | PurchaseOrderStatus
 
+type HistoricalPoListFilter = 'all' | 'only' | 'exclude'
+
 export function PurchaseOrdersList() {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
   const fc = (n: number) => formatCurrency(n, lang)
 
   const hubList = useFeatureEnabled('purchaseOrders.hubList')
+  const canImportCsv = useFeatureEnabled('purchaseOrders.importCsv')
+  const canExportCsv = useFeatureEnabled('purchaseOrders.exportCsv')
+  const [importCsvOpen, setImportCsvOpen] = useState(false)
+
+  useMigrationImportDialog(
+    setImportCsvOpen,
+    true,
+    hubList && canImportCsv
+  )
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
+  const [historicalPoFilter, setHistoricalPoFilter] =
+    useState<HistoricalPoListFilter>('all')
 
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
 
@@ -45,14 +67,41 @@ export function PurchaseOrdersList() {
     }
   }, [t])
 
+  /** Historical PO rows are received; draft/cancelled tabs would return nothing from the API. */
+  useEffect(() => {
+    if (
+      historicalPoFilter === 'only' &&
+      statusFilter !== 'all' &&
+      statusFilter !== 'received'
+    ) {
+      setStatusFilter('all')
+    }
+  }, [historicalPoFilter, statusFilter])
+
+  const onPoStatusFilterClick = useCallback(
+    (value: StatusFilter) => {
+      if (
+        value !== 'all' &&
+        historicalPoFilter === 'only' &&
+        value !== 'received'
+      ) {
+        setHistoricalPoFilter('all')
+      }
+      setStatusFilter(value)
+    },
+    [historicalPoFilter]
+  )
+
   const filters = useMemo(
     () => ({
       search: debouncedSearch.trim() || undefined,
       status: statusFilter === 'all' ? undefined : statusFilter,
       from: dateFrom || undefined,
       to: dateTo || undefined,
+      historical_snapshot:
+        historicalPoFilter === 'all' ? undefined : historicalPoFilter,
     }),
-    [debouncedSearch, statusFilter, dateFrom, dateTo]
+    [debouncedSearch, statusFilter, dateFrom, dateTo, historicalPoFilter]
   )
 
   const { data: purchaseOrders = [], isLoading } = useQuery({
@@ -64,6 +113,47 @@ export function PurchaseOrdersList() {
     queryKey: ['people'],
     queryFn: () => getAllPeople(),
   })
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => listWarehouses(),
+  })
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => getAllProducts(),
+  })
+
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => getAllBrands(),
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => getAllCategories(),
+  })
+
+  const onCsvImportComplete = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
+    void queryClient.invalidateQueries({ queryKey: ['products'] })
+    void queryClient.invalidateQueries({ queryKey: ['people'] })
+    void queryClient.invalidateQueries({ queryKey: ['brands'] })
+    void queryClient.invalidateQueries({ queryKey: ['categories'] })
+  }, [queryClient])
+
+  const exportPoCsv = useCallback(() => {
+    const whMap = new Map(warehouses.map((w) => [w.id, w]))
+    const personMap = new Map(people.map((p) => [p.id, p]))
+    const rows = flattenPurchaseOrdersForCsvExport(purchaseOrders, {
+      warehouseById: whMap,
+      personById: personMap,
+    })
+    downloadCsv(
+      `purchase-orders-export-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows
+    )
+  }, [people, purchaseOrders, warehouses])
 
   const formatDate = (iso: string) =>
     new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
@@ -135,7 +225,7 @@ export function PurchaseOrdersList() {
               key={value}
               type="button"
               role="tab"
-              onClick={() => setStatusFilter(value as StatusFilter)}
+              onClick={() => onPoStatusFilterClick(value as StatusFilter)}
               className={cn(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                 statusFilter === value
@@ -161,6 +251,72 @@ export function PurchaseOrdersList() {
           className="w-[140px]"
           aria-label={t('purchaseOrders.dateTo')}
         />
+        {(canImportCsv || canExportCsv) && (
+          <>
+            {canExportCsv && purchaseOrders.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                title={t('purchaseOrders.exportCsvHint')}
+                onClick={exportPoCsv}
+              >
+                <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+                {t('common.exportCsv')}
+              </Button>
+            )}
+            {canImportCsv && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setImportCsvOpen(true)}
+              >
+                <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+                {t('purchaseOrders.importCsv.button')}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+
+      <div
+        className="border-b px-3 py-2"
+        role="group"
+        aria-label={t('purchaseOrders.historicalFilterLabel')}
+      >
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          {t('purchaseOrders.historicalFilterLabel')}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['all', 'purchaseOrders.historicalFilterAll'],
+              ['exclude', 'purchaseOrders.historicalFilterExclude'],
+              ['only', 'purchaseOrders.historicalFilterOnly'],
+            ] as const
+          ).map(([value, labelKey]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() =>
+                setHistoricalPoFilter(value as HistoricalPoListFilter)
+              }
+              className={cn(
+                'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                historicalPoFilter === value
+                  ? value === 'only'
+                    ? 'bg-amber-500 text-white dark:bg-amber-600'
+                    : 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-2">
@@ -192,7 +348,17 @@ export function PurchaseOrdersList() {
                       <span className="font-semibold tabular-nums">
                         #{t('purchaseOrders.poPrefix')}-{po.order_number}
                       </span>
-                      <POStatusBadge status={po.status} t={t} />
+                      <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                        {po.is_historical_snapshot ? (
+                          <span
+                            className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-950 dark:bg-amber-900/50 dark:text-amber-100"
+                            title={t('purchaseOrders.historicalImportBadge')}
+                          >
+                            {t('purchaseOrders.historicalImportBadge')}
+                          </span>
+                        ) : null}
+                        <POStatusBadge status={po.status} t={t} />
+                      </div>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatDate(po.created_at)}
@@ -222,6 +388,20 @@ export function PurchaseOrdersList() {
           </ul>
         )}
       </div>
+
+      {canImportCsv && (
+        <PurchaseOrderCsvImportDialog
+          open={importCsvOpen}
+          onOpenChange={setImportCsvOpen}
+          warehouses={warehouses}
+          people={people}
+          products={products}
+          initialBrands={brands}
+          initialCategories={categories}
+          onComplete={onCsvImportComplete}
+          isRTL={isRTL}
+        />
+      )}
     </div>
   )
 }

@@ -79,6 +79,14 @@ export function OrderDetailReadOnly({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {order.is_historical_snapshot ? (
+            <span
+              className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-950 dark:bg-amber-900/50 dark:text-amber-100"
+              title={t('orders.historicalImportBadge')}
+            >
+              {t('orders.historicalImportBadge')}
+            </span>
+          ) : null}
           <span
             className={cn(
               'rounded-full px-2 py-0.5 text-xs font-medium',

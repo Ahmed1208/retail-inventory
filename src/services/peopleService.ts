@@ -38,7 +38,8 @@ export class DuplicatePhoneError extends Error {
   }
 }
 
-function normalizePhoneCompare(s: string): string {
+/** Same rule as DB unique index on people.phone (trim + lowercase). */
+export function normalizePhoneKey(s: string): string {
   return s.trim().toLowerCase()
 }
 
@@ -71,7 +72,7 @@ export async function findConflictingPersonByPhone(
 ): Promise<{ id: string; name: string } | null> {
   const raw = phone.trim()
   if (!raw) return null
-  const key = normalizePhoneCompare(raw)
+  const key = normalizePhoneKey(raw)
 
   const { data, error } = await supabase.rpc('person_phone_conflict', {
     p_phone: raw,
@@ -101,7 +102,7 @@ export async function findConflictingPersonByPhone(
   for (const r of all ?? []) {
     const pr = r as { id: string; name: string; phone: string | null }
     if (!pr.phone?.trim()) continue
-    if (normalizePhoneCompare(pr.phone) !== key) continue
+    if (normalizePhoneKey(pr.phone) !== key) continue
     if (excludePersonId && pr.id === excludePersonId) continue
     return { id: pr.id, name: pr.name }
   }
@@ -124,6 +125,26 @@ export function supabaseErrorMessage(e: unknown): string {
   }
   if (typeof e === 'string' && e.trim()) return e.trim()
   return ''
+}
+
+/**
+ * Historical CSV import needs `is_historical_snapshot` on orders / purchase_orders.
+ * PostgREST often surfaces a missing column as a "schema cache" error until NOTIFY reload.
+ */
+export function throwHistoricalSnapshotMigrationError(err: unknown): never {
+  const raw = supabaseErrorMessage(err)
+  const low = raw.toLowerCase()
+  if (
+    raw &&
+    (low.includes('is_historical_snapshot') ||
+      (low.includes('schema cache') &&
+        (low.includes("'orders'") || low.includes("'purchase_orders'"))))
+  ) {
+    throw new Error(
+      `${raw} Apply Supabase migrations in supabase/migrations (032–033), run \`npm run db:push:local\` or \`supabase db push\`, then reload the API schema (SQL: NOTIFY pgrst, 'reload schema'; or Dashboard → API → Reload schema).`
+    )
+  }
+  throw err
 }
 
 function isPeoplePhoneUniqueViolation(e: unknown): boolean {
@@ -547,6 +568,105 @@ export async function getNextStandaloneLedgerRef(
     typeof refRaw === 'string' ? refRaw : String(refRaw ?? '')
   if (!refNumber) throw new Error('Failed to allocate payment reference')
   return refNumber
+}
+
+/** CSV export: standalone person payments (not tied to an order/PO). */
+export type StandalonePaymentCsvExportRow = {
+  created_at: string
+  person_name: string
+  person_phone: string
+  payment_type: 'payment_in' | 'payment_out'
+  payment_method: PaymentMethod
+  amount: number
+  note: string
+  register_warehouse_code: string
+  register_warehouse_name: string
+}
+
+export async function listStandalonePersonPaymentsForExport(): Promise<
+  StandalonePaymentCsvExportRow[]
+> {
+  const { data, error } = await supabase
+    .from(BALANCE_TX)
+    .select(
+      'created_at, type, amount, note, payment_method, register_warehouse_id, people(name, phone)'
+    )
+    .in('type', ['payment_in', 'payment_out'])
+    .is('reference_id', null)
+    .not('person_id', 'is', null)
+    .is('reversed_at', null)
+    .order('created_at', { ascending: false })
+    .limit(10000)
+
+  if (error) throw error
+
+  /** DBs without migration 029 have no `warehouses.code`; PostgREST errors if we select it. */
+  let whRows: Record<string, unknown>[] | null = null
+  {
+    let { data, error: whErr } = await supabase
+      .from('warehouses')
+      .select('id, code, name')
+    if (whErr) {
+      const msg = String(whErr.message ?? '').toLowerCase()
+      const details = String(
+        (whErr as { details?: string | null }).details ?? ''
+      ).toLowerCase()
+      const missingCode =
+        whErr.code === '42703' ||
+        (msg.includes('code') &&
+          (msg.includes('does not exist') ||
+            msg.includes('column') ||
+            details.includes('does not exist')))
+      if (missingCode) {
+        ;({ data, error: whErr } = await supabase
+          .from('warehouses')
+          .select('id, name'))
+      }
+      if (whErr) throw whErr
+    }
+    whRows = (data ?? []) as Record<string, unknown>[]
+  }
+
+  const whMap = new Map<number, { code: string; name: string }>()
+  for (const w of whRows ?? []) {
+    const id = Math.trunc(Number(w.id))
+    const codeRaw = w.code
+    const code =
+      codeRaw != null && String(codeRaw).trim() !== ''
+        ? String(codeRaw).trim()
+        : `WH-${String(id).padStart(4, '0')}`
+    whMap.set(id, {
+      code,
+      name: w.name != null ? String(w.name) : '',
+    })
+  }
+
+  const out: StandalonePaymentCsvExportRow[] = []
+  for (const raw of data ?? []) {
+    const row = raw as Record<string, unknown>
+    const people = row.people as { name?: string; phone?: string } | null
+    const rid = row.register_warehouse_id
+    const whId =
+      rid != null && Number.isFinite(Number(rid))
+        ? Math.trunc(Number(rid))
+        : null
+    const w = whId != null ? whMap.get(whId) : null
+    const typ = String(row.type)
+    const amtAbs = roundMoney(Math.abs(Number(row.amount)))
+    const pm = normalizePaymentMethod(row.payment_method)
+    out.push({
+      created_at: String(row.created_at ?? ''),
+      person_name: people?.name != null ? String(people.name) : '',
+      person_phone: people?.phone != null ? String(people.phone) : '',
+      payment_type: typ === 'payment_out' ? 'payment_out' : 'payment_in',
+      payment_method: (pm ?? 'cash') as PaymentMethod,
+      amount: amtAbs,
+      note: row.note != null ? String(row.note) : '',
+      register_warehouse_code: w?.code ?? '',
+      register_warehouse_name: w?.name ?? '',
+    })
+  }
+  return out
 }
 
 export async function recordPayment(data: {

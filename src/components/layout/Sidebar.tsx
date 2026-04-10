@@ -73,29 +73,16 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const { t } = useTranslation()
   const { pathname } = useLocation()
   const { isAdmin } = useAuth()
-  const sidebarControl = useFeatureEnabled('sidebar.control')
-  const sidebarAdminFlag = useFeatureEnabled('sidebar.admin')
 
-  const showControlNav = isAdmin && sidebarControl
+  /** Admin / Control are gated only on `profiles.is_admin`, not Control toggles (admins always see them). */
+  const showControlNav = isAdmin
+  const showAdminNav = isAdmin
+
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
   const showPeopleNav = useFeatureEnabled('sidebar.people')
   const showPaymentsNav = useFeatureEnabled('sidebar.payments')
   const showRegisterNav = useFeatureEnabled('sidebar.register')
-  const showAdminGroup = isAdmin && sidebarAdminFlag
-  const showDashboardNav = useFeatureEnabled('sidebar.dashboard')
-  const showDocumentationNav = useFeatureEnabled('sidebar.documentation')
-  const showReportsShortcut = useFeatureEnabled('sidebar.reports')
-  const showHubMovements = useFeatureEnabled('inventory.hubMovements')
-  const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
-
-  const anyAdminChild =
-    showDashboardNav ||
-    showDocumentationNav ||
-    showReportsShortcut ||
-    showHubMovements ||
-    showMigrationGuide
-  const showAdminNav = showAdminGroup && anyAdminChild
 
   const content = (
     <>

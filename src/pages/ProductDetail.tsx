@@ -28,8 +28,10 @@ import {
   getProductById,
   getProductPriceHistory,
   getProductQuantityInWarehouse,
+  getProductStockByWarehouse,
   getStockMovements,
 } from '@/services/productService'
+import { getProductPurchaseAnalytics } from '@/services/purchaseOrderService'
 import { listWarehouses } from '@/services/warehouseService'
 import { getProductSalesAnalytics } from '@/services/orderService'
 import type { ProductSaleLine } from '@/services/orderService'
@@ -191,6 +193,90 @@ export function ProductDetail() {
     enabled: !!id && !!product,
   })
 
+  const { data: stockByWarehouse = [], isLoading: stockByWhLoading } = useQuery({
+    queryKey: ['productStockByWarehouse', id],
+    queryFn: () => getProductStockByWarehouse(id!),
+    enabled: !!id && !!product,
+  })
+
+  const { data: purchaseLines = [], isLoading: purchasesLoading } = useQuery({
+    queryKey: ['productPurchases', id, dateRange.from, dateRange.to],
+    queryFn: () =>
+      getProductPurchaseAnalytics(id!, {
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: !!id && !!product,
+  })
+
+  const warehouseActivityRows = useMemo(() => {
+    const whMeta = new Map(warehouses.map((w) => [w.id, w]))
+    const ids = new Set<number>()
+    for (const w of warehouses) ids.add(w.id)
+    for (const r of stockByWarehouse) ids.add(r.warehouse_id)
+    for (const l of saleLines) ids.add(l.warehouseId)
+    for (const l of purchaseLines) ids.add(l.warehouseId)
+
+    const sortedIds = [...ids].sort((a, b) => {
+      const wa = whMeta.get(a)
+      const wb = whMeta.get(b)
+      const ca = wa?.code ?? `\uFFFF${a}`
+      const cb = wb?.code ?? `\uFFFF${b}`
+      return ca.localeCompare(cb, undefined, { numeric: true })
+    })
+
+    const rows = sortedIds.map((whId) => {
+      const w = whMeta.get(whId)
+      const label = w
+        ? `${w.code} — ${w.name}`
+        : `${t('warehouses.title')} #${whId}`
+      const qtyOnHand =
+        stockByWarehouse.find((r) => r.warehouse_id === whId)?.quantity ?? 0
+      let salesUnits = 0
+      let salesRevenue = 0
+      for (const l of saleLines) {
+        if (l.warehouseId !== whId) continue
+        salesUnits += l.quantity
+        salesRevenue = roundMoney(salesRevenue + l.lineTotal)
+      }
+      let purchaseUnits = 0
+      let purchaseAmount = 0
+      for (const l of purchaseLines) {
+        if (l.warehouseId !== whId) continue
+        purchaseUnits += l.quantity
+        purchaseAmount = roundMoney(purchaseAmount + l.lineTotal)
+      }
+      return {
+        whId,
+        label,
+        qtyOnHand,
+        salesUnits,
+        salesRevenue,
+        purchaseUnits,
+        purchaseAmount,
+      }
+    })
+
+    const totals = rows.reduce(
+      (acc, r) => ({
+        qtyOnHand: acc.qtyOnHand + r.qtyOnHand,
+        salesUnits: acc.salesUnits + r.salesUnits,
+        salesRevenue: roundMoney(acc.salesRevenue + r.salesRevenue),
+        purchaseUnits: acc.purchaseUnits + r.purchaseUnits,
+        purchaseAmount: roundMoney(acc.purchaseAmount + r.purchaseAmount),
+      }),
+      {
+        qtyOnHand: 0,
+        salesUnits: 0,
+        salesRevenue: 0,
+        purchaseUnits: 0,
+        purchaseAmount: 0,
+      }
+    )
+
+    return { rows, totals }
+  }, [warehouses, stockByWarehouse, saleLines, purchaseLines, t])
+
   const chartData = useMemo(() => aggregateSalesByDate(saleLines), [saleLines])
 
   const priceLineChartData = useMemo(() => {
@@ -219,6 +305,8 @@ export function ProductDetail() {
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
     queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
     queryClient.invalidateQueries({ queryKey: ['productWhStock', id] })
+    queryClient.invalidateQueries({ queryKey: ['productStockByWarehouse', id] })
+    queryClient.invalidateQueries({ queryKey: ['productPurchases', id] })
   }
 
   const kpis = useMemo(() => {
@@ -586,6 +674,89 @@ export function ProductDetail() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="rounded-xl border border-border bg-card/40 p-4 md:p-6">
+        <h2 className="mb-1 text-lg font-semibold">
+          {t('products.detailSectionByWarehouse')}
+        </h2>
+        <p className="mb-4 text-sm text-muted-foreground">
+          {t('products.detailByWarehouseHint')}
+        </p>
+        {stockByWhLoading || salesLoading || purchasesLoading ? (
+          <div className="flex justify-center py-10 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50 text-muted-foreground">
+                  <th className="px-3 py-2 text-start font-medium">
+                    {t('products.detailColLocation')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium tabular-nums">
+                    {t('products.detailColQtyOnHand')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium tabular-nums">
+                    {t('products.detailColSalesUnits')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium tabular-nums">
+                    {t('products.detailColSalesRevenue')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium tabular-nums">
+                    {t('products.detailColPurchaseUnits')}
+                  </th>
+                  <th className="px-3 py-2 text-end font-medium tabular-nums">
+                    {t('products.detailColPurchaseAmount')}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {warehouseActivityRows.rows.map((r) => (
+                  <tr key={r.whId} className="border-b border-border/50">
+                    <td className="px-3 py-2 font-medium">{r.label}</td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {r.qtyOnHand}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {r.salesUnits}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {fc(r.salesRevenue)}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {r.purchaseUnits}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums">
+                      {fc(r.purchaseAmount)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-border bg-muted/20 font-semibold">
+                  <td className="px-3 py-2.5">
+                    {t('products.detailRowTotal')}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">
+                    {warehouseActivityRows.totals.qtyOnHand}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">
+                    {warehouseActivityRows.totals.salesUnits}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">
+                    {fc(warehouseActivityRows.totals.salesRevenue)}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">
+                    {warehouseActivityRows.totals.purchaseUnits}
+                  </td>
+                  <td className="px-3 py-2.5 text-end tabular-nums">
+                    {fc(warehouseActivityRows.totals.purchaseAmount)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="rounded-xl border border-border bg-card/40 p-4 md:p-6">

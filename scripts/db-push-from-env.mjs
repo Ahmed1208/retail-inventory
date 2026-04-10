@@ -3,9 +3,13 @@
  * Set either DATABASE_URL (full URI from Dashboard → Database) or
  * SUPABASE_DB_PASSWORD (with existing VITE_SUPABASE_URL).
  *
- * Optional: SUPABASE_POOLER_REGION=eu-central-1 (from Dashboard → Database)
- * to use the session pooler directly. The script also tries pooler hosts if
- * the direct db.*.supabase.co connection fails (e.g. IPv6-only DNS).
+ * Optional: SUPABASE_POOLER_REGION=eu-west-1 (exact region from Dashboard → Connect)
+ * to try that region’s poolers first.
+ *
+ * Tries both shared pooler stacks (aws-1 then aws-0) × region × session (5432) / transaction (6543).
+ * Many EU projects use aws-1-* only; aws-0-* can return “Tenant or user not found”.
+ *
+ * Best reliability: set DATABASE_URL to the “Session pooler” URI from the dashboard (copy-paste).
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -15,15 +19,19 @@ import { dirname, join } from 'node:path'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const envPath = join(root, '.env.local')
 
-/** Session pooler regions to try if direct connection fails */
+/** Shared pooler regions to try if direct connection fails (order: common first). */
 const POOLER_REGIONS = [
   'eu-west-1',
   'eu-central-1',
+  'eu-north-1',
   'us-east-1',
   'us-west-1',
   'us-west-2',
+  'ca-central-1',
   'ap-south-1',
   'ap-southeast-1',
+  'ap-southeast-2',
+  'ap-northeast-1',
   'sa-east-1',
 ]
 
@@ -62,10 +70,28 @@ function directUrl(ref, pass) {
   )
 }
 
-function poolerSessionUrl(ref, pass, region) {
+const POOLER_STACKS = ['aws-1', 'aws-0']
+
+function poolerSessionUrl(ref, pass, stack, region) {
   return ensureSslmode(
-    `postgresql://postgres.${ref}:${encodeURIComponent(pass)}@aws-0-${region}.pooler.supabase.com:5432/postgres`,
+    `postgresql://postgres.${ref}:${encodeURIComponent(pass)}@${stack}-${region}.pooler.supabase.com:5432/postgres`,
   )
+}
+
+/** Supavisor transaction mode (IPv4-friendly); same user as session pooler. */
+function poolerTransactionUrl(ref, pass, stack, region) {
+  return ensureSslmode(
+    `postgresql://postgres.${ref}:${encodeURIComponent(pass)}@${stack}-${region}.pooler.supabase.com:6543/postgres`,
+  )
+}
+
+function pushPoolerCandidates(ref, pass, region) {
+  const out = []
+  for (const stack of POOLER_STACKS) {
+    out.push(poolerSessionUrl(ref, pass, stack, region))
+    out.push(poolerTransactionUrl(ref, pass, stack, region))
+  }
+  return out
 }
 
 function describeUrl(dbUrl) {
@@ -78,12 +104,16 @@ function describeUrl(dbUrl) {
 }
 
 function runPush(dbUrl) {
-  return spawnSync('npx', ['supabase', 'db', 'push', '--db-url', dbUrl], {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 20 * 1024 * 1024,
-    env: { ...process.env },
-  })
+  return spawnSync(
+    'npx',
+    ['supabase', 'db', 'push', '--yes', '--db-url', dbUrl],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 20 * 1024 * 1024,
+      env: { ...process.env },
+    }
+  )
 }
 
 const env = loadDotEnv(envPath)
@@ -101,13 +131,14 @@ if (customUrl) {
   candidates.push(ensureSslmode(customUrl))
 } else if (ref && pass) {
   if (poolerRegion) {
-    candidates.push(poolerSessionUrl(ref, pass, poolerRegion))
+    candidates.push(...pushPoolerCandidates(ref, pass, poolerRegion))
     candidates.push(directUrl(ref, pass))
   } else {
-    candidates.push(directUrl(ref, pass))
+    // Prefer Supavisor poolers first: direct db.* often resolves to IPv6-only and fails on many networks.
     for (const r of POOLER_REGIONS) {
-      candidates.push(poolerSessionUrl(ref, pass, r))
+      candidates.push(...pushPoolerCandidates(ref, pass, r))
     }
+    candidates.push(directUrl(ref, pass))
   }
 } else {
   console.error(

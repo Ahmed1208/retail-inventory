@@ -15,6 +15,7 @@ import {
   mapPersonRow,
   roundMoney,
   supabaseErrorMessage,
+  throwHistoricalSnapshotMigrationError,
   voidLedgerOrderDocumentRowForCancel,
   voidLedgerPaymentOperationsForDocumentCancel,
   voidWalkInOrderCancelLedgerInPlace,
@@ -59,7 +60,11 @@ const ORDER_SELECT = `
   *,
   order_items(
     *,
-    product:products(*)
+    product:products(
+      *,
+      brand:brands(name),
+      category:categories(name)
+    )
   ),
   payment_installments(*)
 `
@@ -71,6 +76,8 @@ export type OrderFilters = {
   search?: string
   from?: string
   to?: string
+  /** Filter CSV “historical snapshot” rows vs operational orders */
+  historical_snapshot?: 'all' | 'only' | 'exclude'
 }
 
 type OrderRow = Record<string, unknown> & {
@@ -134,8 +141,20 @@ function mapOrderFields(row: OrderRow): Order {
     subtotal: Number(row.subtotal ?? 0),
     allow_remaining_on_account: Boolean(row.allow_remaining_on_account),
     warehouse_id,
+    is_historical_snapshot: Boolean(row.is_historical_snapshot),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
+  }
+}
+
+function assertOrderNotHistoricalSnapshot(
+  order: Order,
+  action: string
+): void {
+  if (order.is_historical_snapshot) {
+    throw new Error(
+      `HISTORICAL_ORDER_IMMUTABLE: ${action}`
+    )
   }
 }
 
@@ -246,6 +265,12 @@ export async function getAllOrders(
     toEndOfDay.setHours(23, 59, 59, 999)
     query = query.lte('created_at', toEndOfDay.toISOString())
   }
+  if (filters?.historical_snapshot === 'only') {
+    query = query.eq('is_historical_snapshot', true)
+  }
+  if (filters?.historical_snapshot === 'exclude') {
+    query = query.eq('is_historical_snapshot', false)
+  }
 
   const { data, error } = await query
   if (error) throw error
@@ -291,6 +316,8 @@ export type ProductSaleLine = {
   orderNumber: number
   orderCreatedAt: string
   orderType: OrderType
+  /** Ship-from warehouse on the parent order. */
+  warehouseId: number
 }
 
 export type ProductSalesAnalyticsFilters = {
@@ -321,7 +348,8 @@ export async function getProductSalesAnalytics(
         order_number,
         created_at,
         status_flow,
-        type
+        type,
+        warehouse_id
       )
     `
     )
@@ -335,6 +363,7 @@ export async function getProductSalesAnalytics(
     created_at: string
     status_flow: string
     type: string
+    warehouse_id?: number | string | null
   }
   type RawRow = {
     id: string
@@ -355,6 +384,12 @@ export async function getProductSalesAnalytics(
     if (filters?.from && day < filters.from) continue
     if (filters?.to && day > filters.to) continue
 
+    const whRaw = o.warehouse_id
+    const warehouseId =
+      whRaw != null && Number.isFinite(Number(whRaw))
+        ? Math.trunc(Number(whRaw))
+        : DEFAULT_WAREHOUSE_ID
+
     out.push({
       lineId: r.id,
       quantity: Number(r.quantity),
@@ -364,6 +399,7 @@ export async function getProductSalesAnalytics(
       orderNumber: Number(o.order_number),
       orderCreatedAt: o.created_at,
       orderType: o.type as OrderType,
+      warehouseId,
     })
   }
 
@@ -396,7 +432,8 @@ export async function getPersonSalesAnalytics(
         order_number,
         created_at,
         status_flow,
-        type
+        type,
+        warehouse_id
       )
     `
     )
@@ -411,6 +448,7 @@ export async function getPersonSalesAnalytics(
     created_at: string
     status_flow: string
     type: string
+    warehouse_id?: number | string | null
   }
   type RawRow = {
     id: string
@@ -432,6 +470,12 @@ export async function getPersonSalesAnalytics(
     if (filters?.from && day < filters.from) continue
     if (filters?.to && day > filters.to) continue
 
+    const whRaw = o.warehouse_id
+    const warehouseId =
+      whRaw != null && Number.isFinite(Number(whRaw))
+        ? Math.trunc(Number(whRaw))
+        : DEFAULT_WAREHOUSE_ID
+
     out.push({
       lineId: r.id,
       productId: String(r.product_id),
@@ -442,6 +486,7 @@ export async function getPersonSalesAnalytics(
       orderNumber: Number(o.order_number),
       orderCreatedAt: o.created_at,
       orderType: o.type as OrderType,
+      warehouseId,
     })
   }
 
@@ -494,6 +539,8 @@ export async function createOrder(data: {
   order_discount_rate?: number
   allow_remaining_on_account: boolean
   warehouse_id?: number
+  /** Optional row timestamp (e.g. CSV import); omit for “now” */
+  created_at?: string
 }): Promise<OrderWithItemsAndPayments> {
   if (!data.items.length) {
     throw new Error('Order must have at least one item')
@@ -566,7 +613,7 @@ export async function createOrder(data: {
       ? Math.trunc(Number(data.warehouse_id))
       : DEFAULT_WAREHOUSE_ID
 
-  const orderPayload = {
+  const orderPayload: Record<string, unknown> = {
     order_number,
     type: data.type,
     status: 'pending' as OrderStatus,
@@ -582,6 +629,11 @@ export async function createOrder(data: {
     remaining_amount,
     allow_remaining_on_account: data.allow_remaining_on_account,
     warehouse_id,
+    is_historical_snapshot: false,
+  }
+  const docCreated = data.created_at?.trim()
+  if (docCreated && !Number.isNaN(Date.parse(docCreated))) {
+    orderPayload.created_at = new Date(docCreated).toISOString()
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -644,6 +696,113 @@ export async function createOrder(data: {
 
   const created = await getOrderById(orderId)
   if (!created) throw new Error('Failed to fetch created order')
+  return created
+}
+
+/**
+ * CSV / backfill: completed order visible in sales analytics only.
+ * Does not post stock movements, register lines, or balance_transactions.
+ */
+export async function importHistoricalOrderSnapshot(data: {
+  type: OrderType
+  warehouse_id: number
+  person_id: string | null
+  note?: string | null
+  discount_rate?: number
+  /** Optional backfill document date (ISO). */
+  created_at?: string | null
+  items: PosOrderLineInput[]
+}): Promise<OrderWithItemsAndPayments> {
+  if (!data.items.length) {
+    throw new Error('Order must have at least one item')
+  }
+  if (data.person_id) {
+    const { data: prow, error: pe } = await supabase
+      .from('people')
+      .select('*')
+      .eq('id', data.person_id)
+      .maybeSingle()
+    if (pe) throw pe
+    if (!prow) throw new Error('Person not found')
+    const p = mapPersonRow(prow as Record<string, unknown>)
+    if (!p.roles.includes('customer')) {
+      throw new Error('Selected person must have the customer role')
+    }
+  }
+
+  const dr = roundMoney(Math.min(100, Math.max(0, data.discount_rate ?? 0)))
+  const lines = data.items.map((item) => {
+    const ld = roundMoney(Math.min(100, item.line_discount_rate ?? 0))
+    const gross = item.quantity * item.unit_price
+    const lineTotal = roundMoney(gross * (1 - ld / 100))
+    return { ...item, line_discount_rate: ld, lineTotal }
+  })
+  const subtotal = roundMoney(lines.reduce((s, l) => s + l.lineTotal, 0))
+  const discount_amount = roundMoney(subtotal * (dr / 100))
+  const total_amount = roundMoney(subtotal - discount_amount)
+
+  const { data: maxOrder, error: maxError } = await supabase
+    .from(ORDERS)
+    .select('order_number')
+    .order('order_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (maxError) throw maxError
+  const order_number = (maxOrder?.order_number ?? 0) + 1
+
+  const whId =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
+  const payload: Record<string, unknown> = {
+    order_number,
+    type: data.type,
+    status: 'completed' as OrderStatus,
+    status_flow: 'completed' as OrderStatusFlow,
+    payment_method: null,
+    note: data.note?.trim() || null,
+    total_amount,
+    person_id: data.person_id ?? null,
+    subtotal,
+    discount_amount,
+    discount_rate: dr,
+    paid_amount: total_amount,
+    remaining_amount: 0,
+    allow_remaining_on_account: false,
+    warehouse_id: whId,
+    is_historical_snapshot: true,
+    updated_at: new Date().toISOString(),
+  }
+  const ca = data.created_at?.trim()
+  payload.created_at =
+    ca && !Number.isNaN(Date.parse(ca))
+      ? new Date(ca).toISOString()
+      : new Date().toISOString()
+
+  const { data: insertedOrder, error: orderError } = await supabase
+    .from(ORDERS)
+    .insert(payload)
+    .select('id')
+    .single()
+  if (orderError) throwHistoricalSnapshotMigrationError(orderError)
+  const orderId = (insertedOrder as { id: string }).id
+
+  const itemsPayload = lines.map((item) => ({
+    order_id: orderId,
+    product_id: item.product_id,
+    quantity: item.quantity,
+    unit_price: item.unit_price,
+    total_price: item.lineTotal,
+    line_discount_rate: item.line_discount_rate,
+  }))
+  const { error: itemsError } = await supabase
+    .from(ORDER_ITEMS)
+    .insert(itemsPayload)
+  if (itemsError) throwHistoricalSnapshotMigrationError(itemsError)
+
+  const created = await getOrderById(orderId)
+  if (!created) throw new Error('Failed to fetch historical order')
   return created
 }
 
@@ -796,6 +955,7 @@ async function applyWalkInCancelLedger(order: OrderWithItemsAndPayments) {
 export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayments> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'confirm')
   if (order.status_flow !== 'draft') {
     throw new Error('Only draft orders can be confirmed')
   }
@@ -907,6 +1067,8 @@ export async function completeOrder(id: string): Promise<OrderWithItemsAndPaymen
   if (order.status_flow === 'completed') {
     return order
   }
+
+  assertOrderNotHistoricalSnapshot(order, 'complete')
 
   const { error } = await supabase
     .from(ORDERS)
@@ -1201,6 +1363,7 @@ export async function cancelOrder(
 ): Promise<void> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'cancel')
   if (order.status_flow === 'cancelled') {
     throw new Error('Order is already cancelled')
   }
@@ -1272,6 +1435,7 @@ export async function addPaymentInstallment(data: {
 
   const order = await getOrderById(data.order_id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'add payment')
   if (order.status_flow === 'draft') {
     throw new Error('Confirm the order before adding payments')
   }
@@ -1300,6 +1464,7 @@ export async function updateOrderItems(
 ): Promise<OrderWithItemsAndPayments> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'edit lines')
   if (order.status_flow !== 'draft') {
     throw new Error('Only draft orders can be edited')
   }
@@ -1368,6 +1533,7 @@ export async function updateOrderDiscountRate(
 ): Promise<OrderWithItemsAndPayments> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'change discount')
   if (order.status_flow !== 'draft') {
     throw new Error('Only draft orders can change discount')
   }
@@ -1403,6 +1569,7 @@ export async function syncDraftOrderPayments(
 ): Promise<OrderWithItemsAndPayments> {
   const order = await getOrderById(orderId)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'change payments')
   if (order.status_flow !== 'draft') {
     throw new Error('Only draft orders can change payments')
   }
@@ -1516,6 +1683,9 @@ export async function updateOrderNote(
   id: string,
   note: string
 ): Promise<Order> {
+  const existing = await getOrderById(id)
+  if (!existing) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(existing, 'update note')
   const { data, error } = await supabase
     .from(ORDERS)
     .update({
@@ -1540,6 +1710,7 @@ export async function updateOrderPersonAndDiscount(
 ): Promise<OrderWithItemsAndPayments> {
   const order = await getOrderById(id)
   if (!order) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(order, 'update customer/discount')
   if (order.status_flow !== 'draft') throw new Error('Only draft orders')
 
   if (data.person_id) {

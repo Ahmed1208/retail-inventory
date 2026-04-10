@@ -10,12 +10,22 @@ export async function fetchOperatorProfile(
     .eq('id', userId)
     .maybeSingle()
 
-  if (error || !data) return null
+  if (error) {
+    console.warn(
+      '[profiles] load failed — check migration 034, RLS, and API schema reload:',
+      error.message
+    )
+    return null
+  }
+  if (!data) return null
   const fo = data.feature_overrides
+  const rawAdmin = data.is_admin as unknown
+  const isAdminFlag =
+    rawAdmin === true || rawAdmin === 'true' || rawAdmin === 1
   return {
     id: data.id,
     username: data.username,
-    is_admin: data.is_admin,
+    is_admin: isAdminFlag,
     feature_overrides:
       fo && typeof fo === 'object' && !Array.isArray(fo)
         ? (fo as Record<string, boolean>)

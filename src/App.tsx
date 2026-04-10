@@ -33,6 +33,7 @@ import { AdminReports } from '@/pages/AdminReports'
 import { Documentation } from '@/pages/Documentation'
 import { AdminMigrationGuide } from '@/pages/AdminMigrationGuide'
 import { AdminMembersList } from '@/pages/AdminMembersList'
+import { AdminMemberEdit } from '@/pages/AdminMemberEdit'
 import { AdminMemberNew } from '@/pages/AdminMemberNew'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
@@ -109,6 +110,7 @@ function App() {
             <Route path="movements" element={<StockMovements />} />
             <Route path="members" element={<AdminMembersList />} />
             <Route path="members/new" element={<AdminMemberNew />} />
+            <Route path="members/:id" element={<AdminMemberEdit />} />
           </Route>
           <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
           <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />

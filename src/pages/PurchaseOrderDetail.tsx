@@ -175,6 +175,17 @@ export function PurchaseOrderDetail() {
     return roundMoney(s)
   }, [payUse, payAmounts])
 
+  const confirmDraftPreview = useMemo(() => {
+    if (!po) {
+      return { subtotal: 0, discountAmount: 0, total: 0 }
+    }
+    return {
+      subtotal: roundMoney(po.subtotal),
+      discountAmount: roundMoney(po.discount_amount),
+      total: roundMoney(po.total_amount),
+    }
+  }, [po])
+
   const canConfirmDraft = useMemo(() => {
     if (!po || po.status !== 'draft') return false
     if (!po.person_id) return false
@@ -316,7 +327,9 @@ export function PurchaseOrderDetail() {
   }
 
   const canCancel =
-    canCancelPO && (po.status === 'received' || po.status === 'draft')
+    canCancelPO &&
+    !po.is_historical_snapshot &&
+    (po.status === 'received' || po.status === 'draft')
 
   const paidAtPo = (po.payments ?? []).reduce((s, p) => s + p.amount, 0)
   const showCancelSettlementChoice =
@@ -357,10 +370,21 @@ export function PurchaseOrderDetail() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {po.is_historical_snapshot ? (
+              <span
+                className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-950 dark:bg-amber-900/50 dark:text-amber-100"
+                title={t('purchaseOrders.historicalImportBadge')}
+              >
+                {t('purchaseOrders.historicalImportBadge')}
+              </span>
+            ) : null}
             <POStatusBadge status={po.status} t={t} />
           </div>
           <div className="ms-auto flex flex-wrap gap-2">
-            {po.status === 'draft' && canCreatePo && canConfirmReceive && (
+            {po.status === 'draft' &&
+              !po.is_historical_snapshot &&
+              canCreatePo &&
+              canConfirmReceive && (
               <Button type="button" onClick={openConfirmDraft}>
                 {t('purchaseOrders.confirmReceiveDraft')}
               </Button>
@@ -469,7 +493,7 @@ export function PurchaseOrderDetail() {
               <EditableNoteCard
                 label={t('purchaseOrders.note')}
                 value={po.note ?? ''}
-                canEdit={canEditPoNote}
+                canEdit={canEditPoNote && !po.is_historical_snapshot}
                 isPending={noteMut.isPending}
                 fieldId={`po-note-${po.id}`}
                 onSave={async (text) => {
@@ -493,6 +517,7 @@ export function PurchaseOrderDetail() {
                   <th className="px-3 py-2 text-end font-medium">
                     {t('purchaseOrders.costPricePaid')}
                   </th>
+                  <th className="px-3 py-2 text-end font-medium">%</th>
                   <th className="px-3 py-2 text-end font-medium">
                     {t('purchaseOrders.previousCostPrice')}
                   </th>
@@ -517,6 +542,11 @@ export function PurchaseOrderDetail() {
                       {fc(item.cost_price)}
                     </td>
                     <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
+                      {item.line_discount_rate > 0.005
+                        ? `${roundMoney(item.line_discount_rate)}%`
+                        : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-end tabular-nums text-muted-foreground">
                       {item.previous_cost_price != null
                         ? fc(item.previous_cost_price)
                         : '—'}
@@ -534,9 +564,24 @@ export function PurchaseOrderDetail() {
               </tbody>
             </table>
           </div>
-          <p className="mt-4 text-sm font-semibold">
-            {t('purchaseOrders.totalAmount')}: {fc(po.total_amount)}
-          </p>
+          <div className="mt-4 space-y-1 text-sm tabular-nums">
+            <div className="flex justify-between gap-4">
+              <span className="text-muted-foreground">{t('orders.subtotal')}</span>
+              <span>{fc(po.subtotal)}</span>
+            </div>
+            {po.discount_amount > 0.005 && (
+              <div className="flex justify-between gap-4 text-emerald-600">
+                <span>
+                  {t('orders.discount')} ({roundMoney(po.discount_rate)}%)
+                </span>
+                <span>−{fc(po.discount_amount)}</span>
+              </div>
+            )}
+            <p className="flex justify-between gap-4 border-t border-border pt-1 font-semibold">
+              <span>{t('purchaseOrders.totalAmount')}</span>
+              <span>{fc(po.total_amount)}</span>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -554,7 +599,8 @@ export function PurchaseOrderDetail() {
         onOpenChange={setConfirmOpen}
         isRTL={isRTL}
         formatCurrency={fc}
-        total={po.total_amount}
+        preview={confirmDraftPreview}
+        discountRate={po ? roundMoney(po.discount_rate) : 0}
         paidPreview={paidPreview}
         supplierName={po.supplier_name ?? null}
         payUse={payUse}

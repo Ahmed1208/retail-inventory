@@ -243,8 +243,8 @@ export function OrderDetail() {
           fc={fc}
           people={people}
           canPrint={canPrintInvoice}
-          canCancel={canCancelOrder}
-          canEditNote={canEditNote}
+          canCancel={canCancelOrder && !order.is_historical_snapshot}
+          canEditNote={canEditNote && !order.is_historical_snapshot}
           paymentOperationLinkSlot={
             showOrderPaymentOpLink ? (
               orderPayOpFetching ? (

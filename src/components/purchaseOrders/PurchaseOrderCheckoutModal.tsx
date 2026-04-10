@@ -23,7 +23,9 @@ type Props = {
   onOpenChange: (open: boolean) => void
   isRTL: boolean
   formatCurrency: (n: number) => string
-  total: number
+  /** After line discounts, then PO-level discount (same shape as sales order checkout). */
+  preview: { subtotal: number; discountAmount: number; total: number }
+  discountRate: number
   paidPreview: number
   supplierName: string | null
   payUse: Record<PaymentMethod, boolean>
@@ -55,7 +57,8 @@ export function PurchaseOrderCheckoutModal({
   onOpenChange,
   isRTL,
   formatCurrency,
-  total,
+  preview,
+  discountRate,
   paidPreview,
   supplierName,
   payUse,
@@ -74,6 +77,7 @@ export function PurchaseOrderCheckoutModal({
 }: Props) {
   const { t } = useTranslation()
 
+  const total = preview.total
   const overExcess =
     paidPreview > total + 0.01 ? roundMoney(paidPreview - total) : 0
   const remainingDisplay = roundMoney(Math.max(0, total - paidPreview))
@@ -101,6 +105,18 @@ export function PurchaseOrderCheckoutModal({
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
           <div className="space-y-1.5 text-sm tabular-nums">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">{t('orders.subtotal')}</span>
+              <span>{formatCurrency(preview.subtotal)}</span>
+            </div>
+            {preview.discountAmount > 0.005 && (
+              <div className="flex justify-between text-emerald-600">
+                <span>
+                  {t('orders.discount')} ({discountRate}%)
+                </span>
+                <span>−{formatCurrency(preview.discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between border-t pt-1.5 text-base font-semibold">
               <span>{t('purchaseOrders.totalAmount')}</span>
               <span>{formatCurrency(total)}</span>

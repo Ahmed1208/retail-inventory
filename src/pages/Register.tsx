@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
-import { ListOrdered, MinusCircle, PlusCircle } from 'lucide-react'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
+import { FileDown, FileUp, ListOrdered, MinusCircle, PlusCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -57,6 +58,8 @@ import type { PaymentMethod } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { cn } from '@/lib/utils'
+import { RegisterCsvImportDialog } from '@/components/register/RegisterCsvImportDialog'
+import { downloadCsv } from '@/utils/csvDownload'
 
 function RegisterActivityLinks({ row }: { row: RegisterActivityRow }) {
   const { t } = useTranslation()
@@ -144,6 +147,7 @@ export function Register() {
   const [withdrawAllDialogOpen, setWithdrawAllDialogOpen] = useState(false)
   const [disableRegisterPromptOpen, setDisableRegisterPromptOpen] =
     useState(false)
+  const [registerCsvOpen, setRegisterCsvOpen] = useState(false)
 
   const { data: warehouses = [], isSuccess: warehousesReady } = useQuery({
     queryKey: ['warehouses'],
@@ -154,6 +158,17 @@ export function Register() {
   const registerWarehouses = useMemo(
     () => warehouses.filter((w) => w.has_register),
     [warehouses]
+  )
+
+  const registerImportAllowed =
+    registerWarehouses.length > 0 &&
+    registerWarehouseId != null &&
+    (canDeposit || canWithdraw)
+
+  useMigrationImportDialog(
+    setRegisterCsvOpen,
+    !canPage || warehousesReady,
+    registerImportAllowed
   )
 
   useEffect(() => {
@@ -398,6 +413,34 @@ export function Register() {
     activityRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
+  const exportRegisterActivityCsv = async () => {
+    if (registerWarehouseId == null) return
+    try {
+      const rows = await listRegisterActivity(registerWarehouseId, 8000)
+      if (rows.length === 0) {
+        toast.message(t('register.activityEmpty'))
+        return
+      }
+      const code =
+        warehouses.find((x) => x.id === registerWarehouseId)?.code ??
+        String(registerWarehouseId)
+      downloadCsv(
+        `register-activity-${code}-${new Date().toISOString().slice(0, 10)}.csv`,
+        rows.map((r) => ({
+          created_at: r.created_at,
+          type: r.type,
+          payment_method: r.payment_method ?? '',
+          register_effect: r.registerEffect,
+          ledger_amount: r.amount,
+          note: r.note ?? '',
+          reference_number: r.reference_number ?? '',
+        }))
+      )
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t('register.toastError'))
+    }
+  }
+
   if (!canPage) {
     return <Navigate to="/" replace />
   }
@@ -495,6 +538,29 @@ export function Register() {
           >
             <ListOrdered className="h-4 w-4" aria-hidden />
             {t('register.viewActivity')}
+          </Button>
+        ) : null}
+        {canViewActivity && registerWarehouseId != null ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            title={t('register.importCsv.exportActivityHint')}
+            onClick={() => void exportRegisterActivityCsv()}
+          >
+            <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+            {t('common.exportCsv')}
+          </Button>
+        ) : null}
+        {(canDeposit || canWithdraw) && registerWarehouseId != null ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => setRegisterCsvOpen(true)}
+          >
+            <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+            {t('register.importCsv.button')}
           </Button>
         ) : null}
       </div>
@@ -804,6 +870,20 @@ export function Register() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <RegisterCsvImportDialog
+        open={registerCsvOpen}
+        onOpenChange={setRegisterCsvOpen}
+        warehouses={warehouses}
+        canDeposit={canDeposit}
+        canWithdraw={canWithdraw}
+        isRTL={isRTL}
+        onComplete={() => {
+          qc.invalidateQueries({ queryKey: ['registerBalances'] })
+          qc.invalidateQueries({ queryKey: ['registerActivity'] })
+          qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
+        }}
+      />
     </div>
   )
 }

@@ -16,6 +16,7 @@ import {
   mapPersonRow,
   roundMoney,
   supabaseErrorMessage,
+  throwHistoricalSnapshotMigrationError,
   voidLedgerPaymentOperationsForDocumentCancel,
   voidLedgerPurchaseOrderDocumentRowForCancel,
 } from '@/services/peopleService'
@@ -45,6 +46,16 @@ export type PurchaseOrderFilters = {
   search?: string
   from?: string
   to?: string
+  historical_snapshot?: 'all' | 'only' | 'exclude'
+}
+
+function assertPurchaseOrderNotHistoricalSnapshot(
+  order: PurchaseOrderWithItems,
+  action: string
+): void {
+  if (order.is_historical_snapshot) {
+    throw new Error(`HISTORICAL_PO_IMMUTABLE: ${action}`)
+  }
 }
 
 function toPurchaseOrderWithItems(row: {
@@ -53,6 +64,9 @@ function toPurchaseOrderWithItems(row: {
   supplier_name: string | null
   note: string | null
   total_amount: number
+  subtotal?: number | null
+  discount_amount?: number | null
+  discount_rate?: number | null
   paid_amount?: number
   remaining_amount?: number
   status: PurchaseOrderStatus
@@ -66,6 +80,7 @@ function toPurchaseOrderWithItems(row: {
     product_id: string
     quantity: number
     cost_price: number
+    line_discount_rate?: number | null
     total_price: number
     previous_cost_price: number | null
     cost_price_updated: boolean
@@ -89,12 +104,30 @@ function toPurchaseOrderWithItems(row: {
     whRaw != null && whRaw !== '' && Number.isFinite(Number(whRaw))
       ? Number(whRaw)
       : DEFAULT_WAREHOUSE_ID
+  const subtotal =
+    orderRest.subtotal != null
+      ? roundMoney(Number(orderRest.subtotal))
+      : total
+  const discount_amount =
+    orderRest.discount_amount != null
+      ? roundMoney(Number(orderRest.discount_amount))
+      : 0
+  const discount_rate =
+    orderRest.discount_rate != null
+      ? roundMoney(Number(orderRest.discount_rate))
+      : 0
   const order = {
     ...orderRest,
     person_id: orderRest.person_id ?? null,
     warehouse_id,
+    subtotal,
+    discount_amount,
+    discount_rate,
     paid_amount: paid,
     remaining_amount,
+    is_historical_snapshot: Boolean(
+      (orderRest as { is_historical_snapshot?: boolean }).is_historical_snapshot
+    ),
   }
   const items: PurchaseOrderItemWithProduct[] = (purchase_order_items ?? []).map(
     (poi) => ({
@@ -103,6 +136,9 @@ function toPurchaseOrderWithItems(row: {
       product_id: poi.product_id,
       quantity: poi.quantity,
       cost_price: poi.cost_price,
+      line_discount_rate: roundMoney(
+        Number(poi.line_discount_rate ?? 0)
+      ),
       total_price: poi.total_price,
       previous_cost_price: poi.previous_cost_price,
       cost_price_updated: poi.cost_price_updated,
@@ -159,7 +195,11 @@ export async function getAllPurchaseOrders(
       *,
       purchase_order_items(
         *,
-        product:products(*)
+        product:products(
+          *,
+          brand:brands(name),
+          category:categories(name)
+        )
       )
     `
     )
@@ -175,6 +215,12 @@ export async function getAllPurchaseOrders(
     const toEnd = new Date(filters.to)
     toEnd.setHours(23, 59, 59, 999)
     query = query.lte('created_at', toEnd.toISOString())
+  }
+  if (filters?.historical_snapshot === 'only') {
+    query = query.eq('is_historical_snapshot', true)
+  }
+  if (filters?.historical_snapshot === 'exclude') {
+    query = query.eq('is_historical_snapshot', false)
   }
 
   const { data, error } = await query
@@ -231,7 +277,11 @@ export async function getPurchaseOrderById(
       *,
       purchase_order_items(
         *,
-        product:products(*)
+        product:products(
+          *,
+          brand:brands(name),
+          category:categories(name)
+        )
       )
     `
     )
@@ -264,6 +314,9 @@ export async function updatePurchaseOrderNote(
   id: string,
   note: string
 ): Promise<void> {
+  const existing = await getPurchaseOrderById(id)
+  if (!existing) throw new Error('Purchase order not found')
+  assertPurchaseOrderNotHistoricalSnapshot(existing, 'update note')
   const trimmed = note.trim()
   const { error } = await supabase
     .from(PURCHASE_ORDERS)
@@ -285,7 +338,11 @@ export async function getPurchaseOrdersByPersonId(
       *,
       purchase_order_items(
         *,
-        product:products(*)
+        product:products(
+          *,
+          brand:brands(name),
+          category:categories(name)
+        )
       )
     `
     )
@@ -413,6 +470,98 @@ export async function getSupplierPurchaseLinesAnalytics(
   return out
 }
 
+/** Received PO line for one product (for product detail analytics). */
+export type ProductPurchaseLine = {
+  lineId: string
+  quantity: number
+  lineTotal: number
+  purchaseOrderId: string
+  orderNumber: number
+  createdAt: string
+  warehouseId: number
+}
+
+export type ProductPurchaseAnalyticsFilters = {
+  from?: string
+  to?: string
+}
+
+/**
+ * Purchase lines for one product from **received** POs only.
+ * Date filters apply to the parent PO's `created_at` (local calendar day).
+ */
+export async function getProductPurchaseAnalytics(
+  productId: string,
+  filters?: ProductPurchaseAnalyticsFilters
+): Promise<ProductPurchaseLine[]> {
+  const { data, error } = await supabase
+    .from(PURCHASE_ORDER_ITEMS)
+    .select(
+      `
+      id,
+      quantity,
+      total_price,
+      purchase_orders!inner (
+        id,
+        order_number,
+        created_at,
+        status,
+        warehouse_id
+      )
+    `
+    )
+    .eq('product_id', productId)
+    .eq('purchase_orders.status', 'received')
+
+  if (error) throw error
+
+  type PoEmbed = {
+    id: string
+    order_number: number
+    created_at: string
+    status: string
+    warehouse_id?: number | string | null
+  }
+  type RawRow = {
+    id: string
+    quantity: number
+    total_price: number
+    purchase_orders: PoEmbed | PoEmbed[] | null
+  }
+
+  const rows = (data ?? []) as RawRow[]
+  const out: ProductPurchaseLine[] = []
+
+  for (const r of rows) {
+    const po = Array.isArray(r.purchase_orders)
+      ? r.purchase_orders[0] ?? null
+      : r.purchase_orders
+    if (!po) continue
+
+    const day = po.created_at.slice(0, 10)
+    if (filters?.from && day < filters.from) continue
+    if (filters?.to && day > filters.to) continue
+
+    const whRaw = po.warehouse_id
+    const warehouseId =
+      whRaw != null && Number.isFinite(Number(whRaw))
+        ? Math.trunc(Number(whRaw))
+        : DEFAULT_WAREHOUSE_ID
+
+    out.push({
+      lineId: r.id,
+      quantity: Number(r.quantity),
+      lineTotal: Number(r.total_price),
+      purchaseOrderId: po.id,
+      orderNumber: Number(po.order_number),
+      createdAt: po.created_at,
+      warehouseId,
+    })
+  }
+
+  return out
+}
+
 export async function createPurchaseOrder(data: {
   supplier_name?: string
   note?: string
@@ -425,16 +574,24 @@ export async function createPurchaseOrder(data: {
     product_id: string
     quantity: number
     cost_price: number
+    /** Per-line discount % (0–100), same shape as sales order lines */
+    line_discount_rate?: number
     update_default_cost_price: boolean
     /** When set with catalog_business_price, receive updates retail + wholesale + cost on the product. */
     catalog_customer_price?: number | null
     catalog_business_price?: number | null
   }[]
+  /** When true (default), use supplier person discount % unless `order_discount_rate` is set. */
+  apply_supplier_discount?: boolean
+  /** Manual PO-level discount % (0–100); when set, overrides supplier rate (same rules as sales orders). */
+  order_discount_rate?: number
   /** Save as draft: no stock, ledger, or payments until confirmed. */
   asDraft?: boolean
   warehouse_id?: number
   /** When PO warehouse has no register, pick which register books supplier payments. */
   register_warehouse_id?: number | null
+  /** Optional row timestamp (e.g. CSV import); omit for “now” */
+  created_at?: string
 }): Promise<PurchaseOrderWithItems> {
   if (!data.items.length) {
     throw new Error('At least one product is required')
@@ -478,11 +635,33 @@ export async function createPurchaseOrder(data: {
     })
   }
 
-  // 2. Calculate total_amount
-  const total_amount = data.items.reduce(
-    (sum, item) => sum + item.quantity * item.cost_price,
-    0
+  // 2. Line totals (after line discount), subtotal, order-level discount, total
+  let poDiscountRate = 0
+  if (
+    data.order_discount_rate != null &&
+    !Number.isNaN(data.order_discount_rate) &&
+    data.order_discount_rate >= 0
+  ) {
+    poDiscountRate = roundMoney(Math.min(100, data.order_discount_rate))
+  } else if (
+    data.apply_supplier_discount !== false &&
+    supplierPerson.discount_rate > 0
+  ) {
+    poDiscountRate = supplierPerson.discount_rate
+  }
+
+  const computedLines = data.items.map((item) => {
+    const ld = roundMoney(Math.min(100, item.line_discount_rate ?? 0))
+    const gross = item.quantity * item.cost_price
+    const lineTotal = roundMoney(gross * (1 - ld / 100))
+    return { ...item, line_discount_rate: ld, lineTotal }
+  })
+
+  const subtotal = roundMoney(
+    computedLines.reduce((s, l) => s + l.lineTotal, 0)
   )
+  const discount_amount = roundMoney(subtotal * (poDiscountRate / 100))
+  const total_amount = roundMoney(subtotal - discount_amount)
 
   const payments = (data.payments ?? [])
     .map((p) => ({
@@ -525,14 +704,22 @@ export async function createPurchaseOrder(data: {
       ? Math.trunc(Number(data.warehouse_id))
       : DEFAULT_WAREHOUSE_ID
 
-  const orderPayload = {
+  const orderPayload: Record<string, unknown> = {
     order_number,
     supplier_name: data.supplier_name?.trim() || null,
     note: data.note?.trim() || null,
+    subtotal,
+    discount_amount,
+    discount_rate: poDiscountRate,
     total_amount: total,
     status: (asDraft ? 'draft' : 'received') as PurchaseOrderStatus,
     person_id: supplierId,
     warehouse_id,
+    is_historical_snapshot: false,
+  }
+  const docTs = data.created_at?.trim()
+  if (docTs && !Number.isNaN(Date.parse(docTs))) {
+    orderPayload.created_at = new Date(docTs).toISOString()
   }
 
   const { data: insertedOrder, error: orderError } = await supabase
@@ -580,7 +767,7 @@ export async function createPurchaseOrder(data: {
     catalog_business_price: number | null
     previous_customer_price: number | null
     previous_business_price: number | null
-  }> = data.items.map((item) => {
+  }> = computedLines.map((item) => {
     const snap = productSnap.get(item.product_id)!
     const fullCatalog =
       item.update_default_cost_price &&
@@ -591,7 +778,8 @@ export async function createPurchaseOrder(data: {
       product_id: item.product_id,
       quantity: item.quantity,
       cost_price: item.cost_price,
-      total_price: item.quantity * item.cost_price,
+      line_discount_rate: item.line_discount_rate,
+      total_price: item.lineTotal,
       previous_cost_price: snap.cost,
       previous_customer_price: snap.customer,
       previous_business_price: snap.business,
@@ -609,14 +797,14 @@ export async function createPurchaseOrder(data: {
 
   if (!asDraft) {
     const note = `Purchase Order #${order_number}`
-    for (const item of data.items) {
+    for (const item of computedLines) {
       await adjustStock(item.product_id, 'in', item.quantity, note, {
         inboundUnitCost: item.cost_price,
         warehouseId: warehouse_id,
       })
     }
 
-    for (const item of data.items) {
+    for (const item of computedLines) {
       if (item.update_default_cost_price) {
         const full =
           item.catalog_customer_price != null &&
@@ -651,6 +839,158 @@ export async function createPurchaseOrder(data: {
   return created
 }
 
+/**
+ * CSV / backfill: received PO visible in purchase analytics only.
+ * No stock in, no catalog price updates, no supplier ledger/register.
+ */
+export async function importHistoricalPurchaseOrderSnapshot(data: {
+  person_id: string
+  supplier_name?: string | null
+  note?: string | null
+  order_discount_rate?: number
+  created_at?: string | null
+  warehouse_id?: number
+  items: {
+    product_id: string
+    quantity: number
+    cost_price: number
+    line_discount_rate?: number
+    update_default_cost_price: boolean
+    catalog_customer_price?: number | null
+    catalog_business_price?: number | null
+  }[]
+}): Promise<PurchaseOrderWithItems> {
+  if (!data.items.length) {
+    throw new Error('At least one product is required')
+  }
+  const supplierId = data.person_id.trim()
+  const { data: prow, error: peSup } = await supabase
+    .from('people')
+    .select('*')
+    .eq('id', supplierId)
+    .maybeSingle()
+  if (peSup) throw peSup
+  if (!prow) throw new Error('Supplier not found')
+  const supplierPerson = mapPersonRow(prow as Record<string, unknown>)
+  if (!supplierPerson.roles.includes('supplier')) {
+    throw new Error('Selected person must have the supplier role')
+  }
+
+  type ProductPriceSnap = { cost: number; customer: number; business: number }
+  const productSnap = new Map<string, ProductPriceSnap>()
+  for (const item of data.items) {
+    if (productSnap.has(item.product_id)) continue
+    const product = await getProductById(item.product_id)
+    if (!product) throw new Error(`Product not found: ${item.product_id}`)
+    productSnap.set(item.product_id, {
+      cost: product.cost_price,
+      customer: product.customer_price,
+      business: product.business_price,
+    })
+  }
+
+  let poDiscountRate = 0
+  if (
+    data.order_discount_rate != null &&
+    !Number.isNaN(data.order_discount_rate) &&
+    data.order_discount_rate >= 0
+  ) {
+    poDiscountRate = roundMoney(Math.min(100, data.order_discount_rate))
+  } else if (supplierPerson.discount_rate > 0) {
+    poDiscountRate = supplierPerson.discount_rate
+  }
+
+  const computedLines = data.items.map((item) => {
+    const ld = roundMoney(Math.min(100, item.line_discount_rate ?? 0))
+    const gross = item.quantity * item.cost_price
+    const lineTotal = roundMoney(gross * (1 - ld / 100))
+    return { ...item, line_discount_rate: ld, lineTotal }
+  })
+
+  const subtotal = roundMoney(
+    computedLines.reduce((s, l) => s + l.lineTotal, 0)
+  )
+  const discount_amount = roundMoney(subtotal * (poDiscountRate / 100))
+  const total_amount = roundMoney(subtotal - discount_amount)
+  const total = roundMoney(total_amount)
+
+  const { data: maxRow, error: maxError } = await supabase
+    .from(PURCHASE_ORDERS)
+    .select('order_number')
+    .order('order_number', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (maxError) throw maxError
+  const order_number = (maxRow?.order_number ?? 0) + 1
+
+  const warehouse_id =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
+  const payload: Record<string, unknown> = {
+    order_number,
+    supplier_name:
+      data.supplier_name?.trim() || supplierPerson.name || null,
+    note: data.note?.trim() || null,
+    subtotal,
+    discount_amount,
+    discount_rate: poDiscountRate,
+    total_amount: total,
+    status: 'received' as PurchaseOrderStatus,
+    person_id: supplierId,
+    warehouse_id,
+    paid_amount: total,
+    remaining_amount: 0,
+    is_historical_snapshot: true,
+    updated_at: new Date().toISOString(),
+  }
+  const ca = data.created_at?.trim()
+  payload.created_at =
+    ca && !Number.isNaN(Date.parse(ca))
+      ? new Date(ca).toISOString()
+      : new Date().toISOString()
+
+  const { data: insertedOrder, error: orderError } = await supabase
+    .from(PURCHASE_ORDERS)
+    .insert(payload)
+    .select()
+    .single()
+  if (orderError) throwHistoricalSnapshotMigrationError(orderError)
+  const orderId = (insertedOrder as PurchaseOrder).id
+
+  const itemsPayload = computedLines.map((item) => {
+    const snap = productSnap.get(item.product_id)!
+    const fullCatalog =
+      item.update_default_cost_price &&
+      item.catalog_customer_price != null &&
+      item.catalog_business_price != null
+    return {
+      purchase_order_id: orderId,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      line_discount_rate: item.line_discount_rate,
+      total_price: item.lineTotal,
+      previous_cost_price: snap.cost,
+      previous_customer_price: snap.customer,
+      previous_business_price: snap.business,
+      cost_price_updated: item.update_default_cost_price,
+      catalog_customer_price: fullCatalog ? item.catalog_customer_price! : null,
+      catalog_business_price: fullCatalog ? item.catalog_business_price! : null,
+    }
+  })
+
+  const { error: itemsError } = await supabase
+    .from(PURCHASE_ORDER_ITEMS)
+    .insert(itemsPayload)
+  if (itemsError) throwHistoricalSnapshotMigrationError(itemsError)
+
+  const out = await getPurchaseOrderById(orderId)
+  if (!out) throw new Error('Failed to fetch historical purchase order')
+  return out
+}
+
 export async function confirmPurchaseOrder(
   id: string,
   data: {
@@ -662,6 +1002,7 @@ export async function confirmPurchaseOrder(
 ): Promise<PurchaseOrderWithItems> {
   const order = await getPurchaseOrderById(id)
   if (!order) throw new Error('Purchase order not found')
+  assertPurchaseOrderNotHistoricalSnapshot(order, 'confirm')
   if (order.status !== 'draft') {
     throw new Error('Only draft purchase orders can be confirmed')
   }
@@ -785,6 +1126,7 @@ export async function cancelPurchaseOrder(
 ): Promise<void> {
   const order = await getPurchaseOrderById(id)
   if (!order) throw new Error('Purchase order not found')
+  assertPurchaseOrderNotHistoricalSnapshot(order, 'cancel')
   if (order.status === 'cancelled') {
     throw new Error('Purchase order is already cancelled')
   }

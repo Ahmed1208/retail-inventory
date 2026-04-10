@@ -90,7 +90,7 @@ All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
 
    - Run the migration (SQL Editor or `supabase db push`), then reload the API schema if needed.
    - **Bootstrap admin (once):** In Supabase **Authentication → Users**, add a user with email `admin@members.stockpilot.local`, set a strong password, and in **User metadata** set JSON such as `{ "username": "admin", "is_admin": true }`. A trigger creates the `public.profiles` row. The app sign-in screen uses **username** `admin` (mapped to that email); do not put passwords in `VITE_*` or client code.
-   - **Additional members:** Admins use **Admin → Members → Add member** in the app, which calls the **`create-member`** Edge Function. Deploy it with the Supabase CLI (`supabase functions deploy create-member`) and ensure the project has the **service role** secret available to Edge Functions (default when linked). Never expose the service role key to the browser.
+   - **Additional members:** Admins use **Admin → Members → Add member** in the app, which calls the **`create-member`** Edge Function. **Edit member → Update password** uses **`update-member`**. Deploy with `supabase functions deploy create-member` and `supabase functions deploy update-member`, and ensure the project has the **service role** secret available to Edge Functions (default when linked). Never expose the service role key to the browser.
 
 5. **Run the dev server**
 

@@ -1,12 +1,15 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate } from 'react-router-dom'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
+import { toast } from 'sonner'
+import { ArrowLeft, ChevronRight, FileDown, FileUp } from 'lucide-react'
 
 import {
   getAllPeople,
   listBalanceTransactionsWithPeople,
+  listStandalonePersonPaymentsForExport,
   roundMoney,
   supabaseErrorMessage,
   type PaymentGroupedListItem,
@@ -36,6 +39,8 @@ import { LedgerReferenceLink } from '@/components/payments/LedgerReferenceLink'
 import { isRetainedFromCancelledDocumentNote } from '@/utils/ledgerLinks'
 import { PersonProfileDialog } from '@/components/people/PersonProfileDialog'
 import { listWarehouses } from '@/services/warehouseService'
+import { PaymentCsvImportDialog } from '@/components/payments/PaymentCsvImportDialog'
+import { downloadCsv } from '@/utils/csvDownload'
 
 type MethodFilterState = 'all' | 'unspecified' | PaymentMethod
 
@@ -175,8 +180,10 @@ export function PaymentsList() {
   const { t, i18n } = useTranslation()
   const { isRTL } = useLanguage()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
+  const qc = useQueryClient()
   const canList = useFeatureEnabled('payments.list')
   const canFullLedgerView = useFeatureEnabled('payments.fullLedgerView')
+  const canRecordPayment = useFeatureEnabled('people.recordPayment')
 
   const [from, setFrom] = useState(() => {
     const d = new Date()
@@ -198,6 +205,13 @@ export function PaymentsList() {
   const debouncedSearch = useDebouncedValue(search, DEBOUNCE_MS)
   const [ledgerProfilePerson, setLedgerProfilePerson] = useState<Person | null>(
     null
+  )
+  const [paymentCsvOpen, setPaymentCsvOpen] = useState(false)
+
+  useMigrationImportDialog(
+    setPaymentCsvOpen,
+    true,
+    canList && canRecordPayment
   )
 
   const { data: people = [] } = useQuery({
@@ -221,6 +235,12 @@ export function PaymentsList() {
     () => new Map(warehouses.map((w) => [w.id, w.name] as const)),
     [warehouses]
   )
+
+  const defaultRegisterWarehouseId = useMemo(() => {
+    const reg = warehouses.filter((w) => w.has_register)
+    const d = reg.find((w) => w.is_default) ?? reg[0]
+    return d?.id ?? null
+  }, [warehouses])
 
   const { data: rows = [], isLoading, isError, error: queryError } = useQuery({
     queryKey: [
@@ -345,6 +365,22 @@ export function PaymentsList() {
       else next.add(parentId)
       return next
     })
+  }
+
+  const exportStandalonePayments = async () => {
+    try {
+      const data = await listStandalonePersonPaymentsForExport()
+      if (data.length === 0) {
+        toast.message(t('payments.emptyList'))
+        return
+      }
+      downloadCsv(
+        `standalone-payments-export-${new Date().toISOString().slice(0, 10)}.csv`,
+        data as unknown as Record<string, unknown>[]
+      )
+    } catch (e) {
+      toast.error(supabaseErrorMessage(e) || t('people.toastError'))
+    }
   }
 
   const visibleRowCount = useMemo(
@@ -782,6 +818,30 @@ export function PaymentsList() {
         ) : null}
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {canRecordPayment && (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            onClick={() => setPaymentCsvOpen(true)}
+          >
+            <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+            {t('payments.importCsv.button')}
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          className="gap-2"
+          title={t('payments.importCsv.exportStandaloneHint')}
+          onClick={() => void exportStandalonePayments()}
+        >
+          <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+          {t('common.exportCsv')}
+        </Button>
+      </div>
+
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {isLoading ? (
           <div className="p-4">
@@ -896,6 +956,22 @@ export function PaymentsList() {
         person={ledgerProfilePerson}
         onOpenChange={(open) => {
           if (!open) setLedgerProfilePerson(null)
+        }}
+      />
+
+      <PaymentCsvImportDialog
+        open={paymentCsvOpen}
+        onOpenChange={setPaymentCsvOpen}
+        people={people}
+        warehouses={warehouses}
+        defaultRegisterWarehouseId={defaultRegisterWarehouseId}
+        isRTL={isRTL}
+        onComplete={() => {
+          qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
+          qc.invalidateQueries({ queryKey: ['people'] })
+          qc.invalidateQueries({ queryKey: ['dashboardStats'] })
+          qc.invalidateQueries({ queryKey: ['registerBalances'] })
+          qc.invalidateQueries({ queryKey: ['registerActivity'] })
         }}
       />
     </div>

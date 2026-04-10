@@ -38,7 +38,7 @@ export function AppLayout() {
   const { isRTL, currentLanguage, toggleLanguage } = useLanguage()
   const { pathname } = useLocation()
   const { t } = useTranslation()
-  const { signOut, profile } = useAuth()
+  const { signOut, session } = useAuth()
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const isMutating = useIsMutating() > 0
@@ -151,7 +151,7 @@ export function AppLayout() {
               {currentLanguage === 'en' ? 'العربية' : 'English'}
             </button>
 
-            {profile && (
+            {session && (
               <button
                 type="button"
                 onClick={() => void signOut()}

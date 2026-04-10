@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowLeft, FileDown, FileUp } from 'lucide-react'
 
+import { getAllBrands } from '@/services/brandService'
+import { getAllCategories } from '@/services/categoryService'
 import { getAllOrders } from '@/services/orderService'
 import { getAllPeople } from '@/services/peopleService'
+import { getAllProducts } from '@/services/productService'
+import { listWarehouses } from '@/services/warehouseService'
 import type { OrderStatusFlow } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
-import { buttonVariants } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
@@ -17,20 +23,37 @@ import {
   statusBadgeClass,
   statusFlowLabel,
 } from '@/components/orders/ordersShared'
+import { OrderCsvImportDialog } from '@/components/orders/OrderCsvImportDialog'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { downloadCsv } from '@/utils/csvDownload'
+import { flattenOrdersForCsvExport } from '@/utils/orderCsvImport'
 
 type StatusTab = 'all' | OrderStatusFlow
 
+type HistoricalListFilter = 'all' | 'only' | 'exclude'
+
 export function Orders() {
   const { t, i18n } = useTranslation()
+  const queryClient = useQueryClient()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
   const fc = (n: number) => formatCurrency(n, lang)
   const hubList = useFeatureEnabled('orders.hubList')
+  const canImportCsv = useFeatureEnabled('orders.importCsv')
+  const canExportCsv = useFeatureEnabled('orders.exportCsv')
+  const [importCsvOpen, setImportCsvOpen] = useState(false)
+
+  useMigrationImportDialog(
+    setImportCsvOpen,
+    true,
+    hubList && canImportCsv
+  )
 
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebouncedValue(search, 300)
   const [statusTab, setStatusTab] = useState<StatusTab>('all')
+  const [historicalListFilter, setHistoricalListFilter] =
+    useState<HistoricalListFilter>('all')
 
   useEffect(() => {
     document.title = `${t('orders.title')} | StockPilot`
@@ -39,14 +62,39 @@ export function Orders() {
     }
   }, [t])
 
+  /** Historical imports are always completed; other status tabs would show an empty list. */
+  useEffect(() => {
+    if (
+      historicalListFilter === 'only' &&
+      statusTab !== 'all' &&
+      statusTab !== 'completed'
+    ) {
+      setStatusTab('all')
+    }
+  }, [historicalListFilter, statusTab])
+
+  const onStatusTabClick = useCallback(
+    (tab: StatusTab) => {
+      if (
+        tab !== 'all' &&
+        historicalListFilter === 'only' &&
+        tab !== 'completed'
+      ) {
+        setHistoricalListFilter('all')
+      }
+      setStatusTab(tab)
+    },
+    [historicalListFilter]
+  )
+
   const { data: ordersRaw = [], isLoading: listLoading } = useQuery({
-    queryKey: ['orders', 'pos-list', debouncedSearch],
+    queryKey: ['orders', 'pos-list', debouncedSearch, historicalListFilter],
     queryFn: () =>
-      getAllOrders(
-        debouncedSearch.trim()
-          ? { search: debouncedSearch.trim() }
-          : undefined
-      ),
+      getAllOrders({
+        search: debouncedSearch.trim() || undefined,
+        historical_snapshot:
+          historicalListFilter === 'all' ? undefined : historicalListFilter,
+      }),
   })
 
   const { data: people = [] } = useQuery({
@@ -54,10 +102,48 @@ export function Orders() {
     queryFn: () => getAllPeople(),
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: () => listWarehouses(),
+  })
+
+  const { data: products = [] } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => getAllProducts(),
+  })
+
+  const { data: brands = [] } = useQuery({
+    queryKey: ['brands'],
+    queryFn: () => getAllBrands(),
+  })
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => getAllCategories(),
+  })
+
+  const onCsvImportComplete = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['orders'] })
+    void queryClient.invalidateQueries({ queryKey: ['products'] })
+    void queryClient.invalidateQueries({ queryKey: ['people'] })
+    void queryClient.invalidateQueries({ queryKey: ['brands'] })
+    void queryClient.invalidateQueries({ queryKey: ['categories'] })
+  }, [queryClient])
+
   const filteredList = useMemo(() => {
     if (statusTab === 'all') return ordersRaw
     return ordersRaw.filter((o) => o.status_flow === statusTab)
   }, [ordersRaw, statusTab])
+
+  const exportOrdersCsv = useCallback(() => {
+    const whMap = new Map(warehouses.map((w) => [w.id, w]))
+    const personMap = new Map(people.map((p) => [p.id, p]))
+    const rows = flattenOrdersForCsvExport(filteredList, {
+      warehouseById: whMap,
+      personById: personMap,
+    })
+    downloadCsv(`orders-export-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }, [filteredList, people, warehouses])
 
   const counts = useMemo(() => {
     const c = {
@@ -109,13 +195,85 @@ export function Orders() {
       </div>
 
       <div className="border-b p-3">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t('orders.searchPlaceholder')}
-          aria-label={t('common.search')}
-        />
+        <div className="max-w-md space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            {t('common.search')}
+          </Label>
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t('orders.searchPlaceholder')}
+            aria-label={t('common.search')}
+          />
+        </div>
       </div>
+
+      <div
+        className="border-b px-3 py-2"
+        role="group"
+        aria-label={t('orders.historicalFilterLabel')}
+      >
+        <p className="mb-2 text-xs font-medium text-muted-foreground">
+          {t('orders.historicalFilterLabel')}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ['all', 'orders.historicalFilterAll'],
+              ['exclude', 'orders.historicalFilterExclude'],
+              ['only', 'orders.historicalFilterOnly'],
+            ] as const
+          ).map(([value, labelKey]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() =>
+                setHistoricalListFilter(value as HistoricalListFilter)
+              }
+              className={cn(
+                'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                historicalListFilter === value
+                  ? value === 'only'
+                    ? 'bg-amber-500 text-white dark:bg-amber-600'
+                    : 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              )}
+            >
+              {t(labelKey)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {(canImportCsv || canExportCsv) && (
+        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          {canExportCsv && filteredList.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              title={t('orders.exportCsvHint')}
+              onClick={exportOrdersCsv}
+            >
+              <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+              {t('common.exportCsv')}
+            </Button>
+          )}
+          {canImportCsv && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setImportCsvOpen(true)}
+            >
+              <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+              {t('orders.importCsv.button')}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="flex gap-1 overflow-x-auto border-b px-2 py-2">
         {(
@@ -130,7 +288,7 @@ export function Orders() {
           <button
             key={key}
             type="button"
-            onClick={() => setStatusTab(key)}
+            onClick={() => onStatusTabClick(key)}
             className={cn(
               'shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors',
               statusTab === key
@@ -163,14 +321,24 @@ export function Orders() {
                     <span className="font-semibold tabular-nums">
                       #{o.order_number}
                     </span>
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 text-[10px] font-medium',
-                        statusBadgeClass(o.status_flow)
-                      )}
-                    >
-                      {statusFlowLabel(o.status_flow, t)}
-                    </span>
+                    <div className="flex shrink-0 flex-wrap justify-end gap-1">
+                      {o.is_historical_snapshot ? (
+                        <span
+                          className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-950 dark:bg-amber-900/50 dark:text-amber-100"
+                          title={t('orders.historicalImportBadge')}
+                        >
+                          {t('orders.historicalImportBadge')}
+                        </span>
+                      ) : null}
+                      <span
+                        className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-medium',
+                          statusBadgeClass(o.status_flow)
+                        )}
+                      >
+                        {statusFlowLabel(o.status_flow, t)}
+                      </span>
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {new Intl.DateTimeFormat(
@@ -243,6 +411,20 @@ export function Orders() {
           </ul>
         )}
       </div>
+
+      {canImportCsv && (
+        <OrderCsvImportDialog
+          open={importCsvOpen}
+          onOpenChange={setImportCsvOpen}
+          warehouses={warehouses}
+          people={people}
+          products={products}
+          initialBrands={brands}
+          initialCategories={categories}
+          onComplete={onCsvImportComplete}
+          isRTL={isRTL}
+        />
+      )}
     </div>
   )
 }
