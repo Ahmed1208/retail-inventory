@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { FileDown, FileUp, Pencil, Trash2, Users } from 'lucide-react'
+import { AlertTriangle, FileDown, FileUp, Loader2, Pencil, RefreshCw, Trash2, Users } from 'lucide-react'
 
 import {
   getAllPeople,
   deletePerson,
   getPersonDeleteBlockMessage,
 } from '@/services/peopleService'
+import { listStockAlerts } from '@/services/stockAlertsService'
+import { recalculateAllWalletsFromLedger } from '@/services/walletReconcileService'
 import type { Person, PersonRole } from '@/types'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
@@ -122,6 +124,33 @@ export function People() {
         role: roleParam,
         minDiscount: discountFilter === 'has' ? 0.01 : undefined,
       }),
+  })
+
+  const { data: alertsForDirection = [] } = useQuery({
+    queryKey: ['stockAlerts', 'list'],
+    queryFn: () => listStockAlerts(120),
+    staleTime: 20_000,
+  })
+
+  const walletDirectionUnreadByPerson = useMemo(() => {
+    const s = new Set<string>()
+    for (const a of alertsForDirection) {
+      if (a.alert_type !== 'wallet_direction_changed') continue
+      if (a.read_at != null) continue
+      const pid = a.meta?.person_id
+      if (typeof pid === 'string' && pid.length > 0) s.add(pid)
+    }
+    return s
+  }, [alertsForDirection])
+
+  const reconcileWalletsMut = useMutation({
+    mutationFn: () => recalculateAllWalletsFromLedger(),
+    onSuccess: (n) => {
+      toast.success(t('people.reconcileWalletsSuccess', { count: n }))
+      invalidate()
+      void queryClient.invalidateQueries({ queryKey: ['stockAlerts'] })
+    },
+    onError: () => toast.error(t('people.reconcileWalletsError')),
   })
 
   const people = useMemo(() => {
@@ -243,6 +272,21 @@ export function People() {
             {t('common.exportCsv')}
           </Button>
         )}
+        <Button
+          type="button"
+          variant="secondary"
+          className="gap-2"
+          title={t('people.reconcileWalletsHint')}
+          disabled={reconcileWalletsMut.isPending}
+          onClick={() => reconcileWalletsMut.mutate()}
+        >
+          {reconcileWalletsMut.isPending ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          {t('people.reconcileWallets')}
+        </Button>
         {canAddPerson && (
           <>
             <Button
@@ -352,10 +396,18 @@ export function People() {
                     <td className="px-4 py-3 text-end">
                       <div
                         className={cn(
-                          'tabular-nums font-medium',
+                          'inline-flex items-center justify-end gap-1 tabular-nums font-medium',
                           balanceClass(p.balance)
                         )}
                       >
+                        {walletDirectionUnreadByPerson.has(p.id) && (
+                          <span
+                            className="inline-flex shrink-0 text-amber-600"
+                            title={t('people.balanceDirectionWarning')}
+                          >
+                            <AlertTriangle className="h-4 w-4" aria-hidden />
+                          </span>
+                        )}
                         {formatCurrencyDisplay(p.balance)}
                       </div>
                       <div className="mt-0.5 max-w-[220px] text-[10px] leading-snug text-muted-foreground ms-auto">

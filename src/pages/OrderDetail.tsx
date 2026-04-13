@@ -93,8 +93,22 @@ export function OrderDetail() {
     })
 
   const paidAtOrder = order ? roundMoney(order.paid_amount) : 0
+  const hasRecordedOrderPayments =
+    !!order &&
+    (paidAtOrder > 0.01 ||
+      (order.payment_installments ?? []).some(
+        (i) => roundMoney(i.amount) > 0.01
+      ) ||
+      (order.payments ?? []).some((p) => roundMoney(p.amount) > 0.01))
   const showCancelSettlementChoice =
-    !!order?.person_id && paidAtOrder > 0.01
+    !!order?.person_id &&
+    hasRecordedOrderPayments &&
+    (order.status_flow === 'confirmed' || order.status_flow === 'completed')
+  const showWalkInPaymentCancelHint =
+    !!order &&
+    !order.person_id &&
+    hasRecordedOrderPayments &&
+    (order.status_flow === 'confirmed' || order.status_flow === 'completed')
 
   const { data: orderPaymentRegisterIds, isFetching: orderPayRegFetching } =
     useQuery({
@@ -293,11 +307,18 @@ export function OrderDetail() {
                 {order.status_flow === 'completed' && (
                   <p>{t('orders.cancelCompletedOrderHint')}</p>
                 )}
+                {showWalkInPaymentCancelHint && (
+                  <p className="text-sm text-foreground">{t('orders.cancelWalkInPaymentsHint')}</p>
+                )}
                 {showCancelSettlementChoice && (
-                  <fieldset className="space-y-3 rounded-md border border-border p-3">
-                    <legend className="px-1 text-sm font-medium text-foreground">
-                      {t('orders.cancelSettlementLegend')}
-                    </legend>
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <p className="text-sm text-foreground">
+                      {t('orders.cancelSettlementIntro')}
+                    </p>
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-foreground">
+                        {t('orders.cancelSettlementLegend')}
+                      </legend>
                     <div className="flex items-start gap-2">
                       <input
                         id="order-cancel-reverse"
@@ -336,7 +357,8 @@ export function OrderDetail() {
                         {t('orders.cancelSettlementRetain')}
                       </Label>
                     </div>
-                  </fieldset>
+                    </fieldset>
+                  </div>
                 )}
               </div>
             </AlertDialogDescription>

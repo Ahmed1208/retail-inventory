@@ -16,10 +16,49 @@ Retail inventory management system with bilingual support (English / Arabic), RT
 
 | Variable | Description |
 |----------|-------------|
-| `VITE_SUPABASE_URL` | Your Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous (public) key |
+| `VITE_SUPABASE_URL` | Supabase project URL (local or cloud, depending on mode) |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous (public) key |
 
 All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
+
+### Local vs cloud (no comment/uncomment in `.env.local`)
+
+Vite **modes** pick which file supplies `VITE_SUPABASE_*`:
+
+| Command | Mode | Source |
+|---------|------|--------|
+| `npm run dev` or `npm run dev:local` | `development` | [`.env.development`](.env.development) (local defaults + optional sync keys) and optional **`.env.development.local`** (gitignored overrides) |
+| `npm run dev:cloud` | `cloud` | **`.env.cloud.local`** only (gitignored; copy from [`.env.cloud.example`](.env.cloud.example)) |
+
+**Important:** Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY` in root **`.env.local`**. Vite always loads `.env.local` in every mode, and those entries would **override** the mode files, so local/cloud switching would stop working. Use **`.env.local`** only for non-Vite tooling (for example `SUPABASE_DB_PASSWORD` / `DATABASE_URL` for [`npm run db:push:local`](./scripts/db-push-from-env.mjs)).
+
+If local Supabase rejects the default anon key (CLI version differences), run `npx supabase status -o env` and update **`VITE_SUPABASE_*`** in [`.env.development`](.env.development) or in **`.env.development.local`**.
+
+### Admin data sync (local ↔ hosted)
+
+When the app points at **local** Supabase (`npm run dev`), **Admin → Data sync** (`/admin/sync`) can merge **public** business tables with a **hosted** project in both directions (new/updated rows).
+
+**Hosted credentials** (pick one):
+
+1. **`VITE_SYNC_CLOUD_URL`** and **`VITE_SYNC_CLOUD_ANON_KEY`** in [`.env.development`](.env.development) or **`.env.development.local`**, or  
+2. The same **`VITE_SUPABASE_URL`** / **`VITE_SUPABASE_ANON_KEY`** you keep in **`.env.cloud.local`** for `npm run dev:cloud` — Vite merges that file into `development` for sync only (restart **`npm run dev`** after changing env files).
+
+Then sign in on the sync page with a **hosted** Supabase user that is allowed by **RLS** to read and upsert those tables (no service role in the browser).
+
+**Operator profiles (`public.profiles`)** on pull: if a hosted profile has no matching local `auth.users` row yet, the app calls the Edge Function **`ensure-local-operator-auth`** (admin-only) to create that user on **local** with the **same id** as on the host, then applies the profile row. New operators sign in locally with **`{username}@members.stockpilot.local`** and the function’s temp password (`OPERATOR_MIRROR_TEMP_PASSWORD`, default **`devpass123`** when unset). Deploy the function on each Supabase project that should support this: it lives under [`supabase/functions/ensure-local-operator-auth`](./supabase/functions/ensure-local-operator-auth) — restart **`npx supabase start`** after pulling, or run **`supabase functions deploy ensure-local-operator-auth`** on hosted.
+
+Multi-table sync is best-effort across HTTP (not one giant SQL transaction).
+
+#### Mirror hosted Auth onto local (optional, dev)
+
+To **replace all local Auth users** with the same ids as on the hosted project (so profile sync applies every operator), use the **service role** script (run on your machine only; keys stay in a gitignored env file):
+
+1. Copy [`.env.example`](.env.example) → **`.env.mirror-auth.local`** and set `MIRROR_CLOUD_*`, `MIRROR_LOCAL_*`, and optionally `MIRROR_LOCAL_PASSWORD` (default `devpass123`).
+2. `npm run mirror:cloud-auth-to-local -- --dry-run` — lists counts only.
+3. `I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local` — deletes **every** local Auth user, then recreates users from the host with the **same ids**. Hosted passwords are **not** copied; everyone gets `MIRROR_LOCAL_PASSWORD`.
+4. Run **Admin → Data sync** once to refresh `profiles` and business tables from cloud.
+
+See comments at the top of [`scripts/mirror-cloud-auth-to-local.mjs`](./scripts/mirror-cloud-auth-to-local.mjs) for details.
 
 ## Database setup
 
@@ -63,7 +102,8 @@ All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
 
 2. **Set up the database**
 
-   Follow the [Database setup](#database-setup) section above: create a Supabase project and run the migration files in order.
+   **Local (Docker):** use `npx supabase db reset` in step 4 — migrations and [`supabase/seed.sql`](./supabase/seed.sql) run automatically.  
+   **Hosted Supabase:** follow [Database setup](#database-setup): create a project and run migration SQL in order (or `supabase db push` when linked).
 
 3. **Install dependencies**
 
@@ -73,29 +113,28 @@ All app env vars must use the `VITE_` prefix so Vite exposes them to the client.
 
 4. **Configure environment**
 
-   Copy `.env.example` to `.env.local` and fill in your Supabase values:
+   Read [`.env.example`](.env.example) for the full layout.
 
-   ```bash
-   cp .env.example .env.local
-   ```
+   - **Local Supabase:** install [Docker](https://docs.docker.com/get-docker/) and run `npx supabase start`. Then run **`npm run dev`** — settings come from [`.env.development`](.env.development) (and optional **`.env.development.local`** for overrides).
+   - **Hosted Supabase while developing:** copy [`.env.cloud.example`](.env.cloud.example) to **`.env.cloud.local`** and set your project URL and anon key. Run **`npm run dev:cloud`**.
+   - **Pushing migrations to hosted DB:** keep `SUPABASE_DB_PASSWORD` or `DATABASE_URL` in **`.env.local`** (see `.env.example`); that file is **not** used for Vite `VITE_*` switching.
 
-   Edit `.env.local`:
-
-   ```env
-   VITE_SUPABASE_URL=https://your-project.supabase.co
-   VITE_SUPABASE_ANON_KEY=your-anon-key
-   ```
+   **Migrating from an old setup:** if you previously put `VITE_SUPABASE_*` in `.env.local`, **remove those two lines** from `.env.local` and put cloud values in **`.env.cloud.local`** instead so `npm run dev` / `npm run dev:cloud` work as intended.
 
    **Operators (Auth + profiles)** — after migration `034_operator_profiles.sql`:
 
-   - Run the migration (SQL Editor or `supabase db push`), then reload the API schema if needed.
-   - **Bootstrap admin (once):** In Supabase **Authentication → Users**, add a user with email `admin@members.stockpilot.local`, set a strong password, and in **User metadata** set JSON such as `{ "username": "admin", "is_admin": true }`. A trigger creates the `public.profiles` row. The app sign-in screen uses **username** `admin` (mapped to that email); do not put passwords in `VITE_*` or client code.
+   - Run **`npx supabase db reset`** (migrations + [`supabase/seed.sql`](./supabase/seed.sql)). Seeding is enabled in [`supabase/config.toml`](./supabase/config.toml); it creates a **local dev admin** you can use immediately:
+     - **Username:** `admin` (the login screen maps this to `admin@members.stockpilot.local`)
+     - **Password:** `devpass123` (local Supabase only — change it in **Authentication → Users** if you share the stack)
+   - If login still fails while cloud works, run **`npm run verify:local-login`** (uses the same `VITE_SUPABASE_*` as `npm run dev`). It confirms GoTrue + seed; if it fails, reset the DB or align keys from **`npx supabase status -o env`**. Use **`npm run dev`** for local, not **`npm run dev:cloud`**.
+   - **Bootstrap admin manually (optional):** If you prefer not to use the seed, add a user in **Authentication → Users** with email `admin@members.stockpilot.local`, set a password, and in **User metadata** set JSON such as `{ "username": "admin", "is_admin": true }`. A trigger creates the `public.profiles` row. Do not put passwords in `VITE_*` or client code.
    - **Additional members:** Admins use **Admin → Members → Add member** in the app, which calls the **`create-member`** Edge Function. **Edit member → Update password** uses **`update-member`**. Deploy with `supabase functions deploy create-member` and `supabase functions deploy update-member`, and ensure the project has the **service role** secret available to Edge Functions (default when linked). Never expose the service role key to the browser.
 
 5. **Run the dev server**
 
    ```bash
-   npm run dev
+   npm run dev          # local Supabase (see table above)
+   npm run dev:cloud    # hosted Supabase — requires .env.cloud.local
    ```
 
 ## Build
@@ -110,7 +149,10 @@ Output is in `dist/`. Preview with `npm run preview`.
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server |
+| `npm run dev` | Dev server against **local** Supabase ([`.env.development`](.env.development)) |
+| `npm run dev:local` | Same as `dev` |
+| `npm run dev:cloud` | Dev server against **hosted** Supabase (`.env.cloud.local`) |
+| Admin **Data sync** | `/admin/sync` — local `VITE_SUPABASE_*` plus hosted `VITE_SYNC_CLOUD_*` in `.env.development` or `.env.development.local`, or hosted pair merged from `.env.cloud.local` (see above) |
 | `npm run build` | TypeScript check + production build |
 | `npm run preview` | Preview production build locally |
 | `npm run lint` | Run ESLint |
@@ -122,7 +164,8 @@ We use a simple Git workflow with `master`, `develop`, and short-lived feature/f
 ## Deployment (Vercel)
 
 - `vercel.json` is set up so all routes rewrite to `/index.html` for client-side routing.
-- Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your Vercel project environment.
+- Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your Vercel project environment (production mode does not read `.env.cloud.local`).
+- For a **local** production build (`npm run build` on your machine), use gitignored **`.env.production.local`** with the same two variables, or export them in the shell before `npm run build`.
 - Production deploys from `master` are done manually.
 
 ## License

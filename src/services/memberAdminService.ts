@@ -8,6 +8,8 @@ export type CreateMemberPayload = {
   username: string
   password: string
   feature_overrides: Record<string, boolean>
+  /** Required: at least one warehouse id for the new operator. */
+  allowed_warehouse_ids: number[]
 }
 
 async function messageFromInvokeError(error: unknown): Promise<string> {

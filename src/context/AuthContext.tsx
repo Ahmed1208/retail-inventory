@@ -131,14 +131,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (username: string, password: string) => {
-      const email = usernameToMemberEmail(username)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) return { error: error.message }
-      await refreshProfile()
-      return { error: null }
+      try {
+        const email = usernameToMemberEmail(username)
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) return { error: error.message }
+        await refreshProfile()
+        return { error: null }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return { error: msg }
+      }
     },
     [refreshProfile]
   )

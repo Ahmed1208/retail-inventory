@@ -6,7 +6,7 @@ export async function fetchOperatorProfile(
 ): Promise<OperatorProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, is_admin, feature_overrides, created_at')
+    .select('id, username, is_admin, feature_overrides, allowed_warehouse_ids, created_at')
     .eq('id', userId)
     .maybeSingle()
 
@@ -22,6 +22,10 @@ export async function fetchOperatorProfile(
   const rawAdmin = data.is_admin as unknown
   const isAdminFlag =
     rawAdmin === true || rawAdmin === 'true' || rawAdmin === 1
+  const wh = data.allowed_warehouse_ids
+  const warehouseIds = Array.isArray(wh)
+    ? wh.map((x) => Number(x)).filter((n) => Number.isFinite(n))
+    : []
   return {
     id: data.id,
     username: data.username,
@@ -30,6 +34,7 @@ export async function fetchOperatorProfile(
       fo && typeof fo === 'object' && !Array.isArray(fo)
         ? (fo as Record<string, boolean>)
         : {},
+    allowed_warehouse_ids: warehouseIds,
     created_at: data.created_at,
   }
 }

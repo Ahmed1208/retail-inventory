@@ -1,12 +1,13 @@
-import { useQuery, useIsMutating } from '@tanstack/react-query'
-import { useLocation, Link, Outlet } from 'react-router-dom'
+import { useIsMutating } from '@tanstack/react-query'
+import { useLocation, Outlet } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Bell, LogOut, Menu } from 'lucide-react'
+import { LogOut, Menu } from 'lucide-react'
 
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { useIsMobile } from '@/hooks/useIsMobile'
-import { getLowStockProducts } from '@/services/productService'
+import { useInventorySessionBootstrap } from '@/hooks/useInventorySessionBootstrap'
+import { StockAlertsBell } from '@/components/alerts/StockAlertsBell'
 import { Sidebar } from './Sidebar'
 import {
   Sheet,
@@ -17,8 +18,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-import { useFeatureEnabled } from '@/context/FeatureControlContext'
-
 const pathToTitleKey: Record<string, string> = {
   '/control': 'control.title',
   '/inventory': 'nav.inventory',
@@ -42,13 +41,8 @@ export function AppLayout() {
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
   const isMutating = useIsMutating() > 0
-  const showLowStockBell = useFeatureEnabled('header.lowStockBell')
+  useInventorySessionBootstrap()
 
-  const { data: lowStockProducts = [] } = useQuery({
-    queryKey: ['lowStockProducts'],
-    queryFn: getLowStockProducts,
-  })
-  const lowStockCount = lowStockProducts.length
   const pageTitle =
     pathname === '/admin' || pathname === '/admin/'
       ? 'nav.admin'
@@ -83,8 +77,6 @@ export function AppLayout() {
           : pathname === '/register'
             ? 'register.title'
             : (pathToTitleKey[pathname] ?? 'dashboard.title')
-  const lowStockHref = '/products?lowStock=1'
-
   return (
     <div
       className="min-h-screen bg-white transition-[padding] duration-300 ease-in-out"
@@ -126,22 +118,7 @@ export function AppLayout() {
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            {showLowStockBell && (
-              <div className="relative">
-                <Link
-                  to={lowStockHref}
-                  className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground inline-flex"
-                  aria-label={t('common.lowStock')}
-                >
-                  <Bell className="h-5 w-5" />
-                </Link>
-                {lowStockCount > 0 && (
-                  <span className="absolute -top-0.5 -end-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-medium text-white">
-                    {lowStockCount > 99 ? '99+' : lowStockCount}
-                  </span>
-                )}
-              </div>
-            )}
+            {session && <StockAlertsBell />}
 
             <button
               type="button"

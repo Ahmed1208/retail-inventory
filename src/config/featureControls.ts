@@ -85,6 +85,7 @@ export const FEATURE_CONTROL_IDS = [
   'reports.exportCsv',
   // Admin hub
   'admin.migrationGuide',
+  'admin.dataSync',
 ] as const
 
 export type FeatureControlId = (typeof FEATURE_CONTROL_IDS)[number]
@@ -675,6 +676,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.admin.migrationGuide.title',
             descriptionKey: 'control.admin.migrationGuide.desc',
+          },
+          {
+            id: 'admin.dataSync',
+            defaultEnabled: false,
+            titleKey: 'control.admin.dataSync.title',
+            descriptionKey: 'control.admin.dataSync.desc',
           },
         ],
       },

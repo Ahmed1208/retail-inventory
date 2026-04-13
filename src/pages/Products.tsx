@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import {
   useReactTable,
   getCoreRowModel,
@@ -19,6 +19,8 @@ import {
   Package,
   FileUp,
   FileDown,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react'
 
 import {
@@ -26,10 +28,13 @@ import {
   deleteProduct,
   getAllProductWarehouseStock,
 } from '@/services/productService'
+import { insertAlertsForProductsWithNegativeQuantity } from '@/services/stockAlertsService'
+import { recalculateStockFromMovements } from '@/services/stockReconcileService'
 import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories as getCategories } from '@/services/categoryService'
 import { getAllBrands as getBrands } from '@/services/brandService'
 import type { ProductWithRelations } from '@/types'
+import { supabase } from '@/lib/supabase'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
 import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { Button } from '@/components/ui/button'
@@ -163,6 +168,18 @@ export function Products() {
     return m
   }, [pwsRows])
 
+  const hasNegativeStock = useMemo(() => {
+    for (const p of products) {
+      if (p.quantity < 0) return true
+      const inner = stockByProduct.get(p.id)
+      if (!inner) continue
+      for (const q of inner.values()) {
+        if (q < 0) return true
+      }
+    }
+    return false
+  }, [products, stockByProduct])
+
   useEffect(() => {
     if (defaultWarehouseInitRef.current || warehouses.length === 0) return
     const d = warehouses.find((w) => w.is_default)
@@ -258,16 +275,27 @@ export function Products() {
               const p = row.original
               const qty = stockByProduct.get(p.id)?.get(w.id) ?? 0
               const threshold = p.low_stock_threshold
-              const isLow = qty <= threshold
+              const isNegative = qty < 0
+              const isLow = !isNegative && qty <= threshold
               return (
                 <span
-                  title={t('products.quantityManagedByPurchaseOrders')}
+                  title={
+                    isNegative
+                      ? t('products.quantityNegative')
+                      : t('products.quantityManagedByPurchaseOrders')
+                  }
                   className={cn(
                     'inline-flex items-center gap-1 cursor-help tabular-nums',
-                    isLow ? 'text-red-600 font-medium' : 'text-green-600'
+                    isNegative
+                      ? 'text-red-600 font-semibold'
+                      : isLow
+                        ? 'text-red-600 font-medium'
+                        : 'text-green-600'
                   )}
                 >
-                  {isLow && <AlertTriangle className="h-4 w-4 shrink-0" />}
+                  {(isNegative || isLow) && (
+                    <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                  )}
                   {qty}
                 </span>
               )
@@ -281,16 +309,27 @@ export function Products() {
         cell: ({ row }) => {
           const p = row.original
           const qty = p.quantity
-          const isLow = qty <= p.low_stock_threshold
+          const isNegative = qty < 0
+          const isLow = !isNegative && qty <= p.low_stock_threshold
           return (
             <span
-              title={t('products.quantityManagedByPurchaseOrders')}
+              title={
+                isNegative
+                  ? t('products.quantityNegative')
+                  : t('products.quantityManagedByPurchaseOrders')
+              }
               className={cn(
                 'inline-flex items-center gap-1 cursor-help font-medium tabular-nums',
-                isLow ? 'text-red-600' : 'text-green-600'
+                isNegative
+                  ? 'text-red-600 font-semibold'
+                  : isLow
+                    ? 'text-red-600'
+                    : 'text-green-600'
               )}
             >
-              {isLow && <AlertTriangle className="h-4 w-4 shrink-0" />}
+              {(isNegative || isLow) && (
+                <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+              )}
               {qty}
             </span>
           )
@@ -434,11 +473,48 @@ export function Products() {
     queryClient.invalidateQueries({ queryKey: ['productPriceHistory'] })
     queryClient.invalidateQueries({ queryKey: ['categories'] })
     queryClient.invalidateQueries({ queryKey: ['brands'] })
+    queryClient.invalidateQueries({ queryKey: ['stockAlerts'] })
   }
+
+  const reconcileMutation = useMutation({
+    mutationFn: async () => {
+      await recalculateStockFromMovements(null)
+      return insertAlertsForProductsWithNegativeQuantity(
+        supabase,
+        'manual_reconcile'
+      )
+    },
+    onSuccess: (negativeAlertCount) => {
+      if (negativeAlertCount > 0) {
+        toast.success(
+          t('products.reconcileStockNegativeSummary', {
+            count: negativeAlertCount,
+          })
+        )
+      } else {
+        toast.success(t('products.reconcileStockSuccess'))
+      }
+      invalidateProducts()
+    },
+    onError: () => {
+      toast.error(t('products.reconcileStockError'))
+    },
+  })
 
   return (
     <div className="space-y-4">
       <BackToInventoryLink />
+
+      {hasNegativeStock && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <p className="leading-relaxed">{t('products.negativeStockBanner')}</p>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
@@ -487,6 +563,21 @@ export function Products() {
           onChange={setDefaultStockWarehouseId}
           className="min-w-[220px] max-w-xs"
         />
+        <Button
+          type="button"
+          variant="secondary"
+          className="gap-2"
+          title={t('products.reconcileStockHint')}
+          disabled={reconcileMutation.isPending || productsLoading}
+          onClick={() => reconcileMutation.mutate()}
+        >
+          {reconcileMutation.isPending ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          {t('products.reconcileStock')}
+        </Button>
         {products.length > 0 && (
           <Button
             type="button"

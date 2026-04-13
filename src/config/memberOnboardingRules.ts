@@ -207,4 +207,5 @@ export const MEMBER_ONBOARDING_QUESTIONS: MemberOnboardingQuestion[] = [
 export const MEMBER_BASE_DENY_ADMIN: OnboardingAnswerMap = {
   'sidebar.admin': false,
   'sidebar.control': false,
+  'admin.dataSync': false,
 }

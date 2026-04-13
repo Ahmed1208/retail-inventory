@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
+import { recalculateStockFromMovements } from '@/services/stockReconcileService'
 import {
   DEFAULT_WAREHOUSE_ID,
   fetchActiveTenderRegistersForDocument,
@@ -40,6 +41,16 @@ import type {
 const PURCHASE_ORDERS = 'purchase_orders'
 const PURCHASE_ORDER_ITEMS = 'purchase_order_items'
 const PURCHASE_ORDER_PAYMENTS = 'purchase_order_payments'
+
+async function afterPoStockMutation(productIds: string[]): Promise<void> {
+  const ids = [...new Set(productIds)].filter(Boolean)
+  if (!ids.length) return
+  try {
+    await recalculateStockFromMovements(ids)
+  } catch {
+    /* unmigrated DB */
+  }
+}
 
 export type PurchaseOrderFilters = {
   status?: PurchaseOrderStatus
@@ -686,17 +697,6 @@ export async function createPurchaseOrder(data: {
     }
   }
 
-  // Get next order_number
-  const { data: maxRow, error: maxError } = await supabase
-    .from(PURCHASE_ORDERS)
-    .select('order_number')
-    .order('order_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (maxError) throw maxError
-  const order_number = (maxRow?.order_number ?? 0) + 1
-
   // 3. Insert purchase_order (omit paid_amount/remaining_amount so DBs without migration 009 still work;
   //    paid/remaining are derived from purchase_order_payments in applyPaidRemainingFromPayments.)
   const warehouse_id =
@@ -705,7 +705,6 @@ export async function createPurchaseOrder(data: {
       : DEFAULT_WAREHOUSE_ID
 
   const orderPayload: Record<string, unknown> = {
-    order_number,
     supplier_name: data.supplier_name?.trim() || null,
     note: data.note?.trim() || null,
     subtotal,
@@ -795,8 +794,11 @@ export async function createPurchaseOrder(data: {
 
   if (itemsError) throw itemsError
 
-  if (!asDraft) {
-    const note = `Purchase Order #${order_number}`
+  const createdForNumber = await getPurchaseOrderById(orderId)
+  const assignedPoNumber = createdForNumber?.order_number
+
+  if (!asDraft && assignedPoNumber != null) {
+    const note = `Purchase Order #${assignedPoNumber}`
     for (const item of computedLines) {
       await adjustStock(item.product_id, 'in', item.quantity, note, {
         inboundUnitCost: item.cost_price,
@@ -825,12 +827,14 @@ export async function createPurchaseOrder(data: {
     await createPurchaseOrderPayment({
       personId: supplierId,
       purchaseOrderId: orderId,
-      orderNumber: order_number,
+      orderNumber: assignedPoNumber,
       totalAmount: total,
       payments,
       poWarehouseId: warehouse_id,
       registerWarehouseId: data.register_warehouse_id,
     })
+
+    await afterPoStockMutation(computedLines.map((i) => i.product_id))
   }
 
   // Return created PurchaseOrderWithItems
@@ -1111,6 +1115,8 @@ export async function confirmPurchaseOrder(
     .eq('id', id)
   if (updErr) throw updErr
 
+  await afterPoStockMutation(order.items.map((i) => i.product_id))
+
   const out = await getPurchaseOrderById(id)
   if (!out) throw new Error('Failed to fetch purchase order')
   return out
@@ -1229,14 +1235,6 @@ export async function cancelPurchaseOrder(
         return resolveRegisterWarehouseForRetainedPayment(poWhId, prior ?? null)
       }
 
-      const { data: balRow0, error: b0e } = await supabase
-        .from('people')
-        .select('balance')
-        .eq('id', order.person_id)
-        .single()
-      if (b0e) throw b0e
-      let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
-
       const payLines = (order.payments ?? []).filter(
         (p) => roundMoney(p.amount) > 0.01
       )
@@ -1258,7 +1256,7 @@ export async function cancelPurchaseOrder(
             reference_id: null,
             reference_number: standaloneRef,
             note: appendLedgerDocSuffix(
-              `Retained · ${refPo} — cancelled PO #${order.order_number} (prepaid kept on account)`,
+              `Supplier account credit from cancelled ${refPo} — PO voided; separate ledger payment (no cash refund)`,
               order.id
             ),
             payment_method: p.payment_method,
@@ -1270,7 +1268,6 @@ export async function cancelPurchaseOrder(
               toward
             ),
           })
-          bal = roundMoney(bal + toward)
           remainingLiability = roundMoney(remainingLiability - toward)
         }
 
@@ -1282,7 +1279,7 @@ export async function cancelPurchaseOrder(
             reference_id: null,
             reference_number: null,
             note: appendLedgerDocSuffix(
-              `Overpayment retained · ${refPo} — cancelled PO #${order.order_number}`,
+              `Wallet from cancelled ${refPo} — PO voided; overpayment split (no cash refund)`,
               order.id
             ),
             payment_method: null,
@@ -1290,35 +1287,8 @@ export async function cancelPurchaseOrder(
             wallet_direction: 'in' as WalletDirection,
             created_at: retainedPaymentCreatedAt(anchorIso),
           })
-          bal = roundMoney(bal + walletPart)
         }
       }
-
-      const { error: pbErr } = await supabase
-        .from('people')
-        .update({
-          balance: bal,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.person_id)
-      if (pbErr) throw pbErr
-    } else {
-      const { data: balAfter, error: bae } = await supabase
-        .from('people')
-        .select('balance')
-        .eq('id', order.person_id)
-        .single()
-      if (bae) throw bae
-      const bal = roundMoney(Number((balAfter as { balance: number }).balance))
-
-      const { error: pbErr } = await supabase
-        .from('people')
-        .update({
-          balance: bal,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.person_id)
-      if (pbErr) throw pbErr
     }
   }
 
@@ -1353,4 +1323,6 @@ export async function cancelPurchaseOrder(
       })
     }
   }
+
+  await afterPoStockMutation(order.items.map((i) => i.product_id))
 }

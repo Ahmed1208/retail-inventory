@@ -37,9 +37,22 @@ export function Login() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
-    const { error: err } = await signIn(username, password)
-    setSubmitting(false)
-    if (err) setError(err)
+    try {
+      const { error: err } = await signIn(username, password)
+      if (err) {
+        const lower = err.toLowerCase()
+        setError(
+          lower.includes('invalid login') || lower.includes('invalid credentials')
+            ? t('auth.invalidCredentialsHint')
+            : err,
+        )
+      }
+    } catch (uncaught) {
+      const msg = uncaught instanceof Error ? uncaught.message : String(uncaught)
+      setError(msg)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

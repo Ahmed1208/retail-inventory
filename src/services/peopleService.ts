@@ -691,13 +691,11 @@ export async function recordPayment(data: {
   if (pErr) throw pErr
   if (!personRow) throw new Error('Person not found')
 
-  const person = mapPersonRow(personRow as Record<string, unknown>)
   const noteBase = data.note?.trim() || null
   const paymentGroupId = lines.length > 1 ? crypto.randomUUID() : null
 
   const refNumber = await getNextStandaloneLedgerRef(data.type)
 
-  let running = person.balance
   const rows: {
     person_id: string
     type: 'payment_in' | 'payment_out'
@@ -715,7 +713,6 @@ export async function recordPayment(data: {
     const amt = roundMoney(line.amount)
     const delta =
       data.type === 'payment_in' ? roundMoney(-amt) : roundMoney(amt)
-    running = roundMoney(running + delta)
     const note =
       lines.length > 1
         ? noteBase
@@ -740,12 +737,8 @@ export async function recordPayment(data: {
 
   const { data: updated, error: uErr } = await supabase
     .from(PEOPLE)
-    .update({
-      balance: running,
-      updated_at: new Date().toISOString(),
-    })
+    .select('*')
     .eq('id', data.person_id)
-    .select()
     .single()
 
   if (uErr) throw uErr
@@ -770,9 +763,6 @@ export async function adjustBalance(data: {
   if (pErr) throw pErr
   if (!personRow) throw new Error('Person not found')
 
-  const person = mapPersonRow(personRow as Record<string, unknown>)
-  const newBalance = roundMoney(person.balance + delta)
-
   await insertBalanceTransactionRow({
     person_id: data.person_id,
     type: 'adjustment',
@@ -785,12 +775,8 @@ export async function adjustBalance(data: {
 
   const { data: updated, error: uErr } = await supabase
     .from(PEOPLE)
-    .update({
-      balance: newBalance,
-      updated_at: new Date().toISOString(),
-    })
+    .select('*')
     .eq('id', data.person_id)
-    .select()
     .single()
 
   if (uErr) throw uErr
@@ -2161,7 +2147,7 @@ export async function voidWalkInOrderCancelLedgerInPlace(
   const rows = data ?? []
   if (rows.length === 0) return
   const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
-  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+  await applyReversalAdjustmentsMarkAndBalance(txs)
 }
 
 /** Earliest active ledger row time for a document line (confirm-time), for retained-payment copies. */
@@ -2212,7 +2198,7 @@ export async function voidLedgerOrderDocumentRowForCancel(
   const rows = data ?? []
   if (rows.length === 0) return
   const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
-  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+  await applyReversalAdjustmentsMarkAndBalance(txs)
 }
 
 /**
@@ -2237,16 +2223,15 @@ export async function voidLedgerPurchaseOrderDocumentRowForCancel(
   const rows = data ?? []
   if (rows.length === 0) return
   const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
-  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+  await applyReversalAdjustmentsMarkAndBalance(txs)
 }
 
 /**
- * Insert reversal adjustments, mark rows reversed, update `people.balance`. Does not touch
- * `order_payments` / installments / PO payment tables (used from document cancel after those deletes).
+ * Insert reversal adjustments, mark rows reversed. `people.balance` is updated by DB replay trigger.
+ * Does not touch `order_payments` / installments / PO payment tables (used from document cancel after those deletes).
  */
 async function applyReversalAdjustmentsMarkAndBalance(
-  txs: BalanceTransaction[],
-  skipPeopleBalanceUpdate: boolean
+  txs: BalanceTransaction[]
 ): Promise<void> {
   if (txs.length === 0) return
   const ids = txs.map((t) => t.id)
@@ -2265,13 +2250,6 @@ async function applyReversalAdjustmentsMarkAndBalance(
     }
   }
 
-  const deltaByPerson = new Map<string, number>()
-  for (const r of txs) {
-    if (!r.person_id) continue
-    const k = r.person_id
-    deltaByPerson.set(k, roundMoney((deltaByPerson.get(k) ?? 0) + r.amount))
-  }
-
   for (const r of txs) {
     await insertBalanceTransactionRow({
       person_id: r.person_id,
@@ -2288,27 +2266,6 @@ async function applyReversalAdjustmentsMarkAndBalance(
 
   const nowIso = new Date().toISOString()
   await markBalanceTransactionsReversed(ids, nowIso)
-
-  if (!skipPeopleBalanceUpdate) {
-    for (const [personId, summed] of deltaByPerson) {
-      const { data: pr, error: pse } = await supabase
-        .from(PEOPLE)
-        .select('balance')
-        .eq('id', personId)
-        .single()
-      if (pse) throw pse
-      const bal = roundMoney(Number((pr as { balance: number }).balance))
-      const next = roundMoney(bal - summed)
-      const { error: pue } = await supabase
-        .from(PEOPLE)
-        .update({
-          balance: next,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', personId)
-      if (pue) throw pue
-    }
-  }
 }
 
 /**
@@ -2338,13 +2295,13 @@ export async function voidLedgerPaymentOperationsForDocumentCancel(
     throw new Error('Some ledger rows are missing; cannot reverse.')
   }
 
-  await applyReversalAdjustmentsMarkAndBalance(txs, false)
+  await applyReversalAdjustmentsMarkAndBalance(txs)
 }
 
 /**
  * Undo a recorded payment_in / payment_out operation (and linked wallet lines).
- * Sets `reversed_at` on originals, inserts balancing `adjustment` rows, updates `people.balance`,
- * and best-effort restores order / PO payment tables when reference is O-* / PO-*.
+ * Sets `reversed_at` on originals, inserts balancing `adjustment` rows; `people.balance` is replayed in the DB.
+ * Best-effort restores order / PO payment tables when reference is O-* / PO-*.
  */
 export async function reverseLedgerPaymentOperation(
   operationId: string
@@ -2383,9 +2340,6 @@ export async function reverseLedgerPaymentOperation(
   )
   const refNum = op.reference_number ?? ''
   const refId = op.reference_id
-
-  /** Cancel flow already wrote offsetting ledger rows; only void originals + audit adjustments. */
-  let skipPeopleBalanceUpdate = false
 
   if (op.type === 'payment_in' && refId && refNum.startsWith('O-')) {
     const towardOrder = roundMoney(
@@ -2490,7 +2444,6 @@ export async function reverseLedgerPaymentOperation(
 
     const poCancelled = String((po as { status: string }).status) === 'cancelled'
     if (poCancelled) {
-      skipPeopleBalanceUpdate = true
       const { error: wipePoPay } = await supabase
         .from(PO_PAYMENTS_TABLE)
         .delete()
@@ -2534,5 +2487,5 @@ export async function reverseLedgerPaymentOperation(
     }
   }
 
-  await applyReversalAdjustmentsMarkAndBalance(txs, skipPeopleBalanceUpdate)
+  await applyReversalAdjustmentsMarkAndBalance(txs)
 }

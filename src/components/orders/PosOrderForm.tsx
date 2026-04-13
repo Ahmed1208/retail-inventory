@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AlertTriangle, ChevronDown, Loader2, Trash2 } from 'lucide-react'
 
+import { isInsufficientStockConfirmError } from '@/errors/insufficientStockConfirmError'
 import {
   confirmOrder,
   createOrder,
@@ -707,7 +708,23 @@ export function PosOrderForm({
       setCheckoutOpen(false)
       toast.success(t('orders.confirmOrder'))
     },
-    onError: (e: Error) => toast.error(e.message || t('orders.toastError')),
+    onError: (e: Error) => {
+      if (isInsufficientStockConfirmError(e)) {
+        const lines = e.violations.map((v) =>
+          t('orders.insufficientStockLine', {
+            name: v.product_name?.trim() || v.product_id,
+            needed: v.needed,
+            available: v.available,
+          })
+        )
+        toast.error(
+          `${t('orders.insufficientStockHeading')}\n${lines.join('\n')}`,
+          { duration: 14_000 }
+        )
+        return
+      }
+      toast.error(e.message || t('orders.toastError'))
+    },
   })
 
   const onPickProduct = (p: ProductWithRelations) => {

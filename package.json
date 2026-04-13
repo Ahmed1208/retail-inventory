@@ -5,10 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite",
+    "dev:cloud": "vite --mode cloud",
     "build": "tsc -b && vite build",
     "db:push": "npx supabase db push --yes",
     "db:push:local": "node scripts/db-push-from-env.mjs",
     "db:reset": "npx supabase db reset",
+    "verify:local-login": "node scripts/verify-local-supabase-login.mjs",
+    "mirror:cloud-auth-to-local": "node scripts/mirror-cloud-auth-to-local.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

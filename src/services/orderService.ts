@@ -1,5 +1,7 @@
+import { InsufficientStockConfirmError } from '@/errors/insufficientStockConfirmError'
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
+import { recalculateStockFromMovements } from '@/services/stockReconcileService'
 import {
   assertWarehouseHasRegister,
   DEFAULT_WAREHOUSE_ID,
@@ -46,6 +48,16 @@ import type {
   Product,
   WalletDirection,
 } from '@/types'
+
+async function afterOrderStockMutation(productIds: string[]): Promise<void> {
+  const ids = [...new Set(productIds)].filter(Boolean)
+  if (!ids.length) return
+  try {
+    await recalculateStockFromMovements(ids)
+  } catch {
+    /* RPC may be missing on unmigrated DB */
+  }
+}
 
 export type CancelOrderSettlement =
   | 'reverse_payments'
@@ -595,16 +607,6 @@ export async function createOrder(data: {
   )
   const remaining_amount = roundMoney(total_amount - paid_amount)
 
-  const { data: maxOrder, error: maxError } = await supabase
-    .from(ORDERS)
-    .select('order_number')
-    .order('order_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (maxError) throw maxError
-  const order_number = (maxOrder?.order_number ?? 0) + 1
-
   const payment_method: PaymentMethod | null =
     payments.length > 0 ? payments[0].payment_method : null
 
@@ -614,7 +616,6 @@ export async function createOrder(data: {
       : DEFAULT_WAREHOUSE_ID
 
   const orderPayload: Record<string, unknown> = {
-    order_number,
     type: data.type,
     status: 'pending' as OrderStatus,
     status_flow: 'draft' as OrderStatusFlow,
@@ -741,19 +742,19 @@ export async function importHistoricalOrderSnapshot(data: {
   const discount_amount = roundMoney(subtotal * (dr / 100))
   const total_amount = roundMoney(subtotal - discount_amount)
 
+  const whId =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
   const { data: maxOrder, error: maxError } = await supabase
     .from(ORDERS)
     .select('order_number')
     .order('order_number', { ascending: false })
     .limit(1)
     .maybeSingle()
-  if (maxError) throw maxError
+  if (maxError) throwHistoricalSnapshotMigrationError(maxError)
   const order_number = (maxOrder?.order_number ?? 0) + 1
-
-  const whId =
-    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
-      ? Math.trunc(Number(data.warehouse_id))
-      : DEFAULT_WAREHOUSE_ID
 
   const payload: Record<string, unknown> = {
     order_number,
@@ -829,17 +830,6 @@ async function insertConfirmOrderLedgerLines(
     wallet_direction: null,
   })
 
-  let bal: number | null = null
-  if (personId) {
-    const { data: b0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', personId)
-      .single()
-    if (b0e) throw b0e
-    bal = roundMoney(Number((b0 as { balance: number }).balance) + total)
-  }
-
   if (paid > 0.01) {
     const payingInsts = [...(order.payment_installments ?? [])]
       .filter((inst) => roundMoney(inst.amount) > 0.01)
@@ -872,7 +862,6 @@ async function insertConfirmOrderLedgerLines(
             wallet_direction: null,
             register_warehouse_id: registerWarehouseId,
           })
-          if (bal !== null) bal = roundMoney(bal - toward)
           remainingToOrder = roundMoney(remainingToOrder - toward)
         }
 
@@ -892,7 +881,6 @@ async function insertConfirmOrderLedgerLines(
             payment_group_id: paymentGroupId,
             wallet_direction: 'out' as WalletDirection,
           })
-          bal = roundMoney(bal! - walletPart)
         }
       }
     } else {
@@ -911,7 +899,6 @@ async function insertConfirmOrderLedgerLines(
           wallet_direction: null,
           register_warehouse_id: registerWarehouseId,
         })
-        if (bal !== null) bal = roundMoney(bal - toward)
       }
       if (walletPart > 0.01) {
         if (!personId) {
@@ -929,20 +916,8 @@ async function insertConfirmOrderLedgerLines(
           payment_group_id: null,
           wallet_direction: 'out' as WalletDirection,
         })
-        bal = roundMoney(bal! - walletPart)
       }
     }
-  }
-
-  if (personId && bal !== null) {
-    const { error: pb } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', personId)
-    if (pb) throw pb
   }
 }
 
@@ -1000,57 +975,69 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
       : DEFAULT_WAREHOUSE_ID
   await assertWarehouseHasRegister(whId)
   const productIds = [...new Set(order.items.map((i) => i.product_id))]
-  const { data: pwsRows, error: stockErr } = await supabase
-    .from('product_warehouse_stock')
-    .select('product_id, quantity')
-    .eq('warehouse_id', whId)
-    .in('product_id', productIds)
-  if (stockErr) throw stockErr
-  const stockMap = new Map(
-    (pwsRows as { product_id: string; quantity: number }[]).map((r) => [
-      r.product_id,
-      Math.trunc(Number(r.quantity)),
-    ])
+
+  const { data: stockRpcRaw, error: stockRpcErr } = await supabase.rpc(
+    'confirm_order_apply_stock_strict',
+    { p_order_id: id }
   )
+  if (stockRpcErr) throw stockRpcErr
 
-  for (const item of order.items) {
-    const q = stockMap.get(item.product_id) ?? 0
-    if (q < item.quantity) {
-      throw new Error(
-        `Insufficient stock for a product: need ${item.quantity}, have ${q}`
-      )
+  const stockRpcData =
+    typeof stockRpcRaw === 'string'
+      ? (JSON.parse(stockRpcRaw) as unknown)
+      : stockRpcRaw
+
+  const stockResult = stockRpcData as {
+    ok?: boolean
+    violations?: unknown
+    error?: string
+  } | null
+  if (!stockResult?.ok) {
+    const raw = stockResult?.violations
+    const violations: {
+      product_id: string
+      product_name: string
+      available: number
+      needed: number
+    }[] = []
+    if (Array.isArray(raw)) {
+      for (const v of raw) {
+        if (v && typeof v === 'object') {
+          const o = v as Record<string, unknown>
+          violations.push({
+            product_id: String(o.product_id ?? ''),
+            product_name: String(o.product_name ?? ''),
+            available: Math.trunc(Number(o.available ?? 0)),
+            needed: Math.trunc(Number(o.needed ?? 0)),
+          })
+        }
+      }
     }
-  }
-
-  for (const item of order.items) {
-    await adjustStock(
-      item.product_id,
-      'out',
-      item.quantity,
-      `Order #${order.order_number}`,
-      { warehouseId: whId }
+    if (violations.length > 0) {
+      throw new InsufficientStockConfirmError(violations)
+    }
+    throw new Error(
+      stockResult?.error === 'not_draft'
+        ? 'Only draft orders can be confirmed'
+        : stockResult?.error === 'order_not_found'
+          ? 'Order not found'
+          : stockResult?.error === 'historical_snapshot'
+            ? 'Historical snapshot orders cannot be confirmed'
+            : 'Could not confirm order stock'
     )
   }
 
-  const { error: upErr } = await supabase
-    .from(ORDERS)
-    .update({
-      status_flow: 'confirmed',
-      status: syncStatusFromFlow('confirmed'),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', id)
+  const confirmed = await getOrderById(id)
+  if (!confirmed) throw new Error('Order not found after confirm')
 
-  if (upErr) throw upErr
+  await insertConfirmOrderLedgerLines(confirmed, confirmed.person_id, whId)
 
-  await insertConfirmOrderLedgerLines(order, order.person_id, whId)
+  await afterOrderStockMutation(productIds)
 
-  const updated = await getOrderById(id)
-  if (!updated) throw new Error('Order not found after confirm')
-  if (updated.remaining_amount <= 0.01) {
+  if (confirmed.remaining_amount <= 0.01) {
     return completeOrder(id)
   }
-  return updated
+  return confirmed
 }
 
 export async function completeOrder(id: string): Promise<OrderWithItemsAndPayments> {
@@ -1155,14 +1142,6 @@ async function applyPersonOrderCancelLedger(
       return resolveRegisterWarehouseForRetainedPayment(orderWhId, prior ?? null)
     }
 
-    const { data: balRow0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (b0e) throw b0e
-    let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
-
     const insts = [...(order.payment_installments ?? [])]
       .filter((i) => roundMoney(i.amount) > 0.01)
       .sort(
@@ -1190,7 +1169,7 @@ async function applyPersonOrderCancelLedger(
             reference_id: null,
             reference_number: standaloneRef,
             note: appendLedgerDocSuffix(
-              `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+              `Account credit from cancelled ${refNum} — order voided; separate ledger payment (no cash refund)`,
               order.id
             ),
             payment_method: inst.method,
@@ -1202,7 +1181,6 @@ async function applyPersonOrderCancelLedger(
               toward
             ),
           })
-          bal = roundMoney(bal + roundMoney(-toward))
           remainingToOrder = roundMoney(remainingToOrder - toward)
         }
 
@@ -1214,7 +1192,7 @@ async function applyPersonOrderCancelLedger(
             reference_id: null,
             reference_number: null,
             note: appendLedgerDocSuffix(
-              `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+              `Wallet from cancelled ${refNum} — order voided; overpayment split (no cash refund)`,
               order.id
             ),
             payment_method: null,
@@ -1222,7 +1200,6 @@ async function applyPersonOrderCancelLedger(
             wallet_direction: 'out' as WalletDirection,
             created_at: retainedPaymentCreatedAt(anchorIso),
           })
-          bal = roundMoney(bal - walletPart)
         }
       }
     } else if (order.payments && order.payments.length > 0) {
@@ -1245,7 +1222,7 @@ async function applyPersonOrderCancelLedger(
             reference_id: null,
             reference_number: standaloneRef,
             note: appendLedgerDocSuffix(
-              `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+              `Account credit from cancelled ${refNum} — order voided; separate ledger payment (no cash refund)`,
               order.id
             ),
             payment_method: p.payment_method,
@@ -1257,7 +1234,6 @@ async function applyPersonOrderCancelLedger(
               toward
             ),
           })
-          bal = roundMoney(bal + roundMoney(-toward))
           remainingToOrder = roundMoney(remainingToOrder - toward)
         }
 
@@ -1269,7 +1245,7 @@ async function applyPersonOrderCancelLedger(
             reference_id: null,
             reference_number: null,
             note: appendLedgerDocSuffix(
-              `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+              `Wallet from cancelled ${refNum} — order voided; overpayment split (no cash refund)`,
               order.id
             ),
             payment_method: null,
@@ -1277,7 +1253,6 @@ async function applyPersonOrderCancelLedger(
             wallet_direction: 'out' as WalletDirection,
             created_at: retainedPaymentCreatedAt(anchorIso),
           })
-          bal = roundMoney(bal - walletPart)
         }
       }
     } else {
@@ -1292,7 +1267,7 @@ async function applyPersonOrderCancelLedger(
           reference_id: null,
           reference_number: standaloneRef,
           note: appendLedgerDocSuffix(
-            `Retained · ${refNum} — cancelled order #${order.order_number} (prepaid kept on account)`,
+            `Account credit from cancelled ${refNum} — order voided; separate ledger payment (no cash refund)`,
             order.id
           ),
           payment_method: order.payment_method,
@@ -1304,7 +1279,6 @@ async function applyPersonOrderCancelLedger(
             toward
           ),
         })
-        bal = roundMoney(bal + roundMoney(-toward))
       }
       if (walletPart > 0.01) {
         await insertBalanceTransactionRow({
@@ -1314,7 +1288,7 @@ async function applyPersonOrderCancelLedger(
           reference_id: null,
           reference_number: null,
           note: appendLedgerDocSuffix(
-            `Overpayment retained · ${refNum} — cancelled order #${order.order_number}`,
+            `Wallet from cancelled ${refNum} — order voided; overpayment split (no cash refund)`,
             order.id
           ),
           payment_method: null,
@@ -1322,39 +1296,11 @@ async function applyPersonOrderCancelLedger(
           wallet_direction: 'out' as WalletDirection,
           created_at: retainedPaymentCreatedAt(anchorIso),
         })
-        bal = roundMoney(bal - walletPart)
       }
     }
 
-    const { error: pbErr } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.person_id)
-    if (pbErr) throw pbErr
     return
   }
-
-  const { data: balAfter, error: bae } = await supabase
-    .from('people')
-    .select('balance')
-    .eq('id', order.person_id)
-    .single()
-  if (bae) throw bae
-  const balFinal = roundMoney(
-    Number((balAfter as { balance: number }).balance)
-  )
-
-  const { error: pbErr2 } = await supabase
-    .from('people')
-    .update({
-      balance: balFinal,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', order.person_id)
-  if (pbErr2) throw pbErr2
 }
 
 export async function cancelOrder(
@@ -1422,6 +1368,10 @@ export async function cancelOrder(
     .eq('id', id)
 
   if (updateError) throw updateError
+
+  if (restoreStock) {
+    await afterOrderStockMutation(order.items.map((i) => i.product_id))
+  }
 }
 
 export async function addPaymentInstallment(data: {

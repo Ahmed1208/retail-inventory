@@ -281,6 +281,11 @@ export type AdjustStockOptions = {
   inboundUnitCost?: number
   /** Stock location; defaults to warehouse 1. */
   warehouseId?: number
+  /**
+   * With type `out`, allow the warehouse row to go negative (e.g. replaying offline-committed sales).
+   * Online order confirmation uses DB RPC instead; do not use this for normal POS checkout.
+   */
+  allowNegativeOut?: boolean
 }
 
 export async function getProductQuantitiesByWarehouse(
@@ -409,7 +414,7 @@ export async function adjustStock(
       break
     case 'out':
       newWhQty = whQty - qtyDelta
-      if (newWhQty < 0) {
+      if (newWhQty < 0 && !opts?.allowNegativeOut) {
         throw new Error('Insufficient stock: result would be negative')
       }
       break

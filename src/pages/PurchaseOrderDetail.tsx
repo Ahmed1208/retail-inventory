@@ -331,9 +331,14 @@ export function PurchaseOrderDetail() {
     !po.is_historical_snapshot &&
     (po.status === 'received' || po.status === 'draft')
 
-  const paidAtPo = (po.payments ?? []).reduce((s, p) => s + p.amount, 0)
+  const paidAtPo = roundMoney((po.payments ?? []).reduce((s, p) => s + p.amount, 0))
+  const hasRecordedPoPayments =
+    paidAtPo > 0.01 ||
+    (po.payments ?? []).some((p) => roundMoney(p.amount) > 0.01)
   const showCancelSettlementChoice =
-    po.status === 'received' && !!po.person_id && paidAtPo > 0.01
+    po.status === 'received' && !!po.person_id && hasRecordedPoPayments
+  const showPoSupplierPaymentCancelHint =
+    po.status === 'received' && !po.person_id && hasRecordedPoPayments
 
   return (
     <div
@@ -638,11 +643,20 @@ export function PurchaseOrderDetail() {
                     }
                   )}
                 </p>
+                {showPoSupplierPaymentCancelHint && (
+                  <p className="text-sm text-foreground">
+                    {t('purchaseOrders.cancelSupplierPaymentsHint')}
+                  </p>
+                )}
                 {showCancelSettlementChoice && (
-                  <fieldset className="space-y-3 rounded-md border border-border p-3">
-                    <legend className="px-1 text-sm font-medium text-foreground">
-                      {t('purchaseOrders.cancelSettlementLegend')}
-                    </legend>
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <p className="text-sm text-foreground">
+                      {t('purchaseOrders.cancelSettlementIntro')}
+                    </p>
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-foreground">
+                        {t('purchaseOrders.cancelSettlementLegend')}
+                      </legend>
                     <div className="flex items-start gap-2">
                       <input
                         id="po-cancel-reverse"
@@ -681,7 +695,8 @@ export function PurchaseOrderDetail() {
                         {t('purchaseOrders.cancelSettlementRetain')}
                       </Label>
                     </div>
-                  </fieldset>
+                    </fieldset>
+                  </div>
                 )}
               </div>
             </AlertDialogDescription>

@@ -104,6 +104,7 @@ Deno.serve(async (req) => {
     username?: string
     password?: string
     feature_overrides?: Record<string, boolean>
+    allowed_warehouse_ids?: unknown
   }
   try {
     body = await req.json()
@@ -120,6 +121,23 @@ Deno.serve(async (req) => {
     body.feature_overrides && typeof body.feature_overrides === 'object'
       ? body.feature_overrides
       : {}
+
+  const rawWh = body.allowed_warehouse_ids
+  const allowedWarehouseIds: number[] = Array.isArray(rawWh)
+    ? rawWh
+        .map((x) => (typeof x === 'number' ? x : Number(String(x))))
+        .filter((n) => Number.isFinite(n) && n > 0)
+    : []
+
+  if (allowedWarehouseIds.length === 0) {
+    return new Response(
+      JSON.stringify({
+        error:
+          'allowed_warehouse_ids must include at least one warehouse id for the new member.',
+      }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
 
   if (username.length < 2 || username.length > 64) {
     return new Response(JSON.stringify({ error: 'Invalid username' }), {
@@ -145,6 +163,7 @@ Deno.serve(async (req) => {
         username,
         is_admin: false,
         feature_overrides,
+        allowed_warehouse_ids: allowedWarehouseIds,
       },
     })
 

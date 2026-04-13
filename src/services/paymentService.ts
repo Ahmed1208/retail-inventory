@@ -95,14 +95,6 @@ export async function createOrderPayment(params: {
       : DEFAULT_WAREHOUSE_ID
 
   if (order.person_id) {
-    const { data: b0, error: b0e } = await supabase
-      .from('people')
-      .select('balance')
-      .eq('id', order.person_id)
-      .single()
-    if (b0e) throw b0e
-    let bal = roundMoney(Number((b0 as { balance: number }).balance))
-
     const gid =
       towardOrder > 0.01 && over > 0.01 ? crypto.randomUUID() : null
 
@@ -120,7 +112,6 @@ export async function createOrderPayment(params: {
         wallet_direction: null,
         register_warehouse_id: registerWh,
       })
-      bal = roundMoney(bal - towardOrder)
     }
 
     if (over > 0.01) {
@@ -136,17 +127,7 @@ export async function createOrderPayment(params: {
         payment_group_id: gid,
         wallet_direction: 'out' as WalletDirection,
       })
-      bal = roundMoney(bal - over)
     }
-
-    const { error: pb } = await supabase
-      .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', order.person_id)
-    if (pb) throw pb
   }
 
   return { orderId: order.id, remainingAmount: newRem }
@@ -181,14 +162,6 @@ export async function createPurchaseOrderPayment(params: {
     }
   }
 
-  const { data: balRow0, error: b0e } = await supabase
-    .from('people')
-    .select('balance')
-    .eq('id', params.personId)
-    .single()
-  if (b0e) throw b0e
-  let bal = roundMoney(Number((balRow0 as { balance: number }).balance))
-
   const registerWh =
     sum >= 0.01
       ? await resolveRegisterWarehouseForPoPayment(
@@ -208,18 +181,15 @@ export async function createPurchaseOrderPayment(params: {
     payment_group_id: null,
     wallet_direction: null,
   })
-  bal = roundMoney(bal + liability)
 
   if (sum < 0.01) {
-    const { error: pbErr } = await supabase
+    const { data: row, error: re } = await supabase
       .from('people')
-      .update({
-        balance: bal,
-        updated_at: new Date().toISOString(),
-      })
+      .select('balance')
       .eq('id', params.personId)
-    if (pbErr) throw pbErr
-    return { balance: bal }
+      .single()
+    if (re) throw re
+    return { balance: roundMoney(Number((row as { balance: number }).balance)) }
   }
 
   let remainingLiability = total
@@ -249,7 +219,6 @@ export async function createPurchaseOrderPayment(params: {
         wallet_direction: null,
         register_warehouse_id: registerWh,
       })
-      bal = roundMoney(bal + toward)
       remainingLiability = roundMoney(remainingLiability - toward)
     }
 
@@ -266,18 +235,14 @@ export async function createPurchaseOrderPayment(params: {
         payment_group_id: paymentGroupId,
         wallet_direction: 'in' as WalletDirection,
       })
-      bal = roundMoney(bal + walletPart)
     }
   }
 
-  const { error: pbErr } = await supabase
+  const { data: row, error: re } = await supabase
     .from('people')
-    .update({
-      balance: bal,
-      updated_at: new Date().toISOString(),
-    })
+    .select('balance')
     .eq('id', params.personId)
-  if (pbErr) throw pbErr
-
-  return { balance: bal }
+    .single()
+  if (re) throw re
+  return { balance: roundMoney(Number((row as { balance: number }).balance)) }
 }

@@ -15,17 +15,23 @@ import {
 } from '@/config/featureControls'
 import { supabase } from '@/lib/supabase'
 import { updateMemberPasswordViaEdge } from '@/services/memberAdminService'
+import { listWarehouses } from '@/services/warehouseService'
 import type { OperatorProfile } from '@/types/profile'
 
 async function fetchProfileById(id: string): Promise<OperatorProfile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, is_admin, feature_overrides, created_at')
+    .select('id, username, is_admin, feature_overrides, allowed_warehouse_ids, created_at')
     .eq('id', id)
     .maybeSingle()
 
   if (error) throw new Error(error.message)
   if (!data) return null
+
+  const wh = data.allowed_warehouse_ids
+  const warehouseIds = Array.isArray(wh)
+    ? wh.map((x) => Number(x)).filter((n) => Number.isFinite(n))
+    : []
 
   return {
     id: data.id,
@@ -37,6 +43,7 @@ async function fetchProfileById(id: string): Promise<OperatorProfile | null> {
       !Array.isArray(data.feature_overrides)
         ? (data.feature_overrides as Record<string, boolean>)
         : {},
+    allowed_warehouse_ids: warehouseIds,
     created_at: data.created_at,
   }
 }
@@ -52,6 +59,7 @@ export function AdminMemberEdit() {
   )
   const [password, setPassword] = useState('')
   const [password2, setPassword2] = useState('')
+  const [warehouseIds, setWarehouseIds] = useState<number[]>([])
 
   const {
     data: profile,
@@ -61,6 +69,11 @@ export function AdminMemberEdit() {
     queryKey: ['admin', 'profiles', memberId],
     queryFn: () => fetchProfileById(memberId!),
     enabled: Boolean(memberId),
+  })
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses', 'member-edit'],
+    queryFn: listWarehouses,
   })
 
   useEffect(() => {
@@ -73,7 +86,30 @@ export function AdminMemberEdit() {
   useEffect(() => {
     if (!profile) return
     setFeatures(mergeFeatureState(profile.feature_overrides))
+    setWarehouseIds([...profile.allowed_warehouse_ids])
   }, [profile])
+
+  const saveWarehousesMutation = useMutation({
+    mutationFn: async (ids: number[]) => {
+      if (ids.length === 0) throw new Error('warehouses')
+      const { error: upErr } = await supabase
+        .from('profiles')
+        .update({ allowed_warehouse_ids: ids })
+        .eq('id', memberId!)
+      if (upErr) throw new Error(upErr.message)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'profiles'] })
+      toast.success(t('members.warehousesSaved'))
+    },
+    onError: (e: Error) => {
+      const msg =
+        e.message === 'warehouses'
+          ? t('members.errorWarehouses')
+          : e.message || t('members.saveError')
+      toast.error(msg)
+    },
+  })
 
   const saveFeaturesMutation = useMutation({
     mutationFn: async (next: Record<FeatureControlId, boolean>) => {
@@ -215,6 +251,53 @@ export function AdminMemberEdit() {
           {t('members.updatePassword')}
         </Button>
       </section>
+
+      {!profile.is_admin && (
+        <section
+          className="space-y-4 rounded-xl border border-border bg-card/40 p-4 md:p-6"
+          aria-labelledby="member-warehouses-heading"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4">
+            <div>
+              <h2 id="member-warehouses-heading" className="text-lg font-semibold">
+                {t('members.sectionWarehouses')}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                {t('members.warehousesHint')}
+              </p>
+            </div>
+            <Button
+              type="button"
+              onClick={() => saveWarehousesMutation.mutate(warehouseIds)}
+              disabled={saveWarehousesMutation.isPending}
+            >
+              {t('members.saveWarehouses')}
+            </Button>
+          </div>
+          <ul className="max-h-56 space-y-2 overflow-y-auto rounded-md border border-border p-3">
+            {warehouses.map((w) => (
+              <li key={w.id}>
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-input"
+                    checked={warehouseIds.includes(w.id)}
+                    onChange={() =>
+                      setWarehouseIds((prev) =>
+                        prev.includes(w.id)
+                          ? prev.filter((x) => x !== w.id)
+                          : [...prev, w.id]
+                      )
+                    }
+                  />
+                  <span>{w.name}</span>
+                  <span className="text-muted-foreground">#{w.id}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section
         className="space-y-6 rounded-xl border border-border bg-card/40 p-4 md:p-6"

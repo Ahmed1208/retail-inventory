@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
+  ArrowLeftRight,
   Banknote,
   ShoppingCart,
   Shield,
@@ -77,6 +78,7 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   /** Admin / Control are gated only on `profiles.is_admin`, not Control toggles (admins always see them). */
   const showControlNav = isAdmin
   const showAdminNav = isAdmin
+  const showDataSyncNav = isAdmin || useFeatureEnabled('admin.dataSync')
 
   const showInventoryNav = useFeatureEnabled('sidebar.inventory')
   const showOrdersNav = useFeatureEnabled('sidebar.orders')
@@ -109,6 +111,22 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
           >
             <Shield className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t('nav.admin')}</span>
+          </NavLink>
+        )}
+
+        {showDataSyncNav && (
+          <NavLink
+            to="/sync"
+            end={false}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              linkClass({
+                isActive: isActive || pathname.startsWith('/sync'),
+              })
+            }
+          >
+            <ArrowLeftRight className="h-5 w-5 shrink-0" aria-hidden />
+            <span>{t('nav.dataSync')}</span>
           </NavLink>
         )}
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowLeftRight,
   BookOpen,
+  CloudCog,
   LayoutDashboard,
   LineChart,
   ListChecks,
@@ -50,6 +51,12 @@ const sections = [
     key: 'nav.members',
     feature: 'sidebar.admin' as const,
   },
+  {
+    to: '/sync',
+    icon: CloudCog,
+    key: 'nav.dataSync',
+    feature: 'admin.dataSync' as const,
+  },
 ] as const
 
 export function AdminHub() {
@@ -61,6 +68,8 @@ export function AdminHub() {
   const showMovements = useFeatureEnabled('inventory.hubMovements')
   const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
 
+  const showDataSync = useFeatureEnabled('admin.dataSync')
+
   const flags = {
     'sidebar.dashboard': showDashboard,
     'sidebar.documentation': showDocs,
@@ -68,6 +77,7 @@ export function AdminHub() {
     'inventory.hubMovements': showMovements,
     'admin.migrationGuide': showMigrationGuide,
     'sidebar.admin': true,
+    'admin.dataSync': showDataSync,
   } as const
 
   const visibleSections = sections.filter((s) => flags[s.feature])

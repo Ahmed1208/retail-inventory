@@ -4,7 +4,16 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
-import { FileDown, FileUp, ListOrdered, MinusCircle, PlusCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  FileDown,
+  FileUp,
+  ListOrdered,
+  Loader2,
+  MinusCircle,
+  PlusCircle,
+  RefreshCw,
+} from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -54,6 +63,7 @@ import {
   listWarehouses,
   updateWarehouse,
 } from '@/services/warehouseService'
+import { recalculateAllRegistersFromLedger } from '@/services/registerReconcileService'
 import type { PaymentMethod } from '@/types'
 import { formatCurrency } from '@/utils/currency'
 import { paymentLabel, PAYMENT_METHODS } from '@/components/orders/ordersShared'
@@ -361,6 +371,18 @@ export function Register() {
     onError: (e: Error) => toast.error(e.message || t('register.toastError')),
   })
 
+  const reconcileRegisterMut = useMutation({
+    mutationFn: () => recalculateAllRegistersFromLedger(),
+    onSuccess: (n) => {
+      toast.success(t('register.reconcileRegisterSuccess', { count: n }))
+      qc.invalidateQueries({ queryKey: ['registerBalances'] })
+      qc.invalidateQueries({ queryKey: ['registerActivity'] })
+      qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
+      void qc.invalidateQueries({ queryKey: ['stockAlerts'] })
+    },
+    onError: () => toast.error(t('register.reconcileRegisterError')),
+  })
+
   const disableRegisterMut = useMutation({
     mutationFn: async () => {
       const wid = registerWarehouseId!
@@ -469,14 +491,31 @@ export function Register() {
       </div>
 
       {warehousesReady && registerWarehouses.length > 0 && registerWarehouseId != null ? (
-        <div className="max-w-md">
-          <WarehouseCombobox
-            id="register-warehouse-picker"
-            label={t('register.registerWarehouseLabel')}
-            warehouses={registerWarehouses}
-            value={registerWarehouseId}
-            onChange={setRegisterSelection}
-          />
+        <div className="max-w-md flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <WarehouseCombobox
+              id="register-warehouse-picker"
+              label={t('register.registerWarehouseLabel')}
+              warehouses={registerWarehouses}
+              value={registerWarehouseId}
+              onChange={setRegisterSelection}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="gap-2 shrink-0"
+            title={t('register.reconcileRegisterHint')}
+            disabled={reconcileRegisterMut.isPending}
+            onClick={() => reconcileRegisterMut.mutate()}
+          >
+            {reconcileRegisterMut.isPending ? (
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+            )}
+            {t('register.reconcileRegister')}
+          </Button>
         </div>
       ) : warehousesReady && registerWarehouses.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('register.noRegisterWarehouse')}</p>
@@ -492,15 +531,31 @@ export function Register() {
             {t('register.balancesTitle')}
           </h2>
           <ul className="mt-3 space-y-2">
-            {PAYMENT_METHODS.map((m) => (
-              <li
-                key={m}
-                className="flex items-center justify-between gap-4 text-sm tabular-nums"
-              >
-                <span>{paymentLabel(m, t)}</span>
-                <span className="font-semibold">{fc(b?.[m] ?? 0)}</span>
-              </li>
-            ))}
+            {PAYMENT_METHODS.map((m) => {
+              const amt = b?.[m] ?? 0
+              const neg = amt < -0.005
+              return (
+                <li
+                  key={m}
+                  className="flex items-center justify-between gap-4 text-sm tabular-nums"
+                >
+                  <span>{paymentLabel(m, t)}</span>
+                  <span
+                    className={cn(
+                      'font-semibold inline-flex items-center gap-1',
+                      neg && 'text-amber-700'
+                    )}
+                  >
+                    {neg && (
+                      <span title={t('register.negativeMethodBalance')} className="inline-flex">
+                        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                      </span>
+                    )}
+                    {fc(amt)}
+                  </span>
+                </li>
+              )
+            })}
           </ul>
           <div className="mt-4 flex items-center justify-between border-t pt-4 text-base font-semibold tabular-nums">
             <span>{t('register.totalInRegister')}</span>

@@ -5,7 +5,7 @@ import {
   roundMoney,
 } from '@/services/peopleService'
 import type { BalanceTransaction, PaymentMethod } from '@/types'
-import { PAYMENT_METHODS_ORDERED } from '@/utils/paymentMethod'
+import { normalizePaymentMethod, PAYMENT_METHODS_ORDERED } from '@/utils/paymentMethod'
 
 /** Route id for `/payments/operations/:id` from a register activity row. */
 export function ledgerPaymentOperationRouteId(
@@ -125,6 +125,23 @@ export function aggregateRegisterBalances(rows: BalanceTransaction[]): RegisterB
 export async function getRegisterBalances(
   registerWarehouseId: number
 ): Promise<RegisterBalances> {
+  const { data: cached, error: cacheErr } = await supabase
+    .from('register_tender_balances')
+    .select('payment_method, balance')
+    .eq('register_warehouse_id', registerWarehouseId)
+
+  if (!cacheErr && cached && cached.length > 0) {
+    const out = emptyBalances()
+    for (const row of cached as { payment_method: string; balance: number }[]) {
+      const m = normalizePaymentMethod(row.payment_method)
+      if (m) out[m] = roundMoney(Number(row.balance))
+    }
+    out.total = roundMoney(
+      out.cash + out.visa + out.cheque + out.instapay
+    )
+    return out
+  }
+
   let q = supabase
     .from(BALANCE_TX)
     .select('*')

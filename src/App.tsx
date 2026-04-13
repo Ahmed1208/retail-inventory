@@ -4,6 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { AdminSectionLayout } from '@/components/layout/AdminSectionLayout'
 import { RequireAuth } from '@/components/routing/RequireAuth'
 import { RequireAdminRoute } from '@/components/routing/RequireAdminRoute'
+import { RequireDataSyncRoute } from '@/components/routing/RequireDataSyncRoute'
 import { RootRedirect } from '@/components/routing/RootRedirect'
 import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
@@ -35,6 +36,8 @@ import { AdminMigrationGuide } from '@/pages/AdminMigrationGuide'
 import { AdminMembersList } from '@/pages/AdminMembersList'
 import { AdminMemberEdit } from '@/pages/AdminMemberEdit'
 import { AdminMemberNew } from '@/pages/AdminMemberNew'
+import { AdminDataSync } from '@/pages/AdminDataSync'
+import { DataSyncHistory } from '@/pages/DataSyncHistory'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
 import { PaymentOperationDetail } from '@/pages/PaymentOperationDetail'
@@ -76,6 +79,22 @@ function App() {
           <Route path="/payments/new" element={<NewPayment />} />
           <Route path="/payments" element={<PaymentsHub />} />
           <Route path="/register" element={<Register />} />
+          <Route
+            path="/sync"
+            element={
+              <RequireDataSyncRoute>
+                <AdminDataSync />
+              </RequireDataSyncRoute>
+            }
+          />
+          <Route
+            path="/sync/history"
+            element={
+              <RequireDataSyncRoute>
+                <DataSyncHistory />
+              </RequireDataSyncRoute>
+            }
+          />
           <Route path="/categories" element={<Categories />} />
           <Route path="/brands" element={<Brands />} />
           <Route
@@ -111,6 +130,7 @@ function App() {
             <Route path="members" element={<AdminMembersList />} />
             <Route path="members/new" element={<AdminMemberNew />} />
             <Route path="members/:id" element={<AdminMemberEdit />} />
+            <Route path="sync" element={<Navigate to="/sync" replace />} />
           </Route>
           <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
           <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />
