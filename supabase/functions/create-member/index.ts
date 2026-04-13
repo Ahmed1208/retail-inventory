@@ -174,8 +174,40 @@ Deno.serve(async (req) => {
     })
   }
 
-  return new Response(
-    JSON.stringify({ user_id: created.user?.id ?? null }),
-    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  const userId = created.user?.id ?? null
+  if (!userId) {
+    return new Response(
+      JSON.stringify({ error: 'User was created but no user id was returned.' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  // `handle_new_user` copies metadata into `profiles`, but hosted Auth/metadata shapes have
+  // sometimes left `allowed_warehouse_ids` empty while RLS requires it. Upsert with the
+  // service role guarantees the new member matches the warehouses the admin selected.
+  const { error: profileSyncErr } = await adminClient.from('profiles').upsert(
+    {
+      id: userId,
+      username,
+      is_admin: false,
+      feature_overrides,
+      allowed_warehouse_ids: allowedWarehouseIds,
+    },
+    { onConflict: 'id' }
   )
+
+  if (profileSyncErr) {
+    return new Response(
+      JSON.stringify({
+        error: `Member was created in Auth but profile sync failed: ${profileSyncErr.message}`,
+        user_id: userId,
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  }
+
+  return new Response(JSON.stringify({ user_id: userId }), {
+    status: 200,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
 })

@@ -1,6 +1,28 @@
 import { supabase } from '@/lib/supabase'
 import type { OperatorProfile } from '@/types/profile'
 
+/** PostgREST usually returns `bigint[]` as a JSON array; tolerate string / legacy shapes. */
+function warehouseIdsFromProfileField(raw: unknown): number[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) {
+    return raw
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n) && n > 0)
+  }
+  if (typeof raw === 'string') {
+    const s = raw.trim()
+    if (s.startsWith('{') && s.endsWith('}')) {
+      const inner = s.slice(1, -1).trim()
+      if (!inner) return []
+      return inner
+        .split(',')
+        .map((x) => Number(x.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0)
+    }
+  }
+  return []
+}
+
 export async function fetchOperatorProfile(
   userId: string
 ): Promise<OperatorProfile | null> {
@@ -22,10 +44,7 @@ export async function fetchOperatorProfile(
   const rawAdmin = data.is_admin as unknown
   const isAdminFlag =
     rawAdmin === true || rawAdmin === 'true' || rawAdmin === 1
-  const wh = data.allowed_warehouse_ids
-  const warehouseIds = Array.isArray(wh)
-    ? wh.map((x) => Number(x)).filter((n) => Number.isFinite(n))
-    : []
+  const warehouseIds = warehouseIdsFromProfileField(data.allowed_warehouse_ids)
   return {
     id: data.id,
     username: data.username,

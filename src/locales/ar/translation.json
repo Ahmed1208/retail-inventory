@@ -1676,6 +1676,7 @@
     "activityLinkPayment": "دفعة",
     "activityLinkRegister": "حركة صندوق",
     "registerWarehouseLabel": "موقع الصندوق",
+    "inventoryOnlyAssignedHint": "لديك أيضاً مواقع مخزون بلا صندوق نقدي. تظهر عند إنشاء الطلبات (الشحن من); هذه الشاشة تعرض مواقع الصناديق فقط.",
     "noRegisterWarehouse": "لا يوجد مستودع مُعدّ لصندوق نقدي.",
     "withdrawAllDisabled": "سحب من الصندوق معطّل في إعدادات التحكم.",
     "withdrawAllConfirmTitle": "سحب كل شيء من هذا الصندوق؟",

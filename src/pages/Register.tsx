@@ -493,6 +493,11 @@ export function Register() {
       {warehousesReady && registerWarehouses.length > 0 && registerWarehouseId != null ? (
         <div className="max-w-md flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap">
           <div className="flex-1 min-w-[200px]">
+            {warehouses.length > registerWarehouses.length ? (
+              <p className="mb-2 text-xs text-muted-foreground">
+                {t('register.inventoryOnlyAssignedHint')}
+              </p>
+            ) : null}
             <WarehouseCombobox
               id="register-warehouse-picker"
               label={t('register.registerWarehouseLabel')}

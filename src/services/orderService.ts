@@ -3,9 +3,9 @@ import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import { recalculateStockFromMovements } from '@/services/stockReconcileService'
 import {
-  assertWarehouseHasRegister,
   DEFAULT_WAREHOUSE_ID,
   fetchActiveTenderRegistersForDocument,
+  resolveRegisterWarehouseForOrderConfirm,
   resolveRegisterWarehouseForRetainedPayment,
   takeRegisterFromTenderPool,
 } from '@/services/warehouseService'
@@ -973,7 +973,7 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
     order.warehouse_id != null && Number.isFinite(Number(order.warehouse_id))
       ? Math.trunc(Number(order.warehouse_id))
       : DEFAULT_WAREHOUSE_ID
-  await assertWarehouseHasRegister(whId)
+  const registerWhId = await resolveRegisterWarehouseForOrderConfirm(whId)
   const productIds = [...new Set(order.items.map((i) => i.product_id))]
 
   const { data: stockRpcRaw, error: stockRpcErr } = await supabase.rpc(
@@ -1030,7 +1030,11 @@ export async function confirmOrder(id: string): Promise<OrderWithItemsAndPayment
   const confirmed = await getOrderById(id)
   if (!confirmed) throw new Error('Order not found after confirm')
 
-  await insertConfirmOrderLedgerLines(confirmed, confirmed.person_id, whId)
+  await insertConfirmOrderLedgerLines(
+    confirmed,
+    confirmed.person_id,
+    registerWhId
+  )
 
   await afterOrderStockMutation(productIds)
 

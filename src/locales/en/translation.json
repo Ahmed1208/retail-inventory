@@ -1676,6 +1676,7 @@
     "activityLinkPayment": "Payment",
     "activityLinkRegister": "Register movement",
     "registerWarehouseLabel": "Register location",
+    "inventoryOnlyAssignedHint": "You also have inventory locations without a cash register. Those appear when creating orders (ship-from); this screen only lists registers.",
     "noRegisterWarehouse": "No warehouse is set up with a cash register.",
     "withdrawAllDisabled": "Withdraw from register is turned off in Control settings.",
     "withdrawAllConfirmTitle": "Withdraw everything from this register?",

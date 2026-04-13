@@ -160,6 +160,36 @@ export async function assertWarehouseHasRegister(warehouseId: number): Promise<v
 }
 
 /**
+ * Orders can ship from inventory-only locations. Confirmation still books tender lines on a
+ * register: use the order warehouse if it has one; otherwise the first register warehouse the
+ * session may access (default warehouse first, then lowest id).
+ */
+export async function resolveRegisterWarehouseForOrderConfirm(
+  orderWarehouseId: number
+): Promise<number> {
+  const orderWh = await getWarehouseById(orderWarehouseId)
+  if (!orderWh) throw new Error('Warehouse not found')
+  if (orderWh.has_register) return orderWh.id
+
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select('id')
+    .eq('has_register', true)
+    .order('is_default', { ascending: false })
+    .order('id', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  const wid = data != null ? Math.trunc(Number((data as { id: unknown }).id)) : NaN
+  if (!Number.isFinite(wid) || wid <= 0) {
+    throw new Error(
+      'This inventory location has no cash register, and no register warehouse is available in your access scope. Ask an admin to enable “Has register” on this location or assign you to a warehouse that has one.'
+    )
+  }
+  return wid
+}
+
+/**
  * PO payments are booked to the PO warehouse register when it has one; otherwise the user must pick
  * another register warehouse (inventory-only receiving location).
  */

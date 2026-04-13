@@ -53,12 +53,16 @@ export function FeatureControlProvider({ children }: { children: ReactNode }) {
 
   const state = useMemo(() => {
     const stored = readStored()
-    if (authLoading) return mergeFeatureState(stored)
+    // Until the first session read resolves, avoid merging Control localStorage: it is shared
+    // across accounts on the same origin and can briefly hide `sidebar.register` / `orders.hubList`
+    // before `profiles.feature_overrides` loads (operators would be redirected away from /register).
+    if (authLoading) return buildDefaultFeatureState()
     if (isAdmin) return mergeFeatureState(stored)
-    return mergeFeatureState({
-      ...stored,
-      ...(profile?.feature_overrides ?? {}),
-    })
+    // Operators: `feature_overrides` from `profiles` is the source of truth. Do not merge
+    // Control-panel localStorage — it is per-origin, not per-user, so another account on the
+    // same browser could hide `sidebar.inventory` / `sidebar.register` while onboarding only
+    // sets granular ids (e.g. `inventory.hubProducts`), leaving those sidebar keys unchanged.
+    return mergeFeatureState(profile?.feature_overrides ?? null)
   }, [authLoading, isAdmin, profile?.feature_overrides, storageVersion])
 
   const setEnabled = useCallback((id: FeatureControlId, enabled: boolean) => {
