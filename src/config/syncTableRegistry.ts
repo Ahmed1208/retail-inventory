@@ -2,6 +2,8 @@
  * Tables included in Admin → Data sync (local ↔ cloud).
  * Order respects FKs: parents before children. `profiles` references `auth.users(id)`; writes use
  * RPC `upsert_profile_for_data_sync` so rows apply only when the same user id exists in that DB's Auth.
+ * Missing Auth on the **target** is fixed by invoking Edge Function `ensure-local-operator-auth` on that
+ * same project (deploy it on local and hosted) before retrying the RPC.
  *
  * Parallel devices: orders use UUID `id` (no collision); `order_number` is kept on push when
  * free on cloud, else the DB assigns the next number. Cloud repair RPCs fix true duplicates.

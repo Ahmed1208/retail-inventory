@@ -68,7 +68,7 @@ function invalidateForRealtimeTable(qc: QueryClient, table: string) {
  */
 export function useInventorySessionBootstrap() {
   const qc = useQueryClient()
-  const { session } = useAuth()
+  const { session, isAdmin } = useAuth()
 
   useEffect(() => {
     if (!session) return
@@ -124,15 +124,32 @@ export function useInventorySessionBootstrap() {
             const title = String(row.title ?? '')
             const message = String(row.message ?? '')
             const alertType = String(row.alert_type ?? '')
-            const notifyBrowser =
-              alertType === 'wallet_direction_changed' ||
-              alertType === 'register_negative_balance' ||
-              alertType === 'negative_stock_offline_sync'
-            if (title) {
+            const rawMeta = row.meta
+            const meta =
+              rawMeta &&
+              typeof rawMeta === 'object' &&
+              !Array.isArray(rawMeta)
+                ? (rawMeta as Record<string, unknown>)
+                : null
+            const adminOnly = meta?.admin_only === true
+            if (adminOnly && !isAdmin) {
+              /* operators must not see admin-only alerts */
+            } else if (title) {
               toast.info(title, {
                 description: message.slice(0, 240) || undefined,
               })
             }
+            const cloneReplacementKind =
+              meta?.kind === 'order_replacement_draft' ||
+              meta?.kind === 'po_replacement_draft'
+            const notifyBrowser =
+              alertType === 'wallet_direction_changed' ||
+              alertType === 'register_negative_balance' ||
+              alertType === 'negative_stock_offline_sync' ||
+              (adminOnly &&
+                isAdmin &&
+                alertType === 'info' &&
+                cloneReplacementKind)
             if (
               notifyBrowser &&
               typeof document !== 'undefined' &&
@@ -162,5 +179,5 @@ export function useInventorySessionBootstrap() {
       document.removeEventListener('visibilitychange', onVis)
       void supabase.removeChannel(ch)
     }
-  }, [session, qc])
+  }, [session, qc, isAdmin])
 }

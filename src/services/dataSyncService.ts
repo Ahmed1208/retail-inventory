@@ -73,8 +73,8 @@ export type SyncResult = {
   conflictsResolved: number
   skippedConflicts: number
   /**
-   * Profile rows skipped during upsert because `auth.users` had no row with the same id on the target DB.
-   * Typical when a member exists only on hosted Auth or only on local Auth.
+   * Profile rows still skipped after `ensure-local-operator-auth` on the target (if deployed) and RPC retry —
+   * e.g. Edge Function missing on hosted, or provision failed.
    */
   profilesSkippedMissingAuth?: number
   error?: string
@@ -241,10 +241,12 @@ type UpsertBatchOptions = {
   /** When upserting `profiles`, increments `skippedMissingAuth` for each RPC skip (no auth user). */
   profileSyncStats?: ProfileSyncStats | null
   /**
-   * When pulling profiles into **local**, missing `auth.users` rows are created via Edge Function
-   * `ensure-local-operator-auth` (admin-only), then the profile RPC is retried.
+   * When upserting `profiles` on **this** client’s database, if `auth.users` is missing for the row id,
+   * invoke Edge Function `ensure-local-operator-auth` on the **same** project (admin-only), then retry
+   * the profile RPC. Use `localClient` when writing to local, `cloudClient` when writing to hosted.
+   * Deploy the function on both Supabase projects.
    */
-  provisionLocalProfileAuthClient?: SupabaseClient | null
+  profileMirrorAuthClient?: SupabaseClient | null
 }
 
 function warehouseIdsFromProfileRow(
@@ -339,7 +341,7 @@ async function formatEdgeFunctionInvokeError(err: unknown): Promise<string> {
   return e.message ?? String(err)
 }
 
-async function invokeEnsureLocalOperatorAuth(
+async function invokeMirroredOperatorAuthEdge(
   invokeClient: SupabaseClient,
   row: Record<string, unknown>,
   signal: AbortSignal
@@ -399,8 +401,7 @@ async function upsertBatch(
 ): Promise<void> {
   const registerTargets = options?.registerTargets ?? null
   const profileSyncStats = options?.profileSyncStats ?? null
-  const provisionLocalProfileAuthClient =
-    options?.provisionLocalProfileAuthClient ?? null
+  const profileMirrorAuthClient = options?.profileMirrorAuthClient ?? null
 
   if (rows.length === 0 || signal.aborted) return
   const onConflict = syncOnConflictColumns(def)
@@ -414,9 +415,9 @@ async function upsertBatch(
       for (const row of chunk) {
         if (signal.aborted) return
         let outcome = await rpcUpsertProfileRow(client, row)
-        if (outcome === 'missing' && provisionLocalProfileAuthClient) {
-          await invokeEnsureLocalOperatorAuth(
-            provisionLocalProfileAuthClient,
+        if (outcome === 'missing' && profileMirrorAuthClient) {
+          await invokeMirroredOperatorAuthEdge(
+            profileMirrorAuthClient,
             row,
             signal
           )
@@ -512,7 +513,7 @@ async function pullCloudTablesIntoLocal(
     await upsertBatch(localClient, def, toLocal, signal, {
       registerTargets: localRegisterTargets,
       profileSyncStats: ctx.profileSyncStats ?? null,
-      provisionLocalProfileAuthClient: localClient,
+      profileMirrorAuthClient: localClient,
     })
   }
   return rowsPulledToLocal
@@ -657,7 +658,8 @@ export async function runBidirectionalSync({
   let rowsPulledToLocal = 0
   let conflictsResolved = 0
   let skippedConflicts = 0
-  const profileLocalStats: ProfileSyncStats = { skippedMissingAuth: 0 }
+  /** Shared: profile skips on either cloud or local upsert in this table iteration. */
+  const profileMirrorStats: ProfileSyncStats = { skippedMissingAuth: 0 }
 
   const tableTotal = SYNC_TABLES.length
 
@@ -730,11 +732,13 @@ export async function runBidirectionalSync({
 
       await upsertBatch(cloudClient, def, toCloud, signal, {
         registerTargets: cloudRegisterTargets,
+        profileSyncStats: profileMirrorStats,
+        profileMirrorAuthClient: cloudClient,
       })
       await upsertBatch(localClient, def, toLocal, signal, {
         registerTargets: localRegisterTargets,
-        profileSyncStats: profileLocalStats,
-        provisionLocalProfileAuthClient: localClient,
+        profileSyncStats: profileMirrorStats,
+        profileMirrorAuthClient: localClient,
       })
 
       for (const c of conflicts) {
@@ -755,13 +759,15 @@ export async function runBidirectionalSync({
         if (choice === 'local') {
           await upsertBatch(cloudClient, def, [c.localRow], signal, {
             registerTargets: cloudRegisterTargets,
+            profileSyncStats: profileMirrorStats,
+            profileMirrorAuthClient: cloudClient,
           })
           rowsPushedToCloud += 1
         } else {
           await upsertBatch(localClient, def, [c.cloudRow], signal, {
             registerTargets: localRegisterTargets,
-            profileSyncStats: profileLocalStats,
-            provisionLocalProfileAuthClient: localClient,
+            profileSyncStats: profileMirrorStats,
+            profileMirrorAuthClient: localClient,
           })
           rowsPulledToLocal += 1
         }
@@ -788,7 +794,7 @@ export async function runBidirectionalSync({
           rowsPulledToLocal,
           conflictsResolved,
           skippedConflicts,
-          profilesSkippedMissingAuth: profileLocalStats.skippedMissingAuth,
+          profilesSkippedMissingAuth: profileMirrorStats.skippedMissingAuth,
           error: msg,
         }
       }
@@ -817,7 +823,7 @@ export async function runBidirectionalSync({
       rowsPulledToLocal,
       conflictsResolved,
       skippedConflicts,
-      profilesSkippedMissingAuth: profileLocalStats.skippedMissingAuth,
+      profilesSkippedMissingAuth: profileMirrorStats.skippedMissingAuth,
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
@@ -836,7 +842,7 @@ export async function runBidirectionalSync({
       rowsPulledToLocal,
       conflictsResolved,
       skippedConflicts,
-      profilesSkippedMissingAuth: profileLocalStats.skippedMissingAuth,
+      profilesSkippedMissingAuth: profileMirrorStats.skippedMissingAuth,
       error: msg,
     }
   }
@@ -879,6 +885,7 @@ export async function runCloudMasterSync({
   let purchaseOrdersRenumbered = 0
   let profilesSkippedMissingAuth = 0
   const tableTotal = SYNC_TABLES.length
+  const cloudProfilePushStats: ProfileSyncStats = { skippedMissingAuth: 0 }
 
   let failurePhase: CloudMasterSyncFailurePhase | undefined
   let cloudPushTablesCompleted = 0
@@ -941,6 +948,8 @@ export async function runCloudMasterSync({
 
       await upsertBatch(cloudClient, def, toCloud, signal, {
         registerTargets: cloudRegisterTargets,
+        profileSyncStats: cloudProfilePushStats,
+        profileMirrorAuthClient: cloudClient,
       })
       cloudPushTablesCompleted += 1
     }
@@ -999,7 +1008,9 @@ export async function runCloudMasterSync({
         profileSyncStats: profilePullStats,
       }
     )
-    profilesSkippedMissingAuth = profilePullStats.skippedMissingAuth
+    profilesSkippedMissingAuth =
+      cloudProfilePushStats.skippedMissingAuth +
+      profilePullStats.skippedMissingAuth
 
     failurePhase = 'local_reconcile'
     await reconcileLocalProductStock(localClient, signal)
@@ -1061,7 +1072,9 @@ export async function runCloudMasterSync({
             profileSyncStats: profilePullStatsRecovery,
           }
         )
-        profilesSkippedMissingAuth = profilePullStatsRecovery.skippedMissingAuth
+        profilesSkippedMissingAuth =
+          cloudProfilePushStats.skippedMissingAuth +
+          profilePullStatsRecovery.skippedMissingAuth
         await reconcileLocalProductStock(localClient, signal)
 
         if (!signal.aborted) {

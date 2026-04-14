@@ -1,4 +1,5 @@
 import { InsufficientStockConfirmError } from '@/errors/insufficientStockConfirmError'
+import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import { recalculateStockFromMovements } from '@/services/stockReconcileService'
@@ -26,6 +27,7 @@ import {
   insertOrderPaymentInstallments,
   insertOrderPaymentsRows,
 } from '@/services/paymentInstallmentInserts'
+import { insertStockAlert } from '@/services/stockAlertsService'
 import {
   createOrderPayment,
   OVERPAYMENT_REQUIRES_PERSON,
@@ -1376,6 +1378,114 @@ export async function cancelOrder(
   if (restoreStock) {
     await afterOrderStockMutation(order.items.map((i) => i.product_id))
   }
+}
+
+/** Build draft payment splits for cloning from installments, legacy rows, or paid + primary method. */
+function orderPaymentsPayloadForClone(
+  order: OrderWithItemsAndPayments
+): { payment_method: PaymentMethod; amount: number }[] {
+  const out: { payment_method: PaymentMethod; amount: number }[] = []
+  if (order.payment_installments?.length) {
+    for (const pi of order.payment_installments) {
+      const a = roundMoney(pi.amount)
+      if (a > 0.001) out.push({ payment_method: pi.method, amount: a })
+    }
+    return out
+  }
+  if (order.payments?.length) {
+    for (const p of order.payments) {
+      const a = roundMoney(p.amount)
+      if (a > 0.001)
+        out.push({ payment_method: p.payment_method, amount: a })
+    }
+    return out
+  }
+  const paid = roundMoney(order.paid_amount)
+  if (paid > 0.001 && order.payment_method) {
+    out.push({ payment_method: order.payment_method, amount: paid })
+  }
+  return out
+}
+
+/**
+ * Cancels the source order (same semantics as {@link cancelOrder}), then creates a new **draft**
+ * order with the same warehouse, lines, discount rate, customer, note, and draft-style payment splits.
+ * Ledger/register logic is unchanged: reuse cancel + create only.
+ */
+export async function cloneOrderAsReplacementDraft(
+  id: string,
+  options?: { settlement?: CancelOrderSettlement }
+): Promise<OrderWithItemsAndPayments> {
+  const source = await getOrderById(id)
+  if (!source) throw new Error('Order not found')
+  assertOrderNotHistoricalSnapshot(source, 'clone as replacement')
+  if (source.status_flow === 'cancelled') {
+    throw new Error('Order is already cancelled')
+  }
+  if (!source.items.length) {
+    throw new Error('Order has no lines to copy')
+  }
+
+  const settlement: CancelOrderSettlement =
+    source.person_id &&
+    options?.settlement === 'retain_paid_as_wallet_credit'
+      ? 'retain_paid_as_wallet_credit'
+      : 'reverse_payments'
+
+  const items: PosOrderLineInput[] = source.items.map((it) => ({
+    product_id: it.product_id,
+    quantity: it.quantity,
+    unit_price: it.unit_price,
+    line_discount_rate: it.line_discount_rate,
+  }))
+  const payments = orderPaymentsPayloadForClone(source)
+  const baseNote = (source.note ?? '').trim()
+  const cloneTag = `[from order #${source.order_number}]`
+  const note = baseNote ? `${baseNote} ${cloneTag}` : cloneTag
+
+  await cancelOrder(id, { settlement })
+
+  const created = await createOrder({
+    type: source.type,
+    note,
+    items,
+    payments,
+    person_id: source.person_id ?? undefined,
+    apply_person_discount: false,
+    order_discount_rate: source.discount_rate,
+    allow_remaining_on_account: source.allow_remaining_on_account,
+    warehouse_id: source.warehouse_id,
+  })
+
+  const { data: auth } = await supabase.auth.getUser()
+  const u = auth.user
+  const um = u?.user_metadata as Record<string, unknown> | undefined
+  const operatorLabel =
+    (typeof um?.username === 'string' && um.username.trim()) ||
+    u?.email?.trim() ||
+    null
+
+  void insertStockAlert({
+    alert_type: 'info',
+    title: i18n.t('stockAlerts.orderCloneAdminTitle'),
+    message: i18n.t('stockAlerts.orderCloneAdminMessage', {
+      source: source.order_number,
+      dest: created.order_number,
+      operator: operatorLabel ?? i18n.t('stockAlerts.unknownOperator'),
+    }),
+    meta: {
+      admin_only: true,
+      kind: 'order_replacement_draft',
+      source_order_id: source.id,
+      source_order_number: source.order_number,
+      new_order_id: created.id,
+      new_order_number: created.order_number,
+    },
+  }).catch((e) => {
+    console.warn('insertStockAlert order clone', e)
+  })
+
+  return created
 }
 
 export async function addPaymentInstallment(data: {

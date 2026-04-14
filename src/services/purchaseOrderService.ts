@@ -1,3 +1,4 @@
+import i18n from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { adjustStock } from '@/services/productService'
 import { recalculateStockFromMovements } from '@/services/stockReconcileService'
@@ -22,6 +23,7 @@ import {
   voidLedgerPurchaseOrderDocumentRowForCancel,
 } from '@/services/peopleService'
 import { insertPurchaseOrderPaymentsRows } from '@/services/paymentInstallmentInserts'
+import { insertStockAlert } from '@/services/stockAlertsService'
 import { createPurchaseOrderPayment } from '@/services/paymentService'
 import {
   appendLedgerDocSuffix,
@@ -1325,4 +1327,97 @@ export async function cancelPurchaseOrder(
   }
 
   await afterPoStockMutation(order.items.map((i) => i.product_id))
+}
+
+/**
+ * Cancels the source PO (same semantics as {@link cancelPurchaseOrder}), then creates a new **draft**
+ * PO with the same supplier, warehouse, lines, discount rate, note, and optional draft payment splits.
+ */
+export async function clonePurchaseOrderAsReplacementDraft(
+  id: string,
+  options?: { settlement?: CancelPurchaseOrderSettlement }
+): Promise<PurchaseOrderWithItems> {
+  const source = await getPurchaseOrderById(id)
+  if (!source) throw new Error('Purchase order not found')
+  assertPurchaseOrderNotHistoricalSnapshot(source, 'clone as replacement')
+  if (source.status === 'cancelled') {
+    throw new Error('Purchase order is already cancelled')
+  }
+  if (!source.items.length) {
+    throw new Error('Purchase order has no lines to copy')
+  }
+  if (!source.person_id?.trim()) {
+    throw new Error('Purchase order has no supplier to copy')
+  }
+
+  const settlement: CancelPurchaseOrderSettlement =
+    source.person_id &&
+    options?.settlement === 'retain_paid_as_wallet_credit'
+      ? 'retain_paid_as_wallet_credit'
+      : 'reverse_payments'
+
+  const items = source.items.map((it) => ({
+    product_id: it.product_id,
+    quantity: it.quantity,
+    cost_price: it.cost_price,
+    line_discount_rate: it.line_discount_rate,
+    update_default_cost_price: it.cost_price_updated,
+    catalog_customer_price: it.catalog_customer_price,
+    catalog_business_price: it.catalog_business_price,
+  }))
+
+  const payments = (source.payments ?? [])
+    .map((p) => ({
+      payment_method: p.payment_method,
+      amount: roundMoney(p.amount),
+    }))
+    .filter((p) => p.amount > 0.001)
+
+  const baseNote = (source.note ?? '').trim()
+  const cloneTag = `[from PO #${source.order_number}]`
+  const note = baseNote ? `${baseNote} ${cloneTag}` : cloneTag
+
+  await cancelPurchaseOrder(id, { settlement })
+
+  const created = await createPurchaseOrder({
+    supplier_name: source.supplier_name ?? undefined,
+    note,
+    person_id: source.person_id.trim(),
+    asDraft: true,
+    items,
+    payments: payments.length > 0 ? payments : undefined,
+    order_discount_rate: source.discount_rate,
+    apply_supplier_discount: false,
+    warehouse_id: source.warehouse_id,
+  })
+
+  const { data: auth } = await supabase.auth.getUser()
+  const u = auth.user
+  const um = u?.user_metadata as Record<string, unknown> | undefined
+  const operatorLabel =
+    (typeof um?.username === 'string' && um.username.trim()) ||
+    u?.email?.trim() ||
+    null
+
+  void insertStockAlert({
+    alert_type: 'info',
+    title: i18n.t('stockAlerts.poCloneAdminTitle'),
+    message: i18n.t('stockAlerts.poCloneAdminMessage', {
+      source: source.order_number,
+      dest: created.order_number,
+      operator: operatorLabel ?? i18n.t('stockAlerts.unknownOperator'),
+    }),
+    meta: {
+      admin_only: true,
+      kind: 'po_replacement_draft',
+      source_purchase_order_id: source.id,
+      source_order_number: source.order_number,
+      new_purchase_order_id: created.id,
+      new_order_number: created.order_number,
+    },
+  }).catch((e) => {
+    console.warn('insertStockAlert PO clone', e)
+  })
+
+  return created
 }

@@ -66,6 +66,7 @@ export const FEATURE_CONTROL_IDS = [
   'purchaseOrders.costOverridePriceDialog',
   'purchaseOrders.confirmReceive',
   'purchaseOrders.cancel',
+  'purchaseOrders.cloneAsReplacementDraft',
   'purchaseOrders.editNote',
   'purchaseOrders.importCsv',
   'purchaseOrders.exportCsv',
@@ -77,6 +78,7 @@ export const FEATURE_CONTROL_IDS = [
   'orders.posCheckout',
   'orders.printInvoice',
   'orders.cancelOrder',
+  'orders.cloneAsReplacementDraft',
   'orders.addPayment',
   'orders.editNote',
   'orders.importCsv',
@@ -558,6 +560,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             descriptionKey: 'control.purchaseOrders.cancel.desc',
           },
           {
+            id: 'purchaseOrders.cloneAsReplacementDraft',
+            defaultEnabled: true,
+            titleKey: 'control.purchaseOrders.cloneAsReplacementDraft.title',
+            descriptionKey: 'control.purchaseOrders.cloneAsReplacementDraft.desc',
+          },
+          {
             id: 'purchaseOrders.editNote',
             defaultEnabled: true,
             titleKey: 'control.purchaseOrders.editNote.title',
@@ -636,6 +644,12 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.orders.cancel.title',
             descriptionKey: 'control.orders.cancel.desc',
+          },
+          {
+            id: 'orders.cloneAsReplacementDraft',
+            defaultEnabled: true,
+            titleKey: 'control.orders.cloneAsReplacementDraft.title',
+            descriptionKey: 'control.orders.cloneAsReplacementDraft.desc',
           },
           {
             id: 'orders.addPayment',

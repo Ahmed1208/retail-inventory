@@ -16,6 +16,7 @@ type DocAreaKey =
   | 'categories'
   | 'brands'
   | 'movements'
+  | 'inventoryTransfers'
   | 'purchaseOrders'
   | 'orders'
   | 'people'
@@ -23,6 +24,8 @@ type DocAreaKey =
   | 'register'
   | 'reports'
   | 'notes'
+  | 'adminHub'
+  | 'stockAlerts'
   | 'security'
 
 const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
@@ -42,6 +45,7 @@ const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
         'categories',
         'brands',
         'movements',
+        'inventoryTransfers',
       ],
     },
     {
@@ -60,6 +64,11 @@ const MAP_GROUPS: { id: string; titleKey: string; areaKeys: DocAreaKey[] }[] =
       areaKeys: ['reports', 'notes'],
     },
     {
+      id: 'admin',
+      titleKey: 'documentation.mapGroups.admin',
+      areaKeys: ['adminHub', 'stockAlerts'],
+    },
+    {
       id: 'governance',
       titleKey: 'documentation.mapGroups.security',
       areaKeys: ['security'],
@@ -74,6 +83,7 @@ export function Documentation() {
   const canView = useFeatureEnabled('sidebar.documentation')
   const canAdmin = useFeatureEnabled('sidebar.admin')
   const showMigrationGuide = useFeatureEnabled('admin.migrationGuide')
+  const showDataSync = useFeatureEnabled('admin.dataSync')
 
   useEffect(() => {
     document.title = t('documentation.pageTitle')
@@ -105,13 +115,54 @@ export function Documentation() {
       )}
 
       {canAdmin && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm leading-relaxed">
-          <span className="text-muted-foreground">
-            {t('documentation.securityCallout')}{' '}
-          </span>
-          <span className="font-medium text-foreground">
-            {t('documentation.securityCalloutHint')}
-          </span>
+        <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm leading-relaxed space-y-3">
+          <p className="text-muted-foreground">
+            <span>{t('documentation.adminCalloutPrefix')}</span>{' '}
+            {showMigrationGuide ? (
+              <>
+                <Link
+                  to="/admin/migration"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {t('documentation.adminCalloutMigration')}
+                </Link>
+                {' · '}
+              </>
+            ) : null}
+            <Link
+              to="/control"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {t('documentation.adminCalloutControl')}
+            </Link>
+            {' · '}
+            <Link
+              to="/admin/members"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              {t('documentation.adminCalloutMembers')}
+            </Link>
+            {showDataSync ? (
+              <>
+                {' · '}
+                <Link
+                  to="/sync"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  {t('documentation.adminCalloutSync')}
+                </Link>
+              </>
+            ) : null}
+            {t('documentation.adminCalloutSuffix')}
+          </p>
+          <p>
+            <span className="text-muted-foreground">
+              {t('documentation.securityCallout')}{' '}
+            </span>
+            <span className="font-medium text-foreground">
+              {t('documentation.securityCalloutHint')}
+            </span>
+          </p>
         </div>
       )}
 

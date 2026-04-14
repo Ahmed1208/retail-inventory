@@ -19,8 +19,8 @@
     "register": "Register",
     "admin": "Admin",
     "documentation": "Documentation",
-    "adminHubDescription": "Open dashboard, documentation, migration checklist, or reports from here.",
-    "migrationGuide": "Migration checklist",
+    "adminHubDescription": "Open dashboard, documentation, migration guide, members, data sync, stock movements, or reports from here.",
+    "migrationGuide": "Migration guide",
     "backToAdmin": "Back to Admin",
     "members": "Members",
     "dataSync": "Data sync"
@@ -132,7 +132,7 @@
     "title": "Data sync",
     "subtitle": "Cloud is the master: push local rows to hosted Supabase (sales order and PO numbers are kept when that number is not already used on cloud), repair any remaining duplicate document numbers on the cloud, refresh product quantity totals, then pull the full cloud snapshot back to this device.",
     "needLocalApp": "Data sync is available when the app uses local Supabase (e.g. http://127.0.0.1:54321). Run npm run dev with local URLs, not npm run dev:cloud only.",
-    "profilesNote": "When you pull from the host, new operators get a matching local Auth user automatically (Edge Function `ensure-local-operator-auth`, admin-only). They sign in with their `username`@members.stockpilot.local email and the temp password set by `OPERATOR_MIRROR_TEMP_PASSWORD` on the function (default devpass123 locally). Hosted passwords are not copied.",
+    "profilesNote": "When Auth is missing on the sync **target** (pull from host → local, or push from local → host), the app calls Edge Function `ensure-local-operator-auth` on that project (deploy it on local and hosted; admin-only). Mirrored users sign in with `username`@members.stockpilot.local and the temp password from `OPERATOR_MIRROR_TEMP_PASSWORD` on that function (default devpass123 locally; set the secret on hosted if needed). Passwords are not copied between environments.",
     "profilesSkippedToastTitle": "{{count}} hosted operator profiles not copied locally",
     "profilesSkippedToastDesc": "Local Supabase Auth has no row with those user ids, so profile rows cannot be created here. The rest of this sync succeeded. Operators who should sign in on local need matching Auth users (same ids as on the host—often via a dev seed or SQL on local only).",
     "rlsNote": "Uses your normal Supabase sessions only (no service role in the browser). The hosted user must be allowed by RLS to read and upsert the listed tables.",
@@ -258,7 +258,14 @@
   "control": {
     "title": "Control",
     "pageTitle": "Control | StockPilot",
-    "intro": "Turn features on or off for this browser. Each item describes what it affects in the app.",
+    "intro": "Turn features on or off for this browser. Each toggle describes what it shows or hides in the app. Non-admin operators also receive server-side permission overrides from Admin → Members; when both disagree, the stricter rule wins for that user.",
+    "guideCardTitle": "Setup & migration resources",
+    "guideCardBody": "Use the platform guide for a feature map, the migration guide for recommended import order (warehouses, catalog, CSV, register), Members to create operators and warehouse access, and Data sync when you mirror data between local and hosted Supabase.",
+    "guideCardFootnote": "Some links are hidden when their sidebar or Admin toggles are off—enable them here first if you need those screens.",
+    "linkDocumentation": "Platform guide",
+    "linkMigration": "Migration guide",
+    "linkMembers": "Members",
+    "linkDataSync": "Data sync",
     "securityNote": "These toggles only hide or show UI. They do not block API access. Use database policies for real enforcement.",
     "resetDefaults": "Reset all to defaults",
     "disabled": {
@@ -341,8 +348,8 @@
     "admin": {
       "group": "Migration & onboarding",
       "migrationGuide": {
-        "title": "Migration checklist (Admin)",
-        "desc": "Shows the Migration checklist card on the Admin hub and the /admin/migration route with a resumable import-order guide."
+        "title": "Migration guide (Admin)",
+        "desc": "Shows the Migration guide card on the Admin hub and the /admin/migration route: resumable checklist covering members, warehouses, catalog, transfers, optional data sync, CSV, register, and go-live."
       },
       "dataSync": {
         "title": "Data sync (Admin)",
@@ -545,6 +552,10 @@
         "title": "Cancel purchase order",
         "desc": "Shows the cancel action on received purchase orders (detail page)."
       },
+      "cloneAsReplacementDraft": {
+        "title": "Edit PO as new draft copy",
+        "desc": "Shows “Edit purchase order” on the PO detail page: warns, cancels the current PO, and opens a new draft with the same lines and settings."
+      },
       "editNote": {
         "title": "Edit purchase order note",
         "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
@@ -600,6 +611,10 @@
       "cancel": {
         "title": "Cancel order",
         "desc": "Shows cancel order on the order detail page when status allows."
+      },
+      "cloneAsReplacementDraft": {
+        "title": "Edit order as new draft copy",
+        "desc": "Shows “Edit order” on the order detail page: warns, cancels the current order, and opens a new draft with the same lines and payment splits."
       },
       "addPayment": {
         "title": "Add payment (reserved)",
@@ -813,7 +828,12 @@
     "offlineSyncNegativeMessage": "Stock went negative after offline sync for this product ({{name}}). Current quantity: {{qty}}. Please recount.",
     "reconcileNegativeTitle": "Negative after reconcile: {{name}}",
     "reconcileNegativeMessage": "After reconciling movements, {{name}} shows quantity {{qty}}. Please verify physical stock.",
-    "personRecord": "Person"
+    "personRecord": "Person",
+    "unknownOperator": "Unknown operator",
+    "orderCloneAdminTitle": "Sales order replaced with draft",
+    "orderCloneAdminMessage": "Order #{{source}} was cancelled and replaced by draft order #{{dest}}. Operator: {{operator}}.",
+    "poCloneAdminTitle": "Purchase order replaced with draft",
+    "poCloneAdminMessage": "PO #{{source}} was cancelled and replaced by draft PO #{{dest}}. Operator: {{operator}}."
   },
   "categories": {
     "title": "Categories",
@@ -1026,6 +1046,12 @@
     "toastOrderCancelled": "Order cancelled. Stock restored.",
     "toastError": "Something went wrong",
     "orderDetailTitle": "Order #{{number}}",
+    "editAsReplacement": "Edit order",
+    "cloneConfirmTitle": "Edit order as a new draft?",
+    "cloneConfirmIntro": "This will cancel order #{{number}} using the same rules as Cancel order, then create a new draft with the same inventory, lines, quantities, discounts, customer, and payment splits. You will be taken to the new order to continue editing or checkout.",
+    "cloneConfirmAction": "Cancel and open copy",
+    "toastClonedAsDraft": "New draft order created from this document.",
+    "cloneError": "Could not create the replacement draft. If the original was cancelled but the new order failed, check with an admin.",
     "cancelConfirmTitle": "Cancel Order",
     "cancelConfirmMessage": "Cancel order #{{number}}? Stock will be restored automatically for all items.",
     "openPaymentOperation": "Open payment in transaction log",
@@ -1217,6 +1243,12 @@
     "invalidLineDiscount": "Line discount must be between 0 and 100.",
     "previousCostPrice": "Previous cost price",
     "costPriceUpdated": "Default updated",
+    "editAsReplacement": "Edit purchase order",
+    "cloneConfirmTitle": "Edit purchase order as a new draft?",
+    "cloneConfirmIntro": "This will cancel purchase order #{{number}} using the same rules as Cancel purchase order, then create a new draft with the same supplier, inventory, lines, quantities, discounts, and recorded payment splits. You will be taken to the new PO to continue editing or confirm receipt.",
+    "cloneConfirmAction": "Cancel and open copy",
+    "toastClonedAsDraft": "New draft purchase order created from this document.",
+    "cloneError": "Could not create the replacement draft. If the original was cancelled but the new PO failed, check with an admin.",
     "cancelConfirmTitle": "Cancel Purchase Order",
     "cancelConfirmMessage": "Cancel purchase order #{{number}}? Stock will be deducted for all items.",
     "cancelConfirmMessageDraft": "Cancel draft purchase order #{{number}}? Nothing has been received into stock yet.",
@@ -1767,8 +1799,15 @@
       "commerce": "Purchasing & sales",
       "money": "People, payments & register",
       "insights": "Reports & notes",
+      "admin": "Admin, alerts & sync",
       "security": "Sign-in, members & security"
     },
+    "adminCalloutPrefix": "Shortcuts:",
+    "adminCalloutMigration": "Migration guide",
+    "adminCalloutControl": "Control",
+    "adminCalloutMembers": "Members",
+    "adminCalloutSync": "Data sync",
+    "adminCalloutSuffix": " — use the sections below for inventory, sales, purchasing, payments, transfers, alerts, and security.",
     "securityCallout": "Operators sign in with Supabase Auth.",
     "securityCalloutHint": "Open the “Sign-in, members & security” card below for setup and best practices.",
     "areas": {
@@ -1776,13 +1815,9 @@
         "title": "Navigation & admin",
         "items": [
           "Sidebar visibility toggles (Control)",
-          "Admin hub (Dashboard, Documentation, Reports)",
-          "Control link (settings)",
-          "Inventory hub",
-          "Orders",
-          "People",
-          "Payments",
-          "Register"
+          "Admin hub: Dashboard, Documentation, Migration guide, Members, Data sync (when enabled), Stock movements, Reports",
+          "Control (/control): per-browser feature visibility; Members merges stricter overrides per operator",
+          "Inventory hub, Orders, People, Payments, Register"
         ]
       },
       "header": {
@@ -1804,21 +1839,23 @@
         "title": "Inventory hub",
         "items": [
           "Cards to Products, Purchase orders, Stock transfers, Warehouses, Movements, Categories, Brands",
-          "Entry point for catalog and stock workflows"
+          "Entry point for catalog and per-warehouse stock; product detail shows quantities by warehouse when you use multiple locations"
         ]
       },
       "warehouses": {
         "title": "Warehouses",
         "items": [
           "Locations with mandatory location text; human-facing codes auto-generated from location (e.g. NASR-CITY-01)",
-          "Optional cash register per warehouse; turning it off requires an empty register (shortcut to withdraw all, then confirm disable)"
+          "Optional cash register per warehouse; orders and payments can target a register warehouse; turning off a register requires an empty balance (withdraw all, then confirm)",
+          "Assign operators to allowed warehouses under Admin → Members so they only see and ship from permitted locations"
         ]
       },
       "products": {
         "title": "Products",
         "items": [
           "Product list, search, and CRUD (when allowed)",
-          "Stock levels and pricing by order type"
+          "Pricing (cost, retail, business) and stock; multi-warehouse quantities on the product detail page",
+          "CSV import/export when enabled in Control"
         ]
       },
       "categories": {
@@ -1837,21 +1874,30 @@
         "title": "Stock movements",
         "items": [
           "History of stock in, out, and adjustments",
-          "Filters and pagination"
+          "Filters and pagination; ties to sales, POs, transfers, and manual adjustments"
+        ]
+      },
+      "inventoryTransfers": {
+        "title": "Stock transfers",
+        "items": [
+          "Move quantity between two warehouses with a draft → complete flow",
+          "List and detail pages for audit; gated in Control under inventory transfers"
         ]
       },
       "purchaseOrders": {
         "title": "Purchase orders",
         "items": [
-          "List, new PO flow, receive stock, payables",
-          "Draft and confirmed states (migrations may apply)"
+          "List, new PO, receive stock, supplier payables, notes, cancel when enabled",
+          "CSV import (live drafts vs historical), export for templates",
+          "“Edit as replacement” (when enabled): cancels the current PO with the same settlement choices as cancel, then opens a new draft with copied lines, supplier, discounts, and draft payments — admins receive an in-app alert"
         ]
       },
       "orders": {
         "title": "Sales orders",
         "items": [
-          "POS-style draft orders, checkout, customer link",
-          "Order list and detail; cancel flows when enabled"
+          "POS-style drafts, checkout, customer link, warehouse (ship-from), payments and installments",
+          "Cancel and optional “Edit as replacement” (when enabled): same as cancel semantics, then a new draft with copied lines and splits — admins receive an in-app alert",
+          "CSV import/export when enabled"
         ]
       },
       "people": {
@@ -1890,25 +1936,41 @@
           "Links to related documents when supported"
         ]
       },
+      "adminHub": {
+        "title": "Admin hub & operators",
+        "items": [
+          "Admin hub routes: /admin (cards), Dashboard, Documentation (/admin/documentation), Migration guide (/admin/migration), Members (/admin/members/*), Data sync (/sync when enabled), Reports, Stock movements",
+          "Members: create operator Auth users, optional password reset, per-user feature checkboxes (same IDs as Control defaults), and allowed warehouses",
+          "Enable “Data sync” in Control for operators who should open /sync to push or pull mirrored tables between local and hosted Supabase (see on-screen warnings)"
+        ]
+      },
+      "stockAlerts": {
+        "title": "Alerts bell",
+        "items": [
+          "Unread stock and system alerts (low stock, sync issues, register/wallet signals, informational notices)",
+          "Some alerts are admin-only (for example document replacement after edit-as-replacement); only admins see them in the bell and realtime toast"
+        ]
+      },
       "security": {
         "title": "Sign-in, members & security",
         "items": [
-          "Every operator is a Supabase Auth user; the app loads a profiles row (is_admin, feature_overrides) after sign-in.",
+          "Every operator is a Supabase Auth user; the app loads a profiles row (is_admin, feature_overrides, allowed_warehouse_ids) after sign-in.",
           "Only admins may open /admin and /control; route checks use profiles.is_admin, not Control toggles alone.",
-          "Control toggles and localStorage shape default UI for this browser; non-admin permissions also merge feature_overrides from the server.",
-          "Sign-in uses a synthetic email: username@members.stockpilot.local — create the Auth user with that email pattern.",
+          "Control toggles and localStorage shape default UI for this browser; non-admin permissions merge feature_overrides from the server — if either side disables a capability, the operator cannot use it.",
+          "Sign-in uses a synthetic email: username@members.stockpilot.local — create the Auth user with that email pattern (the create-member Edge Function does this for you).",
           "Never put the service role key or plaintext operator passwords in VITE_* env or bundled client code; member creation uses the create-member Edge Function with the service role on the server.",
           "Bootstrap the fixed admin in Supabase Dashboard (Auth → Users) or a one-off script: set user_metadata username and is_admin true; password only in Auth.",
+          "Apply all SQL migrations before go-live so RLS, registers, multi-warehouse stock, and CSV paths match the app version you deploy.",
           "Logout clears the session from this browser; see Supabase Auth docs for refresh tokens and RLS."
         ]
       }
     }
   },
   "migrationGuide": {
-    "title": "Migration checklist",
-    "browserTitle": "Migration checklist | StockPilot",
-    "subtitle": "Move from your old system into StockPilot in a safe order. Check items off as you go.",
-    "intro": "Follow these steps to load master data before documents and money. Use CSV import where the app offers it; export from each list first if you want a column template. You can leave this page anytime—your checks are saved in this browser.",
+    "title": "Migration & setup guide",
+    "browserTitle": "Migration guide | StockPilot",
+    "subtitle": "End-to-end path to adopt StockPilot: Auth, members, warehouses, catalog, transfers, optional hosted/local sync, CSV loads, register, and go-live checks.",
+    "intro": "Use this page as your master checklist. Order matters: locations and registers before document CSV, people before orders, suppliers before purchase orders. Create operators under Admin → Members and use Control to match what each role should see. Progress saves in this browser only (localStorage). The Platform guide (/admin/documentation) explains each area in more detail.",
     "savedLocallyHint": "Progress is stored only on this device (localStorage). It is not synced to your account or other browsers.",
     "progressLabel": "{{done}} of {{total}} steps complete",
     "markAllComplete": "Mark all complete",
@@ -1921,27 +1983,33 @@
     "markAllConfirmDescription": "Use this if you have already finished migration and only want the checklist to show 100% complete.",
     "markAllConfirm": "Mark all",
     "documentationCallout": "Migrating from another system?",
-    "documentationLink": "Open the migration checklist",
+    "documentationLink": "Open the migration & setup guide",
     "phasePrepare": {
       "title": "1. Prepare"
     },
+    "phaseTeam": {
+      "title": "2. Operators & access"
+    },
     "phaseFoundation": {
-      "title": "2. Locations & registers"
+      "title": "3. Locations & registers"
     },
     "phaseMaster": {
-      "title": "3. Master data (catalog & people)"
+      "title": "4. Master data & internal transfers"
+    },
+    "phaseSync": {
+      "title": "5. Data sync (optional)"
     },
     "phaseOptional": {
-      "title": "4. Optional: opening balances"
+      "title": "6. Optional: opening balances"
     },
     "phaseTransactions": {
-      "title": "5. Purchase orders & sales orders"
+      "title": "7. Purchase orders & sales orders (CSV)"
     },
     "phaseMoney": {
-      "title": "6. Register & cash"
+      "title": "8. Register & cash"
     },
     "phaseCutover": {
-      "title": "7. Go live"
+      "title": "9. Go live & documentation"
     },
     "steps": {
       "plan_exports": {
@@ -1950,11 +2018,15 @@
       },
       "env_schema": {
         "title": "Database and app environment ready",
-        "body": "Ensure Supabase (or your hosted project) has all migrations applied so draft POs, warehouses, registers, and CSV features work. Configure environment variables and sign in. Admins may use the dashboard Connect string for schema pushes; routine data loading should stay in the app."
+        "body": "Apply every SQL migration to your Supabase project so multi-warehouse stock, registers, RLS, stock_alerts, and CSV paths match the app you deploy. Set VITE_* variables for the correct Supabase URL and anon key; never expose the service role in the client. Sign in with your bootstrap admin (see Platform guide → security). Confirm you can open Inventory and Admin before loading data."
+      },
+      "operators_members": {
+        "title": "Create members (operators) and warehouse access",
+        "body": "Under Admin → Members, add each clerk or manager: username becomes their sign-in email pattern, password is stored in Auth only, and you pick allowed warehouses plus feature toggles (same switches as Control, stored as overrides on their profile). Operators without admin flag cannot open /control or /admin except via routes you explicitly grant. Do this early so you can test imports signed in as a non-admin user."
       },
       "warehouses": {
         "title": "Create warehouses and registers",
-        "body": "Define each location with a clear code and name. Mark which warehouses have a cash register—orders, payments, and register activity depend on this. Do this before order/PO CSV so every row can map to a warehouse code."
+        "body": "Define each storage location; codes are derived from the location text. Enable a cash register only where you truly take payments—POS checkout and some payment flows require a register-capable warehouse. Align warehouse codes with any CSV you will import. Assign every operator at least one allowed warehouse in Members."
       },
       "categories_brands": {
         "title": "Categories and brands (if needed)",
@@ -1966,7 +2038,15 @@
       },
       "products": {
         "title": "Import products and opening stock",
-        "body": "Use Products → Import CSV. Set opening quantities per warehouse when you want live on-hand stock from day one. Export CSV from the products page if you need a template. Resolve cost and list prices so later sales and PO lines are coherent."
+        "body": "Use Products → Import CSV. Set opening quantities per warehouse when you want live on-hand stock from day one (columns per warehouse code). Export CSV from the products page for a template. Resolve cost and list prices so later sales and PO lines stay coherent. Open a product after import to verify per-warehouse quantities."
+      },
+      "inventory_transfers_guide": {
+        "title": "Plan stock transfers between warehouses",
+        "body": "If you split stock across sites, use Inventory → Stock transfers to move quantity with an auditable document (draft to posted). Run a few manual transfers after products exist to validate warehouse access for each operator. This is separate from purchase/sale documents."
+      },
+      "data_sync_environments": {
+        "title": "Optional: sync local and hosted Supabase",
+        "body": "When you run a local stack plus hosted production (or staging), enable “Data sync” in Control for trusted admins, then open /sync. Read the warnings on that screen: pushes overwrite target rows for mirrored business tables. Use history to see past runs. Skip this step if you only have a single cloud project."
       },
       "payments_optional": {
         "title": "Optional: standalone payments for opening balances",
@@ -1990,7 +2070,11 @@
       },
       "control_review": {
         "title": "Review Control (feature flags)",
-        "body": "Open Control and confirm which CSV imports, hub shortcuts, and POS actions are enabled for your team. Turn off anything you do not want clerks to see during stabilization."
+        "body": "Open Control and confirm which CSV imports, hub shortcuts, POS actions, purchase-order receive/cancel, edit-as-replacement, and admin shortcuts match each role. Remember: toggles hide UI; Members overrides still apply per user. Tighten anything you do not want during stabilization."
+      },
+      "documentation_review": {
+        "title": "Skim the Platform guide",
+        "body": "Open Admin → Documentation and walk the feature map so trainers know where orders, POs, payments, transfers, alerts, and security behaviors live. Keep the Migration guide link handy for the next store or environment you onboard."
       }
     },
     "importShortcut": {
@@ -2013,7 +2097,15 @@
       "register": "Register",
       "newOrder": "New order",
       "newPo": "New purchase order",
-      "control": "Control"
+      "control": "Control",
+      "members": "Members list",
+      "addMember": "Add member",
+      "inventoryTransfersHome": "Stock transfers",
+      "newInventoryTransfer": "New transfer",
+      "inventoryTransfersList": "Transfer list",
+      "dataSync": "Data sync",
+      "dataSyncHistory": "Sync history",
+      "documentation": "Platform guide"
     }
   },
   "errorBoundary": {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 
 import {
   cancelOrder,
+  cloneOrderAsReplacementDraft,
   type CancelOrderSettlement,
   getOrderById,
   updateOrderNote,
@@ -39,6 +40,7 @@ import { useFeatureEnabled } from '@/context/FeatureControlContext'
 
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
@@ -51,9 +53,13 @@ export function OrderDetail() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelSettlement, setCancelSettlement] =
     useState<CancelOrderSettlement>('reverse_payments')
+  const [cloneOpen, setCloneOpen] = useState(false)
+  const [cloneSettlement, setCloneSettlement] =
+    useState<CancelOrderSettlement>('reverse_payments')
   const canEditDraftPos = useFeatureEnabled('orders.editDraftPos')
   const canPrintInvoice = useFeatureEnabled('orders.printInvoice')
   const canCancelOrder = useFeatureEnabled('orders.cancelOrder')
+  const canCloneOrder = useFeatureEnabled('orders.cloneAsReplacementDraft')
   const canEditNote = useFeatureEnabled('orders.editNote')
   const canListPayments = useFeatureEnabled('payments.list')
 
@@ -126,6 +132,14 @@ export function OrderDetail() {
         !!order && (order.payment_installments?.length ?? 0) > 0,
     })
 
+  const showCloneOrderButton = Boolean(
+    order &&
+      canCloneOrder &&
+      !order.is_historical_snapshot &&
+      order.status_flow !== 'cancelled' &&
+      order.items.length > 0
+  )
+
   useEffect(() => {
     if (order) {
       document.title = `${t('orders.orderDetailTitle', { number: order.order_number })} | StockPilot`
@@ -166,6 +180,25 @@ export function OrderDetail() {
     },
     onError: (e: Error) =>
       toast.error(e.message || t('orders.toastError')),
+  })
+
+  const cloneMut = useMutation({
+    mutationFn: (p: {
+      oid: string
+      settlement?: CancelOrderSettlement
+    }) =>
+      cloneOrderAsReplacementDraft(
+        p.oid,
+        p.settlement ? { settlement: p.settlement } : undefined
+      ),
+    onSuccess: (newOrder) => {
+      invalidateAll()
+      setCloneOpen(false)
+      toast.success(t('orders.toastClonedAsDraft'))
+      navigate(`/orders/${newOrder.id}`)
+    },
+    onError: (e: Error) =>
+      toast.error(e.message || t('orders.cloneError')),
   })
 
   const handlePrint = (o: OrderWithItemsAndPayments) => {
@@ -226,7 +259,7 @@ export function OrderDetail() {
         onPrinted={() => {}}
       />
 
-      <div className="flex items-center gap-2 border-b bg-background px-2 py-2">
+      <div className="flex flex-wrap items-center gap-2 border-b bg-background px-2 py-2">
         <Link
           to="/orders"
           className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'gap-2')}
@@ -234,6 +267,19 @@ export function OrderDetail() {
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
           {t('orders.backToOrders')}
         </Link>
+        {showCloneOrderButton ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCloneSettlement('reverse_payments')
+              setCloneOpen(true)
+            }}
+          >
+            {t('orders.editAsReplacement')}
+          </Button>
+        ) : null}
       </div>
 
       {order.status_flow === 'draft' ? (
@@ -292,6 +338,101 @@ export function OrderDetail() {
           paymentRegistersLoading={orderPayRegFetching}
         />
       )}
+
+      <AlertDialog open={cloneOpen} onOpenChange={setCloneOpen}>
+        <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('orders.cloneConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-start text-muted-foreground">
+                <p>
+                  {t('orders.cloneConfirmIntro', {
+                    number: order.order_number,
+                  })}
+                </p>
+                {showWalkInPaymentCancelHint && (
+                  <p className="text-sm text-foreground">
+                    {t('orders.cancelWalkInPaymentsHint')}
+                  </p>
+                )}
+                {showCancelSettlementChoice && (
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <p className="text-sm text-foreground">
+                      {t('orders.cancelSettlementIntro')}
+                    </p>
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-foreground">
+                        {t('orders.cancelSettlementLegend')}
+                      </legend>
+                      <div className="flex items-start gap-2">
+                        <input
+                          id="order-clone-reverse"
+                          type="radio"
+                          name="order-clone-settlement"
+                          className="mt-1"
+                          checked={cloneSettlement === 'reverse_payments'}
+                          onChange={() =>
+                            setCloneSettlement('reverse_payments')
+                          }
+                        />
+                        <Label
+                          htmlFor="order-clone-reverse"
+                          className="cursor-pointer font-normal leading-snug"
+                        >
+                          {t('orders.cancelSettlementReverse')}
+                        </Label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <input
+                          id="order-clone-retain"
+                          type="radio"
+                          name="order-clone-settlement"
+                          className="mt-1"
+                          checked={
+                            cloneSettlement === 'retain_paid_as_wallet_credit'
+                          }
+                          onChange={() =>
+                            setCloneSettlement('retain_paid_as_wallet_credit')
+                          }
+                        />
+                        <Label
+                          htmlFor="order-clone-retain"
+                          className="cursor-pointer font-normal leading-snug"
+                        >
+                          {t('orders.cancelSettlementRetain')}
+                        </Label>
+                      </div>
+                    </fieldset>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cloneMut.isPending}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={cloneMut.isPending}
+              onClick={() =>
+                cloneMut.mutate({
+                  oid: order.id,
+                  settlement: showCancelSettlementChoice
+                    ? cloneSettlement
+                    : undefined,
+                })
+              }
+            >
+              {cloneMut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t('orders.cloneConfirmAction')
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>

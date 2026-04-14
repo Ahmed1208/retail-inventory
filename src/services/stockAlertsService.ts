@@ -27,6 +27,13 @@ export type StockAlertRow = {
   created_at: string
 }
 
+/** When true, only admin operators should see the alert in UI and toasts. */
+export function stockAlertIsAdminOnly(
+  meta: Record<string, unknown> | undefined | null
+): boolean {
+  return meta?.admin_only === true
+}
+
 type StockAlertRowRaw = Record<string, unknown> & {
   products?: { name?: string } | null
 }
@@ -54,12 +61,17 @@ function mapRow(row: StockAlertRowRaw): StockAlertRow {
   }
 }
 
-export async function listStockAlerts(limit = 100): Promise<StockAlertRow[]> {
+export async function listStockAlerts(
+  limit = 100,
+  opts?: { viewerIsAdmin?: boolean }
+): Promise<StockAlertRow[]> {
+  const fetchCap =
+    opts?.viewerIsAdmin === false ? Math.min(Math.max(limit * 4, 80), 400) : limit
   const { data, error } = await supabase
     .from('stock_alerts')
     .select('*, products(name)')
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(fetchCap)
 
   if (error) {
     if (error.code === '42P01' || error.message?.includes('stock_alerts')) {
@@ -67,10 +79,40 @@ export async function listStockAlerts(limit = 100): Promise<StockAlertRow[]> {
     }
     throw error
   }
-  return (data ?? []).map((r) => mapRow(r as StockAlertRowRaw))
+  let rows = (data ?? []).map((r) => mapRow(r as StockAlertRowRaw))
+  if (opts?.viewerIsAdmin === false) {
+    rows = rows.filter((r) => !stockAlertIsAdminOnly(r.meta))
+  }
+  return rows.slice(0, limit)
 }
 
-export async function countUnreadStockAlerts(): Promise<number> {
+export async function countUnreadStockAlerts(opts?: {
+  viewerIsAdmin?: boolean
+}): Promise<number> {
+  if (opts?.viewerIsAdmin === false) {
+    const { data, error } = await supabase
+      .from('stock_alerts')
+      .select('meta')
+      .is('read_at', null)
+      .order('created_at', { ascending: false })
+      .limit(2500)
+
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('stock_alerts')) {
+        return 0
+      }
+      throw error
+    }
+    return (data ?? []).filter((row) => {
+      const m = row.meta
+      const meta =
+        m && typeof m === 'object' && !Array.isArray(m)
+          ? (m as Record<string, unknown>)
+          : null
+      return !stockAlertIsAdminOnly(meta)
+    }).length
+  }
+
   const { count, error } = await supabase
     .from('stock_alerts')
     .select('id', { count: 'exact', head: true })

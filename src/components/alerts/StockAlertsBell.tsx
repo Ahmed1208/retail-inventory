@@ -18,6 +18,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from '@/components/ui/sheet'
+import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { cn } from '@/lib/utils'
 import { Link } from 'react-router-dom'
@@ -34,18 +35,19 @@ function alertTypeLabel(t: (k: string) => string, type: StockAlertRow['alert_typ
 export function StockAlertsBell() {
   const { t } = useTranslation()
   const { isRTL } = useLanguage()
+  const { isAdmin } = useAuth()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
 
   const { data: alerts = [], isLoading } = useQuery({
-    queryKey: QK_LIST,
-    queryFn: () => listStockAlerts(80),
+    queryKey: [...QK_LIST, isAdmin],
+    queryFn: () => listStockAlerts(80, { viewerIsAdmin: isAdmin }),
     staleTime: 15_000,
   })
 
   const { data: unread = 0 } = useQuery({
-    queryKey: QK_UNREAD,
-    queryFn: countUnreadStockAlerts,
+    queryKey: [...QK_UNREAD, isAdmin],
+    queryFn: () => countUnreadStockAlerts({ viewerIsAdmin: isAdmin }),
     staleTime: 10_000,
   })
 

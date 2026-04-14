@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 
 import {
   cancelPurchaseOrder,
+  clonePurchaseOrderAsReplacementDraft,
   confirmPurchaseOrder,
   type CancelPurchaseOrderSettlement,
   getPurchaseOrderById,
@@ -46,6 +47,7 @@ import { PoRegisterPaymentGateDialog } from '@/components/purchaseOrders/PoRegis
 
 export function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
@@ -53,6 +55,7 @@ export function PurchaseOrderDetail() {
   const fc = (n: number) => formatCurrency(n, lang)
 
   const canCancelPO = useFeatureEnabled('purchaseOrders.cancel')
+  const canClonePo = useFeatureEnabled('purchaseOrders.cloneAsReplacementDraft')
   const canCreatePo = useFeatureEnabled('purchaseOrders.create')
   const canConfirmReceive = useFeatureEnabled('purchaseOrders.confirmReceive')
   const canEditPoNote = useFeatureEnabled('purchaseOrders.editNote')
@@ -82,6 +85,9 @@ export function PurchaseOrderDetail() {
   const [cancelSettlement, setCancelSettlement] =
     useState<CancelPurchaseOrderSettlement>('reverse_payments')
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
+  const [cloneSettlement, setCloneSettlement] =
+    useState<CancelPurchaseOrderSettlement>('reverse_payments')
 
   const {
     data: po,
@@ -238,6 +244,27 @@ export function PurchaseOrderDetail() {
       toast.error(supabaseErrorMessage(e) || t('purchaseOrders.toastError')),
   })
 
+  const cloneMut = useMutation({
+    mutationFn: (p: {
+      pid: string
+      settlement?: CancelPurchaseOrderSettlement
+    }) =>
+      clonePurchaseOrderAsReplacementDraft(
+        p.pid,
+        p.settlement ? { settlement: p.settlement } : undefined
+      ),
+    onSuccess: (created) => {
+      invalidatePO()
+      setCloneOpen(false)
+      toast.success(t('purchaseOrders.toastClonedAsDraft'))
+      navigate(`/purchase-orders/${created.id}`)
+    },
+    onError: (e: unknown) =>
+      toast.error(
+        e instanceof Error ? e.message : t('purchaseOrders.cloneError')
+      ),
+  })
+
   const openConfirmDraft = () => {
     if (!po || po.status !== 'draft') return
     setPayUse({
@@ -340,6 +367,13 @@ export function PurchaseOrderDetail() {
   const showPoSupplierPaymentCancelHint =
     po.status === 'received' && !po.person_id && hasRecordedPoPayments
 
+  const showClonePoButton =
+    canClonePo &&
+    !po.is_historical_snapshot &&
+    po.status !== 'cancelled' &&
+    po.items.length > 0 &&
+    Boolean(po.person_id?.trim())
+
   return (
     <div
       className={cn(
@@ -394,6 +428,18 @@ export function PurchaseOrderDetail() {
                 {t('purchaseOrders.confirmReceiveDraft')}
               </Button>
             )}
+            {showClonePoButton ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setCloneSettlement('reverse_payments')
+                  setCloneOpen(true)
+                }}
+              >
+                {t('purchaseOrders.editAsReplacement')}
+              </Button>
+            ) : null}
             {canCancel && (
               <Button
                 type="button"
@@ -622,6 +668,105 @@ export function PurchaseOrderDetail() {
         onConfirm={handleConfirmDraftSubmit}
         registerPaymentPicker={null}
       />
+
+      <AlertDialog open={cloneOpen} onOpenChange={setCloneOpen}>
+        <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('purchaseOrders.cloneConfirmTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-start text-muted-foreground">
+                <p>
+                  {(
+                    t as (key: string, opts: Record<string, number>) => string
+                  )('purchaseOrders.cloneConfirmIntro', {
+                    number: po.order_number,
+                  })}
+                </p>
+                {showPoSupplierPaymentCancelHint && (
+                  <p className="text-sm text-foreground">
+                    {t('purchaseOrders.cancelSupplierPaymentsHint')}
+                  </p>
+                )}
+                {showCancelSettlementChoice && (
+                  <div className="space-y-3 rounded-md border border-border p-3">
+                    <p className="text-sm text-foreground">
+                      {t('purchaseOrders.cancelSettlementIntro')}
+                    </p>
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-foreground">
+                        {t('purchaseOrders.cancelSettlementLegend')}
+                      </legend>
+                      <div className="flex items-start gap-2">
+                        <input
+                          id="po-clone-reverse"
+                          type="radio"
+                          name="po-clone-settlement"
+                          className="mt-1"
+                          checked={cloneSettlement === 'reverse_payments'}
+                          onChange={() =>
+                            setCloneSettlement('reverse_payments')
+                          }
+                        />
+                        <Label
+                          htmlFor="po-clone-reverse"
+                          className="cursor-pointer font-normal leading-snug"
+                        >
+                          {t('purchaseOrders.cancelSettlementReverse')}
+                        </Label>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <input
+                          id="po-clone-retain"
+                          type="radio"
+                          name="po-clone-settlement"
+                          className="mt-1"
+                          checked={
+                            cloneSettlement === 'retain_paid_as_wallet_credit'
+                          }
+                          onChange={() =>
+                            setCloneSettlement('retain_paid_as_wallet_credit')
+                          }
+                        />
+                        <Label
+                          htmlFor="po-clone-retain"
+                          className="cursor-pointer font-normal leading-snug"
+                        >
+                          {t('purchaseOrders.cancelSettlementRetain')}
+                        </Label>
+                      </div>
+                    </fieldset>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={cloneMut.isPending}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              disabled={cloneMut.isPending}
+              onClick={() =>
+                cloneMut.mutate({
+                  pid: po.id,
+                  settlement: showCancelSettlementChoice
+                    ? cloneSettlement
+                    : undefined,
+                })
+              }
+            >
+              {cloneMut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t('purchaseOrders.cloneConfirmAction')
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>

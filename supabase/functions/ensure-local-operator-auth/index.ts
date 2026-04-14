@@ -1,6 +1,10 @@
 /**
- * Creates a local auth.users row with a fixed id (mirrored from hosted) so profile sync can apply.
- * Callable only by a local operator admin. Used during Admin → Data sync (pull from cloud).
+ * Creates an auth.users row with a **fixed id** (mirrored from the other environment) when the
+ * profile row exists but Auth does not — so `upsert_profile_for_data_sync` can apply.
+ * Deploy this function on **each** Supabase project (local and hosted). Admin Data sync invokes it
+ * via `profileMirrorAuthClient`: local client when pulling into local, cloud client when pushing to cloud.
+ *
+ * Callable only by an operator admin on that project. Same temp password pattern for sign-in after mirror.
  *
  * Secrets: SUPABASE_* are injected by the platform. Optional OPERATOR_MIRROR_TEMP_PASSWORD (min 8).
  */

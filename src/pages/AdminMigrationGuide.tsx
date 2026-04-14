@@ -27,16 +27,20 @@ import {
 export const MIGRATION_STEP_IDS = [
   'plan_exports',
   'env_schema',
+  'operators_members',
   'warehouses',
   'categories_brands',
   'people',
   'products',
+  'inventory_transfers_guide',
+  'data_sync_environments',
   'payments_optional',
   'po_csv',
   'orders_csv',
   'register',
   'smoke_test',
   'control_review',
+  'documentation_review',
 ] as const
 
 export type MigrationStepId = (typeof MIGRATION_STEP_IDS)[number]
@@ -131,6 +135,21 @@ const PHASES: PhaseConfig[] = [
     ],
   },
   {
+    id: 'phaseTeam',
+    steps: [
+      {
+        id: 'operators_members',
+        linkKeys: [
+          { to: '/admin/members', labelKey: 'migrationGuide.link.members' },
+          {
+            to: '/admin/members/new',
+            labelKey: 'migrationGuide.link.addMember',
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'phaseFoundation',
     steps: [{ id: 'warehouses', linkKeys: [{ to: '/warehouses', labelKey: 'migrationGuide.link.warehouses' }] }],
   },
@@ -163,6 +182,45 @@ const PHASES: PhaseConfig[] = [
             to: `/products?${qsImport()}`,
             labelKey: 'migrationGuide.importShortcut.products',
             gatedBy: 'products.addProduct',
+          },
+        ],
+      },
+      {
+        id: 'inventory_transfers_guide',
+        linkKeys: [
+          {
+            to: '/inventory-transfers',
+            labelKey: 'migrationGuide.link.inventoryTransfersHome',
+          },
+          {
+            to: '/inventory-transfers/new',
+            labelKey: 'migrationGuide.link.newInventoryTransfer',
+            gatedBy: 'inventoryTransfers.create',
+          },
+          {
+            to: '/inventory-transfers/list',
+            labelKey: 'migrationGuide.link.inventoryTransfersList',
+            gatedBy: 'inventoryTransfers.list',
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'phaseSync',
+    steps: [
+      {
+        id: 'data_sync_environments',
+        linkKeys: [
+          {
+            to: '/sync',
+            labelKey: 'migrationGuide.link.dataSync',
+            gatedBy: 'admin.dataSync',
+          },
+          {
+            to: '/sync/history',
+            labelKey: 'migrationGuide.link.dataSyncHistory',
+            gatedBy: 'admin.dataSync',
           },
         ],
       },
@@ -249,6 +307,16 @@ const PHASES: PhaseConfig[] = [
       {
         id: 'control_review',
         linkKeys: [{ to: '/control', labelKey: 'migrationGuide.link.control' }],
+      },
+      {
+        id: 'documentation_review',
+        linkKeys: [
+          {
+            to: '/admin/documentation',
+            labelKey: 'migrationGuide.link.documentation',
+            gatedBy: 'sidebar.documentation',
+          },
+        ],
       },
     ],
   },

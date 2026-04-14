@@ -38,6 +38,7 @@ import {
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/context/AuthContext'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PersonFormDialog } from '@/components/people/PersonFormDialog'
 import { PersonCsvImportDialog } from '@/components/people/PersonCsvImportDialog'
@@ -62,6 +63,7 @@ function balanceClass(b: number) {
 export function People() {
   const { t, i18n } = useTranslation()
   const { isRTL } = useLanguage()
+  const { isAdmin } = useAuth()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -127,8 +129,8 @@ export function People() {
   })
 
   const { data: alertsForDirection = [] } = useQuery({
-    queryKey: ['stockAlerts', 'list'],
-    queryFn: () => listStockAlerts(120),
+    queryKey: ['stockAlerts', 'list', isAdmin],
+    queryFn: () => listStockAlerts(120, { viewerIsAdmin: isAdmin }),
     staleTime: 20_000,
   })
 
