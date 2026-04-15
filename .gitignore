@@ -1,15 +1,28 @@
+# Local clone used to sync official Supabase docker assets
+.tmp/
+
+# Self-hosted Supabase Docker (runtime data; keep config files in volumes/ tracked)
+volumes/db/data
+volumes/storage
+
+# Copied from supabase/functions by `npm run functions:sync:docker` (do not commit duplicates)
+volumes/functions/create-member
+volumes/functions/update-member
+volumes/functions/ensure-local-operator-auth
+
 # Dependencies and build
 node_modules/
 dist/
 dist-ssr
 
 # Environment (never commit secrets)
+.env
 .env.local
 .env.*.local
 *.local
 
-# Logs
-logs
+# Logs (root only — do not ignore `volumes/logs` for Docker)
+/logs
 *.log
 npm-debug.log*
 yarn-debug.log*

@@ -1186,7 +1186,7 @@ export async function runResetLocalFromCloud({
   onProgress: (p: SyncProgress) => void
   signal: AbortSignal
 }): Promise<CloudMasterSyncResult> {
-  let rowsPushedToCloud = 0
+  const rowsPushedToCloud = 0
   let rowsPulledToLocal = 0
   let ordersRenumbered = 0
   let purchaseOrdersRenumbered = 0
@@ -1320,6 +1320,22 @@ export async function runResetLocalFromCloud({
   }
 }
 
+/** True for RFC1918 private IPv4 (shop LAN self-hosted Docker / Kong). */
+function isPrivateLanIpv4(hostname: string): boolean {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname)
+  if (!m) return false
+  const a = Number(m[1])
+  const b = Number(m[2])
+  if (a === 10) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 192 && b === 168) return true
+  return false
+}
+
+/**
+ * True when the primary API URL is treated as the "offline" / self-managed side for Data sync
+ * (localhost, *.local, or a private LAN IP such as the shop PC running Docker Compose).
+ */
 export function isLocalSupabaseUrl(url: string | undefined): boolean {
   if (!url) return false
   try {
@@ -1327,9 +1343,11 @@ export function isLocalSupabaseUrl(url: string | undefined): boolean {
     return (
       u.hostname === '127.0.0.1' ||
       u.hostname === 'localhost' ||
-      u.hostname.endsWith('.local')
+      u.hostname.endsWith('.local') ||
+      isPrivateLanIpv4(u.hostname)
     )
   } catch {
     return false
   }
 }
+

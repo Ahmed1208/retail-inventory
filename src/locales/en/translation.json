@@ -138,7 +138,7 @@
     "rlsNote": "Uses your normal Supabase sessions only (no service role in the browser). The hosted user must be allowed by RLS to read and upsert the listed tables.",
     "envSection": "Hosted project (env)",
     "envOk": "VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY are set (e.g. in .env.development).",
-    "envMissing": "Hosted project URL and anon key are not available to the dev server. Add VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY to .env.development (or .env.development.local), or put your hosted VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.cloud.local, then restart npm run dev. See .env.example.",
+    "envMissing": "Hosted project URL and anon key are not available for Data sync. Add VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY to .env.development (or .env.development.local), or put your hosted VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.cloud.local (used for dev and for npm run build), then restart the dev server or rebuild. See .env.example and docs/SECOND_PC.md.",
     "lastRun": "Last successful sync: {{at}}",
     "cloudSection": "Sign in to hosted Supabase",
     "cloudCredentialsHint": "Use the full email listed under Authentication → Users on your hosted project (e.g. admin@members.stockpilot.local if you created that user there). This is not the same as typing only the short username from the main login screen.",

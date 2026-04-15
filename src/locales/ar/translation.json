@@ -138,7 +138,7 @@
     "rlsNote": "يُستخدم جلسات Supabase العادية فقط (بدون مفتاح service role في المتصفح). يجب أن يسمح RLS للمستخدم المستضاف بقراءة و upsert الجداول المذكورة.",
     "envSection": "المشروع المستضاف (المتغيرات)",
     "envOk": "تم ضبط VITE_SYNC_CLOUD_URL و VITE_SYNC_CLOUD_ANON_KEY (مثلاً في .env.development).",
-    "envMissing": "عنوان المشروع المستضاف ومفتاح anon غير متاحين لخادم التطوير. أضف VITE_SYNC_CLOUD_URL و VITE_SYNC_CLOUD_ANON_KEY إلى .env.development أو .env.development.local، أو ضع VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY المستضافين في .env.cloud.local ثم أعد تشغيل npm run dev. راجع .env.example.",
+    "envMissing": "عنوان المشروع المستضاف ومفتاح anon غير متاحين لمزامنة البيانات. أضف VITE_SYNC_CLOUD_URL و VITE_SYNC_CLOUD_ANON_KEY إلى .env.development أو .env.development.local، أو ضع VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY المستضافين في .env.cloud.local (للتطوير وبعد npm run build) ثم أعد تشغيل الخادم أو أعد البناء. راجع .env.example و docs/SECOND_PC.md.",
     "lastRun": "آخر مزامنة ناجحة: {{at}}",
     "cloudSection": "تسجيل الدخول إلى Supabase المستضاف",
     "cloudCredentialsHint": "استخدم البريد الكامل كما في المصادقة → المستخدمون في مشروعك المستضاف (مثل admin@members.stockpilot.local إن أنشأت ذلك المستخدم هناك). هذا ليس نفس إدخال اسم المستخدم القصير فقط من شاشة الدخول الرئيسية.",

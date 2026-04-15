@@ -80,11 +80,11 @@ Git ignores `*.local` env files (see [`.gitignore`](./.gitignore)); use them for
 | [`.env.development`](.env.development) | Default **local** `VITE_SUPABASE_*` (and optional placeholder `VITE_SYNC_CLOUD_*`); safe to commit generic local values | `npm run dev` / `npm run dev:local` (Vite `development`) |
 | **`.env.development.local`** | **Secrets / overrides** for local dev (hosted sync URL, real cloud anon key, corrected local keys) | Same as above; overrides `.env.development` |
 | [`.env.cloud.example`](.env.cloud.example) | Template only | Copy to `.env.cloud.local` |
-| **`.env.cloud.local`** | **Hosted** Supabase URL + anon for `npm run dev:cloud` | Vite `cloud` mode; also merged in `development` for **sync** credentials (see [`vite.config.ts`](./vite.config.ts)) |
+| **`.env.cloud.local`** | **Hosted** Supabase URL + anon for `npm run dev:cloud` | Vite `cloud` mode; merged into **`development`** and **`production`** builds as **`VITE_SYNC_CLOUD_*`** when unset in mode files (see [`vite.config.ts`](./vite.config.ts)) |
 | **`.env.local`** | **CLI / scripts only** — DB password, `DATABASE_URL`, optional `SUPABASE_ACCESS_TOKEN` | Not for switching app target: **do not** put `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` here (they override every mode and break local vs cloud switching) |
 | [`.env.example`](.env.example) | Long-form comments and patterns for all of the above | Reference only |
-| **`.env.mirror-auth.local`** | Service-role script `npm run mirror:cloud-auth-to-local` only | See [`.env.example`](.env.example) → “Mirror hosted Auth → local” |
-| **`.env.production.local`** | Optional local **`npm run build`** against production Supabase | Vite `production`; not used on Vercel (set vars in the dashboard) |
+| **`.env.mirror-auth.local`** | **`npm run mirror:cloud-auth-to-local`** — copy hosted Auth users to local/self-hosted (same ids) | Template: [`.env.mirror-auth.example`](./.env.mirror-auth.example); see [`.env.example`](./.env.example) and [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) |
+| **`.env.production.local`** | Local **`npm run build`** — self-hosted Kong (`VITE_SUPABASE_*`) or hosted dashboard vars on Vercel | Vite `production`; shop Docker + sync: see [`.env.shop.example`](./.env.shop.example) and [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) |
 
 ### Variables by file
 
@@ -110,7 +110,7 @@ Same variable names as `.env.development`; any line here wins over `.env.develop
 | `VITE_SUPABASE_URL` | Yes | Hosted project URL, e.g. `https://<ref>.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Hosted **anon** key (Dashboard → **Settings → API**) |
 
-Used by `npm run dev:cloud`. Vite also reads this file in **`development`** mode only to fill `VITE_SYNC_CLOUD_*` for the sync UI if you did not set them in `.env.development` (see [`vite.config.ts`](./vite.config.ts)).
+Used by `npm run dev:cloud`. Vite merges this file into **`development`** and **`production`** builds to fill `VITE_SYNC_CLOUD_*` for **Admin → Data sync** when you did not set them in `.env.development` / `.env.production.local` (see [`vite.config.ts`](./vite.config.ts)).
 
 **`.env.local`** (gitignored)
 
@@ -121,14 +121,14 @@ Used by `npm run dev:cloud`. Vite also reads this file in **`development`** mode
 | `SUPABASE_POOLER_REGION` | Optional | e.g. `eu-west-1` when using pooler |
 | `SUPABASE_ACCESS_TOKEN` | Optional | Personal access token for `supabase link` / remote CLI (never commit) |
 
-**`.env.mirror-auth.local`** (gitignored; optional script)
+**`.env.mirror-auth.local`** (gitignored; **`npm run mirror:cloud-auth-to-local`** — use when shop/self-hosted **Auth** must match **hosted** operators)
 
 | Variable | Description |
 |----------|-------------|
 | `MIRROR_CLOUD_SUPABASE_URL` | Hosted project URL |
 | `MIRROR_CLOUD_SERVICE_ROLE_KEY` | Hosted **service role** (machine only; script use) |
-| `MIRROR_LOCAL_SUPABASE_URL` | Local URL, e.g. `http://127.0.0.1:54321` |
-| `MIRROR_LOCAL_SERVICE_ROLE_KEY` | Local **service role** from `npx supabase status -o env` |
+| `MIRROR_LOCAL_SUPABASE_URL` | Local API: **`http://127.0.0.1:8000`** (Docker Compose Kong on this PC) or **`http://127.0.0.1:54321`** (`npx supabase start` only) |
+| `MIRROR_LOCAL_SERVICE_ROLE_KEY` | Local **service_role**: Docker root **`.env`** → `SERVICE_ROLE_KEY`; CLI → `npx supabase status -o env` |
 | `MIRROR_LOCAL_PASSWORD` | Optional; default password applied to mirrored users (min 8 chars) |
 
 **`.env.production.local`** (gitignored; optional)
@@ -225,11 +225,11 @@ Then sign in on the sync page with a **hosted** Supabase user that is allowed by
 
 Multi-table sync is best-effort across HTTP (not one giant SQL transaction).
 
-#### Mirror hosted Auth onto local (optional, dev)
+#### Mirror hosted Auth onto local (required for shop ↔ cloud operator parity)
 
-To **replace all local Auth users** with the same ids as on the hosted project (so profile sync applies every operator), use the **service role** script (run on your machine only; keys stay in a gitignored env file):
+To **replace all local Auth users** with the same ids as on the hosted project (so **members/operators** and **`profiles`** line up with cloud), use the **service role** script (run on your machine only; keys stay in a gitignored env file). On a **second PC** with Docker Compose Kong, treat this as **part of the standard setup**, not an edge case — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md).
 
-1. Copy [`.env.example`](.env.example) → **`.env.mirror-auth.local`** and set `MIRROR_CLOUD_*`, `MIRROR_LOCAL_*`, and optionally `MIRROR_LOCAL_PASSWORD` (default `devpass123`).
+1. Copy [`.env.mirror-auth.example`](./.env.mirror-auth.example) → **`.env.mirror-auth.local`** and set `MIRROR_CLOUD_*`, `MIRROR_LOCAL_*` (for self-hosted Docker use **`http://127.0.0.1:8000`** and **`SERVICE_ROLE_KEY`** from root **`.env`**), and optionally `MIRROR_LOCAL_PASSWORD` (default `devpass123`).
 2. `npm run mirror:cloud-auth-to-local -- --dry-run` — lists counts only.
 3. `I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local` — deletes **every** local Auth user, then recreates users from the host with the **same ids**. Hosted passwords are **not** copied; everyone gets `MIRROR_LOCAL_PASSWORD`.
 4. Run **Admin → Data sync** once to refresh `profiles` and business tables from cloud.
@@ -239,6 +239,37 @@ See comments at the top of [`scripts/mirror-cloud-auth-to-local.mjs`](./scripts/
 ## Database setup
 
 **Local Docker:** you do **not** need to paste SQL by hand — `npx supabase db reset` applies everything under [`supabase/migrations/`](./supabase/migrations/) in filename order plus [`supabase/seed.sql`](./supabase/seed.sql). Use [Run the project locally](#run-the-project-locally) for the full flow.
+
+### Self-hosted Supabase (root `docker-compose.yml`)
+
+If you run the [official Docker Compose stack](https://github.com/supabase/supabase/tree/master/docker) from this repo (`docker compose up -d`), apply StockPilot migrations to the **Postgres `db` service** (not the pooler on host port `5432` — that is Supavisor and may return **Tenant or user not found** until `POOLER_TENANT_ID` is configured).
+
+1. Ensure the stack is up: `docker compose up -d`.
+2. From the repo root: **`npm run db:push:docker-compose`** — runs `supabase db push` in a one-off container on the compose network against `postgresql://postgres:…@db:5432/postgres` (reads **`POSTGRES_PASSWORD`** and **`POSTGRES_DB`** from root **`.env`**). Dry run: `DRY_RUN=1 npm run db:push:docker-compose`.
+3. If your compose network is not `supabase_default`, set **`SUPABASE_DOCKER_NETWORK`** to the value from `docker network ls`, then rerun the script.
+4. **Seed data** is not run by `db push`. Load [`supabase/seed.sql`](./supabase/seed.sql) manually if you need the local dev admin (e.g. `docker compose exec -T db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/seed.sql`), or create users in Studio → Authentication.
+
+### Edge Functions (self-hosted Docker)
+
+The compose **`functions`** service mounts **`./volumes/functions`** and runs the **`main`** router (`volumes/functions/main`), which loads each worker from a sibling folder (e.g. `create-member/index.ts`). Your app code lives under **`supabase/functions/`** — that path is **not** mounted by default.
+
+1. **`npm run functions:sync:docker`** — copies each `supabase/functions/<name>/` (with `index.ts`) into `volumes/functions/<name>/`. The upstream **`main`** router is left unchanged.
+2. **`docker compose restart functions`** — picks up new or changed files.
+3. **Smoke test** (use **`ANON_KEY`** from root `.env` and your Kong port, usually **8000**):
+
+   ```bash
+   curl -sS "http://127.0.0.1:8000/functions/v1/hello" \
+     -H "Authorization: Bearer YOUR_ANON_KEY" \
+     -H "apikey: YOUR_ANON_KEY"
+   ```
+
+   StockPilot routes such as **`/functions/v1/create-member`** work the same way once synced.
+
+**JWT:** root `.env` sets **`FUNCTIONS_VERIFY_JWT`** for the edge-runtime container. With **`false`**, you can call functions with only the anon key (dev-friendly). Use **`true`** in production and send a valid user JWT.
+
+**Note:** `ensure-local-operator-auth` is intended for the **CLI local** stack (`supabase start`); on self-hosted it may still run if you sync it, but behavior is only needed where that flow is used.
+
+**Second PC / shop + hosted Data sync:** copy env files (see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md)), then run **`npm run second-pc:setup`**. Build env template: [`.env.shop.example`](./.env.shop.example).
 
 ### First time setup (hosted Supabase)
 
