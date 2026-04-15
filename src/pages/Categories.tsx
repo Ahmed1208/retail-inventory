@@ -33,6 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
+
 export function Categories() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
@@ -46,6 +48,17 @@ export function Categories() {
   const [editingName, setEditingName] = useState('')
   const [deleteCategoryState, setDeleteCategoryState] =
     useState<Category | null>(null)
+
+  const canAddCategory = useFeatureEnabled('categories.addCategory')
+  const canEditCategory = useFeatureEnabled('categories.editCategory')
+  const canDeleteCategory = useFeatureEnabled('categories.deleteCategory')
+
+  useEffect(() => {
+    if (!canEditCategory) {
+      setEditingId(null)
+      setEditingName('')
+    }
+  }, [canEditCategory])
 
   useEffect(() => {
     document.title = 'Categories | StockPilot'
@@ -163,9 +176,11 @@ export function Categories() {
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
         />
-        <Button onClick={() => setAddOpen(true)}>
-          {t('categories.addCategory')}
-        </Button>
+        {canAddCategory && (
+          <Button onClick={() => setAddOpen(true)}>
+            {t('categories.addCategory')}
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -204,7 +219,7 @@ export function Categories() {
                     className="border-b border-border/50 hover:bg-muted/30"
                   >
                     <td className="px-4 py-3">
-                      {editingId === cat.id ? (
+                      {editingId === cat.id && canEditCategory ? (
                         <Input
                           value={editingName}
                           onChange={(e) => setEditingName(e.target.value)}
@@ -230,7 +245,7 @@ export function Categories() {
                       {formatDate(cat.created_at)}
                     </td>
                     <td className="px-4 py-3">
-                      {editingId === cat.id ? (
+                      {editingId === cat.id && canEditCategory ? (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -238,29 +253,35 @@ export function Categories() {
                         >
                           {t('common.save')}
                         </Button>
-                      ) : (
+                      ) : canEditCategory || canDeleteCategory ? (
                         <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingId(cat.id)
-                              setEditingName(cat.name)
-                            }}
-                            aria-label={t('common.edit')}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteCategoryState(cat)}
-                            aria-label={t('common.delete')}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {canEditCategory && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setEditingId(cat.id)
+                                setEditingName(cat.name)
+                              }}
+                              aria-label={t('common.edit')}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDeleteCategory && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteCategoryState(cat)}
+                              aria-label={t('common.delete')}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                   </tr>

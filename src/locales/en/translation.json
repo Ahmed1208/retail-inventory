@@ -6,11 +6,197 @@
     "dashboard": "Dashboard",
     "products": "Products",
     "orders": "Orders",
+    "people": "People",
     "purchaseOrders": "Purchase Orders",
     "categories": "Categories",
     "brands": "Brands",
+    "warehouses": "Warehouses",
+    "inventoryTransfers": "Stock transfers",
     "stockMovements": "Stock Movements",
-    "reports": "Reports"
+    "reports": "Reports",
+    "control": "Control",
+    "payments": "Payments",
+    "register": "Register",
+    "admin": "Admin",
+    "documentation": "Documentation",
+    "adminHubDescription": "Open dashboard, documentation, migration guide, members, data sync, stock movements, or reports from here.",
+    "migrationGuide": "Migration guide",
+    "backToAdmin": "Back to Admin",
+    "members": "Members",
+    "dataSync": "Data sync"
+  },
+  "auth": {
+    "loginTitle": "Sign in",
+    "loginSubtitle": "Use your operator username and password.",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "logout": "Log out",
+    "invalidCredentialsHint": "Wrong username or password for this app’s Supabase project. The username becomes an email like admin@members.stockpilot.local. If you use local Supabase and ran supabase db reset, try password devpass123 for user admin (see README). Otherwise use the password you set in Dashboard → Authentication."
+  },
+  "members": {
+    "listTitle": "Members",
+    "listSubtitle": "Operators who can sign in to StockPilot.",
+    "addMember": "Add member",
+    "newTitle": "Add member",
+    "newSubtitle": "Create credentials and choose what this operator may do.",
+    "backToList": "Back to members",
+    "fieldUsername": "Username",
+    "fieldPassword": "Password",
+    "fieldPasswordConfirm": "Confirm password",
+    "next": "Next",
+    "back": "Back",
+    "reviewTitle": "Review",
+    "reviewUsername": "Username",
+    "reviewPermissionsHint": "Permissions follow the answers you gave; Admin and Control stay off for new members.",
+    "createMember": "Create member",
+    "createSuccess": "Member created.",
+    "loadError": "Could not load members.",
+    "empty": "No members yet.",
+    "notFound": "Member not found.",
+    "editTitle": "Edit member",
+    "editSubtitle": "Update password and feature access for {{username}}.",
+    "sectionPassword": "Password",
+    "passwordHint": "Leave blank until you want to set a new password. Passwords are stored securely in Supabase Auth (hashed), not in the members table.",
+    "updatePassword": "Update password",
+    "sectionFeatures": "Feature access",
+    "featuresHint": "Checked means the operator may use that capability. Matches the Control panel list for the whole system.",
+    "saveFeatures": "Save feature access",
+    "featuresSaved": "Feature access saved.",
+    "saveError": "Could not save.",
+    "passwordUpdated": "Password updated.",
+    "colUsername": "Username",
+    "colAdmin": "Admin",
+    "colWarehouses": "Warehouses",
+    "colCreated": "Created",
+    "sectionWarehouses": "Warehouse access",
+    "warehousesHint": "Select at least one inventory location. Empty access is not allowed for operators.",
+    "fieldWarehouses": "Allowed warehouses",
+    "errorWarehouses": "Select at least one warehouse.",
+    "warehousesSaved": "Warehouse access updated.",
+    "saveWarehouses": "Save warehouse access",
+    "errorUsername": "Enter a username (letters, numbers, dot, underscore, hyphen; at least 2 characters).",
+    "errorPasswordShort": "Password must be at least 8 characters.",
+    "errorPasswordMatch": "Passwords do not match.",
+    "questionProgress": "Question {{current}} of {{total}}",
+    "onboard": {
+      "q": {
+        "salesPos": {
+          "title": "Sales & POS",
+          "desc": "Allow opening the orders hub, new orders, editing drafts, checkout, and printing invoices?"
+        },
+        "ordersManage": {
+          "title": "Order management",
+          "desc": "Allow canceling orders, adding payments, and editing order notes?"
+        },
+        "ordersCsv": {
+          "title": "Orders CSV",
+          "desc": "Allow importing and exporting orders via CSV?"
+        },
+        "purchaseOrders": {
+          "title": "Purchase orders (core)",
+          "desc": "Allow PO list, creating POs, and receiving stock?"
+        },
+        "poManage": {
+          "title": "Purchase orders (edit & advanced)",
+          "desc": "Allow editing PO notes, canceling POs, cost overrides, and PO CSV import/export? Turn off for receive-only operators."
+        },
+        "inventoryAdd": {
+          "title": "Catalog — add new",
+          "desc": "Allow adding new products, categories, and brands?"
+        },
+        "inventoryEditDelete": {
+          "title": "Catalog — edit, delete & stock",
+          "desc": "Allow editing or deleting products/categories/brands and stock adjustments? Turn off if they should only create new records."
+        },
+        "inventoryTransfers": {
+          "title": "Stock transfers",
+          "desc": "Allow creating and listing warehouse transfers?"
+        },
+        "peopleAccess": {
+          "title": "People, payments & register (access)",
+          "desc": "Allow viewing people, adding people, recording payments, payments list, full ledger view, and register deposit/withdraw?"
+        },
+        "peopleEditDelete": {
+          "title": "People & payments (edit & risk)",
+          "desc": "Allow editing/deleting people and ledger note edits or reversals? Turn off for staff who only add customers or take payments."
+        },
+        "reportsMovements": {
+          "title": "Reports & movements",
+          "desc": "Allow report CSV export and the stock movements shortcut?"
+        }
+      }
+    }
+  },
+  "adminSync": {
+    "title": "Data sync",
+    "subtitle": "Cloud is the master: push local rows to hosted Supabase (sales order and PO numbers are kept when that number is not already used on cloud), repair any remaining duplicate document numbers on the cloud, refresh product quantity totals, then pull the full cloud snapshot back to this device.",
+    "needLocalApp": "Data sync is available when the app uses local Supabase (e.g. http://127.0.0.1:54321). Run npm run dev with local URLs, not npm run dev:cloud only.",
+    "profilesNote": "When Auth is missing on the sync **target** (pull from host → local, or push from local → host), the app calls Edge Function `ensure-local-operator-auth` on that project (deploy it on local and hosted; admin-only). Mirrored users sign in with `username`@members.stockpilot.local and the temp password from `OPERATOR_MIRROR_TEMP_PASSWORD` on that function (default devpass123 locally; set the secret on hosted if needed). Passwords are not copied between environments.",
+    "profilesSkippedToastTitle": "{{count}} hosted operator profiles not copied locally",
+    "profilesSkippedToastDesc": "Local Supabase Auth has no row with those user ids, so profile rows cannot be created here. The rest of this sync succeeded. Operators who should sign in on local need matching Auth users (same ids as on the host—often via a dev seed or SQL on local only).",
+    "rlsNote": "Uses your normal Supabase sessions only (no service role in the browser). The hosted user must be allowed by RLS to read and upsert the listed tables.",
+    "envSection": "Hosted project (env)",
+    "envOk": "VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY are set (e.g. in .env.development).",
+    "envMissing": "Hosted project URL and anon key are not available for Data sync. Add VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY to .env.development (or .env.development.local), or put your hosted VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.cloud.local (used for dev and for npm run build), then restart the dev server or rebuild. See .env.example and docs/SECOND_PC.md.",
+    "lastRun": "Last successful sync: {{at}}",
+    "cloudSection": "Sign in to hosted Supabase",
+    "cloudCredentialsHint": "Use the full email listed under Authentication → Users on your hosted project (e.g. admin@members.stockpilot.local if you created that user there). This is not the same as typing only the short username from the main login screen.",
+    "cloudEmail": "Cloud account email",
+    "cloudPassword": "Cloud account password",
+    "connect": "Connect to cloud",
+    "connectFailed": "Could not sign in to the hosted project.",
+    "invalidHostedCredentials": "Hosted project rejected email or password. Confirm VITE_SYNC_CLOUD_* points at that project, then use the exact Auth user email and password from the hosted dashboard (not your local-only password unless they match).",
+    "connected": "Connected to hosted project.",
+    "connectedAs": "Connected to hosted project.",
+    "disconnect": "Disconnect",
+    "missingEnv": "Missing cloud URL or anon key in env.",
+    "connectFirst": "Connect to the hosted project first.",
+    "syncBothWays": "Sync both ways",
+    "syncCloudMaster": "Sync (cloud master)",
+    "resetLocalFromCloud": "Replace local with cloud",
+    "resetLocalConfirm": "This permanently deletes all mirrored inventory data on this machine (orders, stock, catalog sync tables, alerts, sync queue) and replaces it with a full download from the hosted project. Operator profile rows are not deleted (they are updated from cloud when the same Auth user exists locally). Continue?",
+    "doneResetLocalToast": "Local database was cleared and refreshed from cloud. Pulled {{pulled}} rows. Cloud order repairs before pull: sales {{ordersFixed}}, PO {{poFixed}}.",
+    "readinessSection": "Sync readiness",
+    "online": "Browser online",
+    "offline": "Browser offline",
+    "envBadgeOk": "Cloud env configured",
+    "envBadgeMissing": "Cloud env missing",
+    "localSupabaseOk": "Local Supabase URL",
+    "localSupabaseBad": "Local Supabase URL missing or not local",
+    "cloudChecking": "Checking cloud…",
+    "cloudReachable": "Cloud reachable",
+    "cloudUnreachable": "Cloud unreachable",
+    "cloudSkipped": "Cloud check skipped",
+    "signedInCloud": "Signed in to cloud",
+    "notSignedInCloud": "Not signed in to cloud",
+    "recheckNetwork": "Recheck network",
+    "readinessBlocked": "Fix readiness issues (network, env, local URL, cloud sign-in) before syncing.",
+    "openHistory": "Sync history",
+    "historyTitle": "Sync history",
+    "historySubtitle": "Recent runs recorded on this database (local Supabase when using npm run dev).",
+    "historyLoadError": "Could not load sync history.",
+    "historyEmpty": "No sync runs yet.",
+    "backToSync": "Back to data sync",
+    "colStarted": "Started",
+    "colStatus": "Status",
+    "colMode": "Mode",
+    "colSummary": "Summary",
+    "cloudPartialWarning": "The hosted database may have received only part of this sync, or stock reconciliation on the host failed. Re-run sync after fixing the error, or restore the cloud project from a backup if data looks wrong.",
+    "syncRecoveredWarning": "The first local download step failed, but the app re-pulled the full cloud snapshot and reconciled local stock. Details: {{detail}}",
+    "doneCloudToast": "Cloud master sync finished. Pushed {{pushed}} rows, pulled {{pulled}}. Duplicate sales order numbers repaired on cloud: {{ordersFixed}}. Duplicate PO numbers repaired: {{poFixed}}.",
+    "syncing": "Syncing data…",
+    "progressTable": "Table {{name}} ({{index}} / {{total}})",
+    "progressCounts": "Written to cloud: {{pushed}} · Written to local: {{pulled}}",
+    "cancel": "Cancel sync",
+    "conflictTitle": "Row conflict",
+    "conflictMeta": "{{table}} — row {{key}}",
+    "localCopy": "Local (this machine)",
+    "cloudCopy": "Cloud (hosted)",
+    "skip": "Skip (keep both as-is)",
+    "useCloud": "Use cloud version",
+    "useLocal": "Use local version",
+    "doneToast": "Sync finished. To cloud: {{pushed}}, to local: {{pulled}}, conflicts resolved: {{conflicts}}, skipped: {{skipped}}."
   },
   "common": {
     "search": "Search",
@@ -32,7 +218,21 @@
     "submit": "Submit",
     "close": "Close",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "exportCsv": "Export CSV"
+  },
+  "notes": {
+    "editNote": "Edit note",
+    "saveNote": "Save",
+    "cancelEdit": "Cancel",
+    "mentionHint": "Type @ to link an order, purchase order, payment, or person.",
+    "emptyNotePlaceholder": "No note yet.",
+    "editorPlaceholder": "Write a note…",
+    "editorAria": "Note",
+    "mentionKindOrder": "Order",
+    "mentionKindPO": "PO",
+    "mentionKindPayment": "Payment",
+    "mentionKindPerson": "Person"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -50,14 +250,410 @@
     "currentThreshold": "{{current}}/{{threshold}}",
     "emptyMovements": "No recent stock movements.",
     "emptyLowStock": "No low stock items. All products are well stocked.",
-    "totalPurchasesToday": "Purchase Orders Today"
+    "totalPurchasesToday": "Purchase Orders Today",
+    "totalReceivables": "Total Receivables",
+    "totalPayables": "Total Payables",
+    "controlTab": "Control"
+  },
+  "control": {
+    "title": "Control",
+    "pageTitle": "Control | StockPilot",
+    "intro": "Turn features on or off for this browser. Each toggle describes what it shows or hides in the app. Non-admin operators also receive server-side permission overrides from Admin → Members; when both disagree, the stricter rule wins for that user.",
+    "guideCardTitle": "Setup & migration resources",
+    "guideCardBody": "Use the platform guide for a feature map, the migration guide for recommended import order (warehouses, catalog, CSV, register), Members to create operators and warehouse access, and Data sync when you mirror data between local and hosted Supabase.",
+    "guideCardFootnote": "Some links are hidden when their sidebar or Admin toggles are off—enable them here first if you need those screens.",
+    "linkDocumentation": "Platform guide",
+    "linkMigration": "Migration guide",
+    "linkMembers": "Members",
+    "linkDataSync": "Data sync",
+    "securityNote": "These toggles only hide or show UI. They do not block API access. Use database policies for real enforcement.",
+    "resetDefaults": "Reset all to defaults",
+    "disabled": {
+      "newOrder": "Creating new orders is turned off in Control settings.",
+      "editDraft": "Editing draft orders is turned off in Control settings.",
+      "ordersList": "The order list is turned off in Control settings.",
+      "noOrderShortcuts": "All order hub shortcuts are turned off in Control settings.",
+      "inventoryHubAllOff": "All inventory hub shortcuts are turned off in Control settings.",
+      "adminHubAllOff": "All Admin shortcuts are turned off in Control settings. Enable Dashboard, Documentation, or Reports under Navigation.",
+      "purchaseOrdersList": "The purchase order list is turned off in Control settings.",
+      "noPurchaseOrderShortcuts": "All purchase order hub shortcuts are turned off in Control settings.",
+      "newPurchaseOrder": "Creating new purchase orders is turned off in Control settings.",
+      "noInventoryTransferShortcuts": "All stock transfer shortcuts are turned off in Control settings.",
+      "newInventoryTransfer": "Creating new stock transfers is turned off in Control settings.",
+      "inventoryTransfersList": "The stock transfer list is turned off in Control settings.",
+      "warehouses": "Warehouses are turned off in Control settings.",
+      "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
+      "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
+    },
+    "area": {
+      "sidebar": "Navigation",
+      "header": "Top bar",
+      "dashboard": "Dashboard (home)",
+      "inventoryHub": "Inventory hub",
+      "people": "People",
+      "products": "Products",
+      "categories": "Categories",
+      "brands": "Brands",
+      "purchaseOrders": "Purchase orders",
+      "inventoryTransfers": "Stock transfers",
+      "orders": "Sales orders",
+      "reports": "Reports",
+      "paymentsApp": "Payments",
+      "register": "Register",
+      "adminHub": "Admin hub"
+    },
+    "sidebar": {
+      "groupNav": "Sidebar links",
+      "dashboard": {
+        "title": "Dashboard menu",
+        "desc": "Shows the Dashboard item under the Admin group in the sidebar (home / overview)."
+      },
+      "control": {
+        "title": "Control menu",
+        "desc": "Shows the Control link to open this feature settings page."
+      },
+      "inventory": {
+        "title": "Inventory menu",
+        "desc": "Shows the Inventory item in the sidebar (hub and sub-routes)."
+      },
+      "orders": {
+        "title": "Orders menu",
+        "desc": "Shows the Orders item in the sidebar."
+      },
+      "people": {
+        "title": "People menu",
+        "desc": "Shows the People item in the sidebar."
+      },
+      "payments": {
+        "title": "Payments menu",
+        "desc": "Shows the Payments item in the sidebar (hub, history, and new payment)."
+      },
+      "register": {
+        "title": "Register menu",
+        "desc": "Shows the Register item for cash-drawer balances by tender and manual add/withdraw."
+      },
+      "admin": {
+        "title": "Admin menu",
+        "desc": "Shows the Admin link in the sidebar; opens the Admin hub with shortcuts to Dashboard, Documentation, Migration checklist, and Reports."
+      },
+      "documentation": {
+        "title": "Documentation page",
+        "desc": "Shows the Documentation link under Admin and enables the /admin/documentation user guide route."
+      },
+      "reports": {
+        "title": "Reports shortcut (sidebar)",
+        "desc": "Shows the Reports link under Admin (opens the dashboard Reports tab)."
+      }
+    },
+    "admin": {
+      "group": "Migration & onboarding",
+      "migrationGuide": {
+        "title": "Migration guide (Admin)",
+        "desc": "Shows the Migration guide card on the Admin hub and the /admin/migration route: resumable checklist covering members, warehouses, catalog, transfers, optional data sync, CSV, register, and go-live."
+      },
+      "dataSync": {
+        "title": "Data sync (Admin)",
+        "desc": "Shows the Data sync card on the Admin hub for merging public tables between local and hosted Supabase."
+      }
+    },
+    "header": {
+      "group": "Header",
+      "lowStockBell": {
+        "title": "Low stock alerts (bell)",
+        "desc": "Shows the bell icon and badge linking to low-stock products."
+      }
+    },
+    "dashboard": {
+      "groupTabs": "Dashboard tabs",
+      "groupOverview": "Overview tab — sections",
+      "overviewTab": {
+        "title": "Overview tab",
+        "desc": "Shows the main dashboard tab (stats and activity widgets)."
+      },
+      "reportsTab": {
+        "title": "Reports tab",
+        "desc": "Shows the Reports tab on the home page and allows opening sales/inventory reports there."
+      },
+      "statsCards": {
+        "title": "Top stat cards",
+        "desc": "Product count, inventory value, low-stock count, movements today, and purchases today."
+      },
+      "financialSnapshot": {
+        "title": "Receivables & payables",
+        "desc": "The two cards for total receivables and total payables."
+      },
+      "recentMovements": {
+        "title": "Recent stock movements",
+        "desc": "The table of latest stock in/out/adjustments on the overview."
+      },
+      "lowStockPanel": {
+        "title": "Low stock list",
+        "desc": "The low-stock products panel on the overview."
+      }
+    },
+    "register": {
+      "group": "Register",
+      "deposit": {
+        "title": "Add to register",
+        "desc": "Allows recording money put into the register (by tender type)."
+      },
+      "withdraw": {
+        "title": "Withdraw from register",
+        "desc": "Allows recording money taken out of the register (by tender type)."
+      },
+      "viewActivity": {
+        "title": "Register activity",
+        "desc": "Shows the recent activity table and the “View activity” shortcut on the Register page."
+      }
+    },
+    "paymentsApp": {
+      "group": "Payments",
+      "list": {
+        "title": "Transaction log",
+        "desc": "Opens the full balance ledger: orders, purchase orders, payments, wallet, and adjustments."
+      },
+      "editLedgerNote": {
+        "title": "Edit payment notes",
+        "desc": "Allow changing the note on recorded payment-in / payment-out operations from the payment detail page."
+      },
+      "reverseLedgerOperation": {
+        "title": "Reverse recorded payments",
+        "desc": "Allow undoing a payment-in / payment-out, or a register deposit/withdraw, from the payment detail page (ledger, balance, and linked order/PO rows when applicable)."
+      },
+      "fullLedgerView": {
+        "title": "Full ledger mode (transaction log)",
+        "desc": "Shows the “Show full ledger” option on the payments list to expand reversed rows and see raw balance impact."
+      }
+    },
+    "inventoryHub": {
+      "groupLinks": "Hub shortcuts",
+      "products": {
+        "title": "Products card",
+        "desc": "Link from the inventory hub to the products list."
+      },
+      "po": {
+        "title": "Purchase orders card",
+        "desc": "Link from the inventory hub to purchase orders."
+      },
+      "movements": {
+        "title": "Stock movements card",
+        "desc": "Link from the inventory hub to stock movements."
+      },
+      "categories": {
+        "title": "Categories card",
+        "desc": "Link from the inventory hub to categories."
+      },
+      "brands": {
+        "title": "Brands card",
+        "desc": "Link from the inventory hub to brands."
+      },
+      "warehouses": {
+        "title": "Warehouses card",
+        "desc": "Link from the inventory hub to manage warehouses: display codes from location, optional register per site, default location, and safe register turn-off when the drawer is empty."
+      },
+      "transfers": {
+        "title": "Stock transfers card",
+        "desc": "Link from the inventory hub to move quantity between warehouses (no pricing)."
+      }
+    },
+    "people": {
+      "groupList": "List and profile",
+      "groupCreate": "Create",
+      "viewProfile": {
+        "title": "View profile",
+        "desc": "Shows the eye icon and allows opening the person profile dialog with balance and history."
+      },
+      "editPerson": {
+        "title": "Edit person",
+        "desc": "Allows editing customer or supplier details from the list and from the profile dialog."
+      },
+      "deletePerson": {
+        "title": "Delete person",
+        "desc": "Shows the delete action when allowed by business rules."
+      },
+      "recordPayment": {
+        "title": "Record payment",
+        "desc": "Allows recording balance payments from Payments → New payment (choose person)."
+      },
+      "addPerson": {
+        "title": "Add person",
+        "desc": "Shows the button to create a new customer or supplier."
+      }
+    },
+    "products": {
+      "group": "Product list",
+      "add": {
+        "title": "Add product",
+        "desc": "Shows the Add product button on the products page."
+      },
+      "edit": {
+        "title": "Edit product",
+        "desc": "Shows the edit (pencil) action for each product row."
+      },
+      "delete": {
+        "title": "Delete product",
+        "desc": "Shows the delete action for each product row."
+      },
+      "stockAdjust": {
+        "title": "Stock adjustment",
+        "desc": "Shows the stock adjust action to change quantity manually."
+      }
+    },
+    "categories": {
+      "group": "Categories",
+      "add": {
+        "title": "Add category",
+        "desc": "Shows the add category button."
+      },
+      "edit": {
+        "title": "Edit category",
+        "desc": "Shows inline edit for a category name."
+      },
+      "delete": {
+        "title": "Delete category",
+        "desc": "Shows the delete action for a category."
+      }
+    },
+    "brands": {
+      "group": "Brands",
+      "add": {
+        "title": "Add brand",
+        "desc": "Shows the add brand button."
+      },
+      "edit": {
+        "title": "Edit brand",
+        "desc": "Shows inline edit for a brand name."
+      },
+      "delete": {
+        "title": "Delete brand",
+        "desc": "Shows the delete action for a brand."
+      }
+    },
+    "purchaseOrders": {
+      "groupHub": "Purchase orders hub",
+      "hubList": {
+        "title": "All purchase orders card",
+        "desc": "Shows the shortcut to the purchase orders list on the purchase orders home page."
+      },
+      "group": "Purchase orders",
+      "create": {
+        "title": "Create purchase order",
+        "desc": "Shows the new purchase order shortcut and enables the full-page create flow (supplier picker, product browser, lines, payments)."
+      },
+      "costOverridePriceDialog": {
+        "title": "Cost override confirmation (new PO)",
+        "desc": "When a line cost differs from the catalog default, shows a dialog to choose “allow once” or update catalog prices (cost, retail, wholesale). When off, uses the inline checkbox to update default cost only."
+      },
+      "confirmReceive": {
+        "title": "Confirm / receive draft PO",
+        "desc": "Shows the button on a draft purchase order to confirm receipt, enter supplier payments, and post stock."
+      },
+      "cancel": {
+        "title": "Cancel purchase order",
+        "desc": "Shows the cancel action on received purchase orders (detail page)."
+      },
+      "cloneAsReplacementDraft": {
+        "title": "Edit PO as new draft copy",
+        "desc": "Shows “Edit purchase order” on the PO detail page: warns, cancels the current PO, and opens a new draft with the same lines and settings."
+      },
+      "editNote": {
+        "title": "Edit purchase order note",
+        "desc": "Allows editing the persisted note on a purchase order detail page (pen icon, save)."
+      },
+      "importCsv": {
+        "title": "Import purchase orders from CSV",
+        "desc": "Shows Import CSV on the purchase order list (mapping, live draft vs historical snapshot)."
+      },
+      "exportCsv": {
+        "title": "Export purchase orders to CSV",
+        "desc": "Shows Export CSV on the purchase order list (one row per line, matches import shape)."
+      }
+    },
+    "inventoryTransfers": {
+      "group": "Stock transfers",
+      "create": {
+        "title": "Create stock transfer",
+        "desc": "Shows the new transfer shortcut and the form to move products between two warehouses (quantities only)."
+      },
+      "list": {
+        "title": "Stock transfer list",
+        "desc": "Shows the list of past transfers and links to each transfer detail."
+      }
+    },
+    "orders": {
+      "groupHub": "Orders hub",
+      "hubList": {
+        "title": "All orders card",
+        "desc": "Shows the shortcut to the orders list on the orders home page."
+      },
+      "hubNew": {
+        "title": "New order card",
+        "desc": "Shows the shortcut to create a new order and enables the new-order page."
+      },
+      "groupPos": "POS (draft / new)",
+      "editDraft": {
+        "title": "Edit draft orders",
+        "desc": "Allows opening the POS editor for draft orders from the order detail page."
+      },
+      "saveDraft": {
+        "title": "Save draft",
+        "desc": "Shows the Save draft button in the POS header."
+      },
+      "checkout": {
+        "title": "Checkout",
+        "desc": "Shows the Checkout button and checkout flow (payments and confirm)."
+      },
+      "groupConfirmed": "Confirmed / active orders",
+      "print": {
+        "title": "Print invoice",
+        "desc": "Shows print invoice on the order detail page."
+      },
+      "cancel": {
+        "title": "Cancel order",
+        "desc": "Shows cancel order on the order detail page when status allows."
+      },
+      "cloneAsReplacementDraft": {
+        "title": "Edit order as new draft copy",
+        "desc": "Shows “Edit order” on the order detail page: warns, cancels the current order, and opens a new draft with the same lines and payment splits."
+      },
+      "addPayment": {
+        "title": "Add payment (reserved)",
+        "desc": "Reserved for future use: partial payments on confirmed orders from the order screen. Checkout payments are controlled by Checkout and Record payment."
+      },
+      "editNote": {
+        "title": "Edit order note",
+        "desc": "Allows editing the order note field on the detail page."
+      },
+      "importCsv": {
+        "title": "Import sales orders from CSV",
+        "desc": "Shows Import CSV on the orders list (column mapping, live drafts vs historical snapshots)."
+      },
+      "exportCsv": {
+        "title": "Export sales orders to CSV",
+        "desc": "Shows Export CSV on the orders list (long format, one row per line)."
+      }
+    },
+    "reports": {
+      "group": "Reports tab",
+      "export": {
+        "title": "Export CSV",
+        "desc": "Shows export to CSV on dashboard reports (e.g. inventory value)."
+      }
+    }
   },
   "products": {
     "title": "Products",
     "addProduct": "Add Product",
     "editProduct": "Edit Product",
     "deleteProduct": "Delete Product",
-    "searchPlaceholder": "Search by product name...",
+    "searchPlaceholder": "Search by name or product ID...",
+    "productId": "Product ID",
+    "productIdHint": "Leave empty to generate automatically (e.g. P-A1B2C3D4E5). Must be unique.",
+    "validationProductCodeMax": "Product ID must be at most 64 characters",
+    "validationProductCodeFormat": "Use only letters, numbers, dots, dashes, and underscores (no spaces)",
+    "validationProductCodeRequired": "Product ID is required",
+    "validationDuplicateCode": "This product ID is already in use",
+    "validationDuplicateName": "A product with this name already exists",
     "filterByCategory": "Category",
     "filterByBrand": "Brand",
     "allCategories": "All categories",
@@ -68,6 +664,8 @@
     "unit": "Unit",
     "lowStockThreshold": "Low Stock Threshold",
     "stockAdjust": "Stock Adjust",
+    "addNewBrand": "Add new brand",
+    "addNewCategory": "Add new category",
     "addProductTitle": "Add Product",
     "editProductTitle": "Edit Product",
     "stockAdjustTitle": "Stock Adjustment",
@@ -90,7 +688,152 @@
     "toastDeleted": "Product deleted successfully",
     "toastStockAdjusted": "Stock updated successfully",
     "toastError": "Something went wrong",
-    "quantityManagedByPurchaseOrders": "Quantity is managed through Purchase Orders"
+    "quantityManagedByPurchaseOrders": "Quantity is managed through Purchase Orders",
+    "totalAcrossLocations": "total all warehouses",
+    "detailTitle": "Product",
+    "backToList": "Back to products",
+    "detailSectionInfo": "Product details",
+    "detailUpdated": "Last updated",
+    "detailSectionByWarehouse": "By location",
+    "detailByWarehouseHint": "On-hand quantity is current. Sales and purchases use the same date range as Sales analytics below (completed orders and received purchase orders).",
+    "detailColLocation": "Location",
+    "detailColQtyOnHand": "Qty on hand",
+    "detailColSalesUnits": "Sales (units)",
+    "detailColSalesRevenue": "Sales (revenue)",
+    "detailColPurchaseUnits": "Purchases (units)",
+    "detailColPurchaseAmount": "Purchases (amount)",
+    "detailRowTotal": "Total",
+    "detailSectionSales": "Sales analytics",
+    "detailKpiUnitsSold": "Units sold",
+    "detailKpiLineRevenue": "Line revenue",
+    "detailKpiOrders": "Orders",
+    "detailKpiRetailLines": "Retail lines",
+    "detailKpiWholesaleLines": "Wholesale lines",
+    "detailChartUnitsPerDay": "Units per day",
+    "detailChartRevenuePerDay": "Revenue per day",
+    "detailNoSalesInRange": "No completed sales in this date range.",
+    "detailRecentSales": "Recent sales",
+    "detailLineTotal": "Line total",
+    "detailSectionMovements": "Stock movements",
+    "detailNoMovements": "No stock movements recorded for this product.",
+    "detailEditProduct": "Edit product",
+    "priceHistorySection": "Price history",
+    "priceHistoryChartTitle": "Prices over time",
+    "priceHistoryColDate": "Updated",
+    "priceHistoryColDeltaCustomer": "Δ retail",
+    "priceHistoryColDeltaBusiness": "Δ wholesale",
+    "priceHistoryColDeltaCost": "Δ cost",
+    "priceHistoryEmpty": "No price history yet.",
+    "priceHistoryDialogSection": "Recent price updates",
+    "priceHistoryColCustomerShort": "Retail",
+    "priceHistoryColBusinessShort": "Wholesale",
+    "priceHistoryColCostShort": "Cost",
+    "legendCustomerPrice": "Customer price",
+    "legendBusinessPrice": "Business price",
+    "legendCostPrice": "Cost price",
+    "averageUnitCost": "Average unit cost (WAC)",
+    "averageUnitCostHint": "Weighted average of purchase line costs for on-hand stock. Updates when you receive stock on a purchase order (or stock in using catalog cost).",
+    "grossMarginRetail": "Gross profit (retail sales)",
+    "grossMarginWholesale": "Gross profit (wholesale sales)",
+    "grossProfitSoldHint": "From completed orders only: line revenue minus units sold × current average unit cost (WAC). Uses today’s WAC as an estimate of cost of goods sold.",
+    "detailPricingTableTitle": "Pricing & margins",
+    "totalProfitFromSales": "Gross profit (sales)",
+    "totalProfitFromSalesHint": "All completed orders (retail + wholesale): total line revenue minus total units sold × current average unit cost (WAC). Same method as the table rows; WAC is an estimate of COGS.",
+    "exportCsvHint": "Download the product list with prices and quantities. Choose one warehouse or all locations.",
+    "qtyAtWarehouseCode": "Qty ({{code}})",
+    "defaultWarehouseForAdjustments": "Default warehouse for stock adjustments",
+    "exportCsvDialog": {
+      "title": "Export products as CSV",
+      "description": "Choose whether quantities are for one warehouse or all warehouses (one column per location code).",
+      "scopeLabel": "Quantities to export",
+      "scopeAll": "All warehouses (one column per code)",
+      "scopeOne": "Single warehouse",
+      "selectWarehouse": "Warehouse",
+      "export": "Download CSV"
+    },
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import products from CSV",
+      "uploadHint": "Upload a UTF-8 CSV. You will map columns to product fields; new brand and category names are created automatically when needed.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Match each product field to a column from your file. Required fields are marked with *.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s). Fix issues or discard rows you do not want to import.",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import products",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldProductCode": "Product ID / code",
+      "fieldBrandName": "Brand (name)",
+      "fieldCategoryName": "Category (name)",
+      "fieldQuantity": "Quantity (selected warehouse)",
+      "importWarehouseLabel": "Apply imported quantities to",
+      "importWarehouseHint": "The quantity column from your file updates on-hand stock at this location only. Product catalog fields are shared across all warehouses.",
+      "stockMovementNote": "CSV import — initial stock",
+      "noWarehouses": "Add at least one warehouse before importing products with quantities.",
+      "fieldLowStock": "Low stock threshold",
+      "fieldDescription": "Description",
+      "toastAllOk": "Imported {{count}} product(s).",
+      "toastPartial": "Imported {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No products imported ({{count}} failed).",
+      "issue": {
+        "missing_name": "Name required",
+        "name_too_short": "Name too short",
+        "invalid_customer_price": "Invalid retail price",
+        "invalid_business_price": "Invalid wholesale price",
+        "invalid_cost_price": "Invalid cost",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_low_stock": "Invalid low stock",
+        "duplicate_code_in_file": "Duplicate code in file",
+        "duplicate_code_in_db": "Code exists",
+        "duplicate_name_in_file": "Duplicate name in file",
+        "duplicate_name_in_db": "Name exists"
+      }
+    },
+    "negativeStockBanner": "One or more products have negative on-hand stock. Reconcile from movements or review alerts.",
+    "reconcileStock": "Reconcile stock",
+    "reconcileStockHint": "Replay all stock movements to refresh on-hand quantities for every product.",
+    "reconcileStockSuccess": "Stock recalculated for all products.",
+    "reconcileStockNegativeSummary": "Reconciliation complete — {{count}} products have negative stock. Alerts were created; please recount.",
+    "reconcileStockError": "Could not reconcile stock.",
+    "quantityNegative": "Negative on hand"
+  },
+  "stockAlerts": {
+    "panelTitle": "Stock & sync alerts",
+    "ariaLabel": "Open stock and sync alerts",
+    "empty": "No alerts yet.",
+    "unread": "Unread",
+    "markRead": "Mark read",
+    "resolve": "Resolve",
+    "product": "Product",
+    "qtyAfter": "Quantity after reconciliation: {{qty}}",
+    "type_negative_stock": "Negative stock",
+    "type_low_stock": "Low stock",
+    "type_order_number_repair": "Order number repair",
+    "type_sync_conflict": "Sync conflict",
+    "type_info": "Info",
+    "type_wallet_direction_changed": "Balance direction changed",
+    "type_register_negative_balance": "Register shortfall",
+    "type_negative_stock_offline_sync": "Negative after offline sync",
+    "offlineSyncNegativeTitle": "Recount needed: {{name}}",
+    "offlineSyncNegativeMessage": "Stock went negative after offline sync for this product ({{name}}). Current quantity: {{qty}}. Please recount.",
+    "reconcileNegativeTitle": "Negative after reconcile: {{name}}",
+    "reconcileNegativeMessage": "After reconciling movements, {{name}} shows quantity {{qty}}. Please verify physical stock.",
+    "personRecord": "Person",
+    "unknownOperator": "Unknown operator",
+    "orderCloneAdminTitle": "Sales order replaced with draft",
+    "orderCloneAdminMessage": "Order #{{source}} was cancelled and replaced by draft order #{{dest}}. Operator: {{operator}}.",
+    "poCloneAdminTitle": "Purchase order replaced with draft",
+    "poCloneAdminMessage": "PO #{{source}} was cancelled and replaced by draft PO #{{dest}}. Operator: {{operator}}."
   },
   "categories": {
     "title": "Categories",
@@ -130,6 +873,49 @@
     "toastInUse": "Brand is in use and cannot be deleted",
     "toastError": "Something went wrong"
   },
+  "warehouses": {
+    "title": "Warehouses",
+    "description": "Define storage locations. Stock is tracked per warehouse; purchase and sales orders target one warehouse each.",
+    "addWarehouse": "Add warehouse",
+    "editWarehouse": "Edit warehouse",
+    "colId": "ID",
+    "colCode": "Code",
+    "colInternalId": "Internal ID",
+    "colLocation": "Location",
+    "colDefault": "Default",
+    "setAsDefault": "Set as default warehouse",
+    "defaultBadge": "Default",
+    "selectPlaceholder": "Select warehouse…",
+    "searchByIdOrName": "Search by ID or name…",
+    "empty": "No warehouses found.",
+    "validationIdName": "ID and name are required.",
+    "validationName": "Name is required.",
+    "validationLocation": "Location is required.",
+    "codeAutoHint": "Location is required. A display code (e.g. NASR-CITY-01) is assigned automatically from the location text.",
+    "locationPlaceholder": "e.g. Nasr City",
+    "registerNotEmptyTitle": "Register is not empty",
+    "registerNotEmptyBody": "Withdraw or zero out every tender before turning off the register for this warehouse.",
+    "withdrawAllRegisterShortcut": "Withdraw everything from register",
+    "toastCreated": "Warehouse created",
+    "toastUpdated": "Warehouse updated",
+    "toastDefaultUpdated": "Default warehouse updated",
+    "toastDeleted": "Warehouse deleted",
+    "toastError": "Something went wrong",
+    "colHasRegister": "Register",
+    "hasRegisterLabel": "Has cash register",
+    "hasRegisterHint": "POS and register payments can only use locations with a register.",
+    "defaultMustHaveRegister": "The default warehouse always has a register.",
+    "primaryWarehouseMustHaveRegister": "The primary warehouse (ID 1) always has a register.",
+    "deleteWarehouse": "Delete warehouse",
+    "deleteWarehouseTitle": "Delete warehouse?",
+    "deleteWarehouseConfirm": "This will permanently remove the warehouse. It must have no stock and no register payment history.",
+    "deleteBlockedStock": "This location still has stock. Transfer everything out, then try again.",
+    "deleteBlockedRegister": "Payments are still attributed to this register. It cannot be removed while ledger history references it.",
+    "openTransferToEmpty": "Open transfer to move stock",
+    "quantityAtWarehouse": "Qty (this warehouse)",
+    "poLabel": "Receive into warehouse",
+    "orderLabel": "Ship from warehouse"
+  },
   "stockMovements": {
     "title": "Stock Movements",
     "in": "In",
@@ -163,8 +949,52 @@
   },
   "orders": {
     "title": "Orders",
+    "allOrders": "All Orders",
+    "subtitle": "Manage your sales orders and create new ones",
+    "allOrdersSubtitle": "View, search and manage existing orders",
+    "newOrderSubtitle": "Create a new sales order",
+    "backToOrders": "Back to Orders",
+    "fillRowBeforeAdd": "Choose a product on this row before adding another line.",
+    "priceModifiedWarning": "Unit price differs from the catalog (list) price for this order type.",
+    "originalPrice": "Original price",
+    "restoreCatalogPrice": "Restore catalog price",
+    "productNotFound": "Product not found",
+    "onlyXUnitsAvailable": "Only {{count}} units available",
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "completed": "Completed",
+    "saveDraft": "Save Draft",
+    "confirmOrder": "Confirm Order",
+    "insufficientStockHeading": "Not enough stock to confirm this order:",
+    "insufficientStockLine": "{{name}}: need {{needed}}, available {{available}}",
+    "checkout": "Checkout",
+    "checkoutTitle": "Checkout & payment",
+    "addPayment": "Add Payment",
+    "remaining": "Remaining",
+    "paid": "Paid",
+    "discount": "Discount",
+    "printInvoice": "Print Invoice",
+    "walkIn": "Walk-in Customer",
+    "addToBalance": "Add to balance",
+    "addToBalanceHint": "Select a customer to carry the remainder on their account.",
+    "mergeRows": "Merge rows?",
+    "duplicateProduct": "Product already in order",
+    "stockWarning": "Exceeds available stock",
+    "productBrowser": "Product Browser",
+    "customerBrowser": "Customer browser",
+    "quickCreateCustomer": "New customer",
+    "quickCreateCustomerTitle": "Create customer",
+    "searchCustomers": "Search by name or phone...",
+    "pressF1Customer": "Arrow keys and Enter to choose · Esc to close",
+    "walkInBrowserHint": "No linked account or balance",
+    "pressF1": "Press F1 to browse products",
+    "openCustomerBrowserHint": "Click or press F1 to search and choose a customer",
+    "productId": "Product ID",
+    "selectOrNew": "Select an order from the list or start a new order.",
+    "applyPersonDiscount": "Auto-apply customer discount rate",
+    "products": "Products",
     "newOrder": "New Order",
-    "searchPlaceholder": "Search by order number...",
+    "searchPlaceholder": "Search by order number or customer name...",
     "filterStatusAll": "All",
     "filterStatusPending": "Pending",
     "filterStatusCompleted": "Completed",
@@ -192,12 +1022,14 @@
     "createOrderTitle": "Create Order",
     "orderType": "Order Type",
     "paymentCash": "Cash",
-    "paymentCard": "Card",
-    "paymentTransfer": "Transfer",
-    "paymentOther": "Other",
+    "paymentVisa": "Visa",
+    "paymentCheque": "Cheque",
+    "paymentInstapay": "Instapay",
     "paymentNone": "None",
     "paymentAmount": "Amount",
     "paymentBreakdown": "Payment breakdown",
+    "inventoryForDocument": "Inventory / warehouse",
+    "paymentRegister": "Register",
     "paymentRemaining": "Remaining",
     "validationPaymentTotal": "Payment total must equal order total ({{total}})",
     "noteOptional": "Note (optional)",
@@ -214,18 +1046,145 @@
     "toastOrderCancelled": "Order cancelled. Stock restored.",
     "toastError": "Something went wrong",
     "orderDetailTitle": "Order #{{number}}",
+    "editAsReplacement": "Edit order",
+    "cloneConfirmTitle": "Edit order as a new draft?",
+    "cloneConfirmIntro": "This will cancel order #{{number}} using the same rules as Cancel order, then create a new draft with the same inventory, lines, quantities, discounts, customer, and payment splits. You will be taken to the new order to continue editing or checkout.",
+    "cloneConfirmAction": "Cancel and open copy",
+    "toastClonedAsDraft": "New draft order created from this document.",
+    "cloneError": "Could not create the replacement draft. If the original was cancelled but the new order failed, check with an admin.",
     "cancelConfirmTitle": "Cancel Order",
     "cancelConfirmMessage": "Cancel order #{{number}}? Stock will be restored automatically for all items.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementIntro": "This order has recorded payments. Choose whether to remove them with the cancellation or keep the paid amount on the customer’s account.",
+    "cancelWalkInPaymentsHint": "Recorded payments will be voided on the ledger with this cancellation (walk-in; no customer account).",
+    "cancelSettlementLegend": "Payments on this order",
+    "cancelSettlementReverse": "Delete payments with this cancellation — void checkout lines on the ledger; nothing is credited to an account.",
+    "cancelSettlementRetain": "Credit the customer’s balance — cancel the order and post the paid total as separate ledger payments that reference this order (voided; no cash refund). Notes include the order number and a link to this order.",
+    "cancelCompletedOrderHint": "This order is completed. Cancelling will restore stock and reverse ledger entries tied to the sale.",
     "totalOrders": "Total Orders",
     "totalRevenue": "Total Revenue",
     "pendingOrders": "Pending",
     "cancelledOrders": "Cancelled",
-    "emptyOrders": "No orders match your filters."
+    "emptyOrders": "No orders match your filters.",
+    "historicalImportBadge": "Historical import",
+    "historicalFilterLabel": "Import data",
+    "historicalFilterAll": "All orders",
+    "historicalFilterExclude": "Exclude historical imports",
+    "historicalFilterOnly": "Historical import only",
+    "customer": "Customer",
+    "selectCustomer": "Customer (optional)",
+    "searchPeople": "Search people...",
+    "personBalance": "Balance",
+    "applyDiscountToggle": "Apply {{pct}}% discount to this order?",
+    "availableCredit": "Available credit",
+    "creditBlocked": "This order exceeds the customer's credit limit.",
+    "subtotal": "Subtotal",
+    "discountedTotal": "After discount",
+    "exportCsvHint": "Download the orders in the current list as CSV (one row per line; same columns as import).",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import sales orders from CSV",
+      "modeIntro": "Choose how imported rows should behave. You can change this before uploading a file.",
+      "modeLiveTitle": "Live (draft orders)",
+      "modeLiveDesc": "Creates normal draft orders. Stock and register only change when you confirm, complete, or checkout like any other order.",
+      "modeHistoricalTitle": "Historical (analysis only)",
+      "modeHistoricalDesc": "Creates completed orders for charts and reports only. Does not move stock or post register/ledger entries.",
+      "continueToUpload": "Continue",
+      "backToMode": "Back",
+      "uploadHint": "Use one row per line. Rows that share the same group id belong to one order.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map CSV columns to fields. Group id, order type, warehouse, quantity, and unit price are required. Map at least one of product code or product name.",
+      "productKeyHint": "Map at least one column to product code or product name so each line can resolve a catalog item.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review rows before import ({{mode}}). Fix issues or discard lines you do not want.",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import orders",
+      "ingesting": "Importing {{done}} / {{total}} order group(s)…",
+      "fieldGroupId": "Group id (same on every line of one order)",
+      "fieldOrderType": "Order type (retail / wholesale)",
+      "fieldWarehouseCode": "Warehouse (code or name)",
+      "fieldCustomerPhone": "Customer phone",
+      "fieldCustomerName": "Customer name",
+      "fieldOrderNote": "Order note",
+      "fieldOrderDiscountRate": "Order discount % (0–100)",
+      "fieldOrderDate": "Document date (optional, historical)",
+      "fieldProductCode": "Product code",
+      "fieldProductName": "Product name",
+      "fieldBrandName": "Brand (new products)",
+      "fieldCategoryName": "Category (new products)",
+      "fieldQuantity": "Quantity",
+      "fieldUnitPrice": "Unit price",
+      "fieldLineDiscountRate": "Line discount % (0–100)",
+      "fieldProductCustomerPrice": "Catalog retail (new product)",
+      "fieldProductBusinessPrice": "Catalog wholesale (new product)",
+      "fieldProductCostPrice": "Catalog cost (new product)",
+      "toastAllOk": "Imported {{count}} order group(s).",
+      "toastPartial": "Imported {{ok}} group(s); {{fail}} failed.",
+      "toastAllFailed": "No groups imported ({{count}} failed).",
+      "groupFailed": "Group",
+      "errorGeneric": "Import failed",
+      "errorUnknownWarehouse": "Warehouse code or name not found.",
+      "errorInvalidOrderType": "Order type must be retail or wholesale.",
+      "errorCustomerNameNoPhone": "Customer name without phone: add a phone column or use a single matching customer in People.",
+      "issue": {
+        "missing_group_id": "Missing group id",
+        "missing_order_type": "Missing order type",
+        "invalid_order_type": "Invalid order type",
+        "missing_warehouse_code": "Missing warehouse",
+        "missing_product_key": "Product code or name required",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_unit_price": "Invalid unit price",
+        "invalid_line_discount": "Invalid line discount",
+        "invalid_order_discount": "Invalid order discount",
+        "inconsistent_headers_within_group": "Headers differ within group",
+        "unknown_warehouse": "Unknown warehouse"
+      }
+    }
   },
   "purchaseOrders": {
     "title": "Purchase Orders",
+    "subtitle": "Receive stock from suppliers and track payables.",
+    "allPurchaseOrders": "All purchase orders",
+    "allPurchaseOrdersSubtitle": "Search, filter, and open any PO.",
+    "newPurchaseOrderSubtitle": "Full-screen flow: supplier, products, costs, and payments.",
+    "backToPurchaseOrders": "Back to purchase orders",
+    "backToList": "Back to list",
+    "supplierBrowser": "Choose supplier",
+    "quickCreateSupplier": "New supplier",
+    "quickCreateSupplierTitle": "Create supplier",
+    "searchSuppliers": "Search suppliers by name or phone...",
+    "pressF1Supplier": "Press F1 while the supplier field is focused to open this list. Arrow keys and Enter to select.",
+    "pressF1Products": "Press F1 (or Add products) to browse catalog by category and brand. Shows cost price.",
+    "noLinkedSupplier": "No linked supplier",
+    "noLinkedSupplierHint": "Enter a name manually below, or pick a supplier from your directory.",
+    "productBrowser": "Add product to purchase",
+    "productAlreadyInPo": "This product is already on the order.",
+    "addProductsHint": "Use Add products or press F1 to pick items from the catalog.",
+    "createSubmit": "Create purchase order",
+    "saveDraft": "Save as draft",
+    "toastDraftSaved": "Draft saved. Confirm from the purchase order page when ready.",
+    "confirmReceiveDraft": "Confirm & receive",
+    "checkoutTitle": "Purchase order checkout",
+    "confirmCreatePo": "Confirm purchase order",
+    "paymentRegisterWarehouse": "Register for payments",
+    "registerPaymentGateTitle": "Where should payments be registered?",
+    "registerPaymentGateDescription": "This receiving warehouse has no cash register. Choose which register should record supplier payments. The supplier’s balance and payables are still correct; only the cash register drawer is affected.",
+    "selectRegisterWarehouse": "Register (search by ID or name)",
+    "registerPaymentGateContinue": "Continue to checkout",
+    "addToBalanceHint": "Select a supplier to carry the remainder on their account (payables).",
     "searchPlaceholder": "Search by order number...",
     "filterStatusAll": "All",
+    "filterStatusDraft": "Draft",
     "filterStatusReceived": "Received",
     "filterStatusCancelled": "Cancelled",
     "dateFrom": "From",
@@ -238,6 +1197,7 @@
     "itemCount": "1 item",
     "totalAmount": "Total Amount",
     "status": "Status",
+    "statusDraft": "Draft",
     "statusReceived": "Received",
     "statusCancelled": "Cancelled",
     "date": "Date",
@@ -257,21 +1217,551 @@
     "remove": "Remove",
     "costPriceDiffWarning": "Cost price differs from default (default: {{default}}). Update default price?",
     "updateDefaultCostPrice": "Yes, update default cost price for this product",
+    "costOverrideTitle": "Cost differs from catalog",
+    "costOverrideBody": "Line \"{{name}}\" uses a unit cost that differs from the catalog default ({{listCost}}). Use this cost for this purchase order only, or update catalog prices (cost, customer, and business).",
+    "costOverrideAllowOnce": "Allow once",
+    "costOverrideUpdateCatalog": "Update catalog prices",
+    "costOverrideBlurHint": "Leave the cost field (blur) to choose how to handle the difference, or restore the catalog cost.",
+    "costOverrideUnsetError": "For each line where cost differs from catalog, leave the cost field or choose “Allow once” or “Update catalog prices”.",
+    "catalogPricesTitle": "Update catalog prices",
+    "catalogPricesHint": "These values will be saved on the product when the purchase order is received.",
+    "catalogPricesBack": "Back",
+    "originalPriceDisabledCatalog": "Restore is disabled: you chose to update catalog prices when this purchase order is received.",
     "runningTotal": "Total",
     "validationAtLeastOne": "Add at least one product",
+    "validationSupplierRequired": "Select a supplier from your directory before checkout.",
     "validationQuantityMin": "Quantity must be at least 1",
     "validationCostPriceMin": "Cost price must be 0 or greater",
+    "errorDraftStatusNotAllowed": "Saving drafts requires a database update: apply migration 016 (purchase order draft status) to your Supabase project, then try again.",
     "toastCreated": "Purchase order created successfully",
     "toastCancelled": "Purchase order cancelled. Stock restored.",
     "toastError": "Something went wrong",
     "detailTitle": "Purchase Order #{{number}}",
     "note": "Note",
     "costPricePaid": "Cost price paid",
+    "applySupplierDiscount": "Apply supplier discount",
+    "invalidLineDiscount": "Line discount must be between 0 and 100.",
     "previousCostPrice": "Previous cost price",
     "costPriceUpdated": "Default updated",
+    "editAsReplacement": "Edit purchase order",
+    "cloneConfirmTitle": "Edit purchase order as a new draft?",
+    "cloneConfirmIntro": "This will cancel purchase order #{{number}} using the same rules as Cancel purchase order, then create a new draft with the same supplier, inventory, lines, quantities, discounts, and recorded payment splits. You will be taken to the new PO to continue editing or confirm receipt.",
+    "cloneConfirmAction": "Cancel and open copy",
+    "toastClonedAsDraft": "New draft purchase order created from this document.",
+    "cloneError": "Could not create the replacement draft. If the original was cancelled but the new PO failed, check with an admin.",
     "cancelConfirmTitle": "Cancel Purchase Order",
     "cancelConfirmMessage": "Cancel purchase order #{{number}}? Stock will be deducted for all items.",
-    "emptyOrders": "No purchase orders match your filters."
+    "cancelConfirmMessageDraft": "Cancel draft purchase order #{{number}}? Nothing has been received into stock yet.",
+    "openPaymentOperation": "Open payment in transaction log",
+    "cancelSettlementIntro": "This purchase order has recorded payments. Choose whether to remove them with the cancellation or keep the paid amount on the supplier’s account.",
+    "cancelSupplierPaymentsHint": "Recorded payments will be voided on the ledger with this cancellation (no linked supplier person).",
+    "cancelSettlementLegend": "Payments on this purchase order",
+    "cancelSettlementReverse": "Delete payments with this cancellation — void checkout lines on the ledger; nothing is credited to an account.",
+    "cancelSettlementRetain": "Credit the supplier’s balance — cancel the PO and post the paid total as separate ledger payments that reference this PO (voided; no cash refund). Notes include the PO number and a link to this document.",
+    "emptyOrders": "No purchase orders match your filters.",
+    "historicalImportBadge": "Historical import",
+    "historicalFilterLabel": "Import data",
+    "historicalFilterAll": "All purchase orders",
+    "historicalFilterExclude": "Exclude historical imports",
+    "historicalFilterOnly": "Historical import only",
+    "selectSupplier": "Supplier",
+    "supplierBalance": "Supplier balance",
+    "exportCsvHint": "Download the purchase orders in the current list as CSV (one row per line; same columns as import).",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import purchase orders from CSV",
+      "modeIntro": "Choose how imported rows should behave before you upload a file.",
+      "modeLiveTitle": "Live (draft PO)",
+      "modeLiveDesc": "Creates draft purchase orders. Stock and supplier balance only change when you confirm and receive from the PO screen.",
+      "modeHistoricalTitle": "Historical (analysis only)",
+      "modeHistoricalDesc": "Creates received POs for purchase analytics only. Does not receive stock, update catalog costs, or post supplier ledger/register entries.",
+      "continueToUpload": "Continue",
+      "backToMode": "Back",
+      "uploadHint": "One row per line. The same group id on every row of one purchase order.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map columns. Group id, warehouse, supplier phone, quantity, and cost price are required. Map at least one of product code or product name.",
+      "productKeyHint": "Map product code or product name (or both) so each line resolves to a catalog item.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review rows ({{mode}}).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import purchase orders",
+      "ingesting": "Importing {{done}} / {{total}} PO group(s)…",
+      "fieldGroupId": "Group id",
+      "fieldWarehouseCode": "Warehouse (code or name)",
+      "fieldSupplierPhone": "Supplier phone",
+      "fieldSupplierName": "Supplier name",
+      "fieldPoNote": "PO note",
+      "fieldOrderDiscountRate": "PO discount % (0–100)",
+      "fieldPoDate": "Document date (optional)",
+      "fieldProductCode": "Product code",
+      "fieldProductName": "Product name",
+      "fieldBrandName": "Brand (new products)",
+      "fieldCategoryName": "Category (new products)",
+      "fieldQuantity": "Quantity",
+      "fieldCostPrice": "Unit cost",
+      "fieldLineDiscountRate": "Line discount % (0–100)",
+      "fieldUpdateDefaultCostPrice": "Update default cost on receive (yes/no)",
+      "fieldCatalogCustomerPrice": "Catalog retail (with full catalog update)",
+      "fieldCatalogBusinessPrice": "Catalog wholesale (with full catalog update)",
+      "toastAllOk": "Imported {{count}} PO group(s).",
+      "toastPartial": "Imported {{ok}} group(s); {{fail}} failed.",
+      "toastAllFailed": "No groups imported ({{count}} failed).",
+      "groupFailed": "Group",
+      "errorGeneric": "Import failed",
+      "errorUnknownWarehouse": "Warehouse not found.",
+      "errorSupplierPhone": "Supplier phone is required.",
+      "issue": {
+        "missing_group_id": "Missing group id",
+        "missing_warehouse_code": "Missing warehouse",
+        "missing_product_key": "Product code or name required",
+        "invalid_quantity": "Invalid quantity",
+        "invalid_cost_price": "Invalid cost",
+        "invalid_line_discount": "Invalid line discount",
+        "invalid_order_discount": "Invalid PO discount",
+        "missing_supplier_phone": "Missing supplier phone",
+        "inconsistent_headers_within_group": "Headers differ within group",
+        "unknown_warehouse": "Unknown warehouse"
+      }
+    }
+  },
+  "inventoryTransfers": {
+    "title": "Stock transfers",
+    "subtitle": "Move products between warehouses. No prices—only quantities.",
+    "allTransfers": "All transfers",
+    "allTransfersSubtitle": "Review past moves between locations.",
+    "newTransfer": "New transfer",
+    "newTransferSubtitle": "Choose source and destination, add lines, confirm.",
+    "backToTransfers": "Back to stock transfers",
+    "backToList": "Back to list",
+    "fromWarehouse": "From warehouse",
+    "toWarehouse": "To warehouse",
+    "sameWarehouseError": "Pick two different warehouses.",
+    "note": "Note",
+    "notePlaceholder": "Optional reference for this transfer",
+    "lines": "Lines",
+    "addLine": "Add line",
+    "colProduct": "Product",
+    "colAvailable": "Available (source)",
+    "colNumber": "#",
+    "colDate": "Date",
+    "exceedsAvailable": "Exceeds available quantity at source.",
+    "submitTransfer": "Complete transfer",
+    "toastCreated": "Transfer completed",
+    "toastError": "Transfer failed",
+    "emptyList": "No transfers yet.",
+    "detailTitle": "Transfer #{{n}}",
+    "detailHeading": "Transfer #{{n}}",
+    "notFound": "Transfer not found.",
+    "print": "Print",
+    "openTransferDetail": "Open transfer number {{n}}",
+    "promptDeleteWarehouseTitle": "Delete this warehouse?",
+    "promptDeleteWarehouseDescription": "The source warehouse has no stock left. Remove it from your locations?",
+    "keepWarehouse": "Keep warehouse"
+  },
+  "people": {
+    "title": "People",
+    "searchPlaceholder": "Search by name or phone...",
+    "filterRoleAll": "All",
+    "filterRoleCustomers": "Customers",
+    "filterRoleSuppliers": "Suppliers",
+    "filterBalanceAll": "All balances",
+    "filterBalancePositive": "They owe you",
+    "filterBalanceNegative": "You owe them",
+    "filterBalanceZero": "Zero balance",
+    "filterDiscountAll": "All",
+    "filterDiscountHas": "Has discount",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "balance": "Balance",
+    "discount": "Discount Rate",
+    "creditLimit": "Credit Limit",
+    "noLimit": "No limit",
+    "owesYou": "owes you",
+    "youOwe": "you owe",
+    "settled": "Settled",
+    "recordPayment": "Record Payment",
+    "receivedPayment": "Received Payment",
+    "madePayment": "Made Payment",
+    "balanceHistory": "Balance History",
+    "addPerson": "Add Person",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import people from CSV",
+      "uploadHint": "Choose a UTF-8 CSV file with a header row. You will match each column to a person field next.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not read this CSV file.",
+      "emptyFile": "This file has no data rows.",
+      "matchHint": "For each person field, pick the CSV column that contains it. Required fields are marked with *.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused CSV columns:",
+      "continueToPreview": "Continue to preview",
+      "backToUpload": "Choose another file",
+      "backToMatch": "Back to column match",
+      "previewHint": "Review and edit rows below. {{count}} row(s) will be imported (discarded rows are excluded). Fix warnings before importing.",
+      "colStatus": "Status",
+      "fieldInitialBalance": "Opening balance",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "startIngesting": "Start importing",
+      "ingesting": "Importing… {{done}} / {{total}}",
+      "toastAllOk": "Imported {{count}} person(s).",
+      "toastPartial": "Imported {{ok}} person(s); {{fail}} failed.",
+      "toastAllFailed": "Import failed for all {{count}} row(s).",
+      "issue": {
+        "missing_name": "Name required",
+        "name_too_short": "Name too short",
+        "missing_phone": "Phone required",
+        "missing_roles": "Role required",
+        "invalid_roles": "Invalid role text",
+        "invalid_discount": "Invalid discount",
+        "invalid_credit": "Invalid credit limit",
+        "invalid_initial_balance": "Invalid opening balance",
+        "duplicate_in_file": "Duplicate phone in file",
+        "duplicate_in_db": "Phone already in system"
+      }
+    },
+    "exportCsvHint": "Download all people in the current list as CSV (same columns as import).",
+    "reconcileWallets": "Reconcile wallets",
+    "reconcileWalletsHint": "Replay every balance transaction to refresh each person's running balance.",
+    "reconcileWalletsSuccess": "Recalculated wallet balances for {{count}} people.",
+    "reconcileWalletsError": "Could not reconcile wallets.",
+    "balanceDirectionWarning": "This person's balance crossed from receivable to payable after a sync. Review the alerts panel.",
+    "editPerson": "Edit Person",
+    "deletePerson": "Delete Person",
+    "viewProfile": "View Profile",
+    "detailTitle": "Person",
+    "detailBack": "Back to people",
+    "detailSectionInfo": "Profile",
+    "detailEdit": "Edit person",
+    "detailSectionSales": "Sales analytics",
+    "detailSectionPurchases": "Purchase analytics",
+    "detailGrossProfitNeedsWac": "Gross profit appears when every product on this customer's completed orders has an average unit cost (WAC).",
+    "detailPurchaseKpiUnits": "Units received",
+    "detailPurchaseKpiSpend": "Line spend",
+    "detailPurchaseKpiPos": "Purchase orders",
+    "detailChartPurchaseUnits": "Units received per day",
+    "detailChartPurchaseSpend": "Spend per day",
+    "detailNoPurchasesInRange": "No received purchase lines in this date range.",
+    "openFullProfile": "Open full profile page",
+    "detailDocumentsSection": "Orders & purchase orders",
+    "detailDocSearchLabel": "Search by number",
+    "detailDocSearchPlaceholder": "e.g. 55, O-55, PO-12…",
+    "detailSalesOrders": "Sales orders",
+    "detailPurchaseOrdersTable": "Purchase orders",
+    "detailNoDocumentsMatch": "No documents match your filters.",
+    "detailMoneyOverTime": "Document totals over time",
+    "detailMoneyOverTimeHelp": "Sum of order totals (customer) and purchase order totals (supplier) per day. Two lines when this person is both customer and supplier.",
+    "detailMoneyLineCustomer": "Sales orders (total)",
+    "detailMoneyLineSupplier": "Purchase orders (total)",
+    "detailMoneyChartEmpty": "No orders or purchase orders in this date range.",
+    "phone": "Phone",
+    "address": "Address",
+    "notes": "Notes",
+    "roles": "Roles",
+    "lastUpdated": "Last Updated",
+    "currentBalance": "Current balance",
+    "discountHelper": "Applied automatically to customer orders",
+    "creditLimitHelper": "Leave empty for no limit",
+    "creditLimitEnable": "Set credit limit",
+    "name": "Name",
+    "roleRemovalWarning": "This person has {{count}} orders linked to their customer role. Remove the customer role only after reassigning orders.",
+    "roleRemovalWarningSupplier": "This person has {{count}} purchase orders linked as supplier.",
+    "deleteBlocked": "Cannot delete: person has linked records",
+    "deleteBlockedBalance": "Cannot delete: unsettled balance of {{amount}}",
+    "deleteConfirm": "Delete {{name}}? This cannot be undone.",
+    "emptyPeople": "No people match your filters.",
+    "toastCreated": "Person created",
+    "toastUpdated": "Person updated",
+    "toastDeleted": "Person deleted",
+    "toastPayment": "Payment recorded",
+    "toastError": "Something went wrong",
+    "validationNameMin": "Name must be at least 2 characters",
+    "validationPhoneRequired": "Phone number is required.",
+    "formCreateRequiredHint": "Name and phone are required.",
+    "validationPhoneDuplicate": "This phone number is already used by another person.",
+    "validationPhoneDuplicateNamed": "This phone number is already used by {{name}}.",
+    "validationRoles": "Select at least one role",
+    "paymentAmount": "Amount",
+    "paymentNote": "Note (optional)",
+    "paymentPreview": "Balance after payment",
+    "balanceExplanationPositive": "{{name}} owes you {{amount}}",
+    "balanceExplanationNegative": "You owe {{name}} {{amount}}",
+    "balanceExplanationZero": "Settled",
+    "balanceChipOwesYou": "Owes you",
+    "balanceChipYouOwe": "You owe",
+    "balanceChipSettled": "Settled",
+    "txWallet": "Wallet",
+    "txRegisterDeposit": "Register deposit",
+    "txRegisterWithdraw": "Register withdrawal",
+    "profileOverview": "Overview",
+    "profileOrders": "Orders",
+    "profilePurchaseOrders": "Purchase Orders",
+    "totalOrders": "Total Orders",
+    "totalPurchases": "Total Purchases",
+    "totalSpent": "Total Spent (orders)",
+    "totalBought": "Total Bought (POs)",
+    "transactionType": "Type",
+    "transactionDate": "Date",
+    "reference": "Reference",
+    "amount": "Amount",
+    "runningBalance": "Running balance",
+    "summaryTotalIn": "Total in",
+    "summaryTotalOut": "Total out",
+    "summaryNet": "Net",
+    "filterTxAll": "All types",
+    "openOrder": "Open order",
+    "openPO": "Open PO",
+    "txOrder": "Order",
+    "txPurchaseOrder": "Purchase order",
+    "txPaymentIn": "Payment in",
+    "txPaymentOut": "Payment out",
+    "txAdjustment": "Adjustment",
+    "adjustBalance": "Adjust balance",
+    "adjustNote": "Adjustment note",
+    "savePayment": "Save payment",
+    "emDash": "—",
+    "emptyTxHistory": "No transactions in this view.",
+    "emptyOrdersForPerson": "No orders linked yet.",
+    "emptyPOsForPerson": "No purchase orders linked yet."
+  },
+  "payments": {
+    "hubIntro": "Record balance payments or open the full transaction log (every ledger movement).",
+    "hubDisabled": "Payments hub shortcuts are turned off in Control settings.",
+    "allPayments": "Transaction log",
+    "allPaymentsDesc": "Full history of balance movements: sales orders, purchase orders, payments, wallet credits, and adjustments.",
+    "newPayment": "New payment",
+    "newPaymentDesc": "Choose a person and record received or made payment.",
+    "newPaymentHint": "Select who this payment applies to, then enter amount and type.",
+    "personForPayment": "Person",
+    "choosePerson": "Choose person…",
+    "selectPersonBrowser": "Select person",
+    "searchPeople": "Search by name, phone, or ID",
+    "pressF1Person": "Press F1 to open the person browser.",
+    "listIntro": "Complete ledger for the selected period—every operation that touched a person’s balance. Filter by type or person, or search.",
+    "filterFrom": "From date & time",
+    "filterTo": "To date & time",
+    "filterType": "Transaction type",
+    "filterPerson": "Person",
+    "filterPersonAll": "All people",
+    "typePaymentsBoth": "Payments in, out, and wallet",
+    "typeAllTransactions": "All transaction types",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Name, phone, walk-in, note, reference, type…",
+    "walkInCustomer": "Walk-in",
+    "emptyList": "No transactions match your filters.",
+    "resultCount": "{{count}} row(s) shown",
+    "backToHub": "Back to Payments",
+    "filterPaymentMethod": "Payment method",
+    "methodFilterAll": "All methods",
+    "methodUnspecified": "Not set",
+    "methodColumn": "Method",
+    "methodDetailsColumn": "Payment method",
+    "logDetailsColumn": "Other details",
+    "logStatusColumn": "Status",
+    "expandNestedPaymentsAria": "Show or hide checkout payment lines for this document",
+    "listDocumentTotal": "Document total",
+    "listDocumentTotalHint": "Sale total for an order, or purchase order liability total.",
+    "listBalanceImpact": "Balance impact",
+    "listBalanceImpactHint": "Default view: for sales orders, negative means the customer still owes (or net balance down), positive means credit or overpayment. Purchase orders keep signed payable remainder. Full ledger: raw signed ledger line. Green/red matches the sign of this column for linked people.",
+    "listRegisterImpact": "Register impact",
+    "listRegisterImpactHint": "Net effect on the register (cash drawer and tender accounts): positive when money comes in, negative when paid out.",
+    "listRegisterWarehouse": "Register / inventory",
+    "registerWarehouseLegacy": "Legacy",
+    "operationRegisterWarehouse": "Register warehouse",
+    "recordPaymentRegisterWarehouse": "Register for this payment",
+    "noRegisterWarehouseForPayments": "No warehouse with a register is configured. Add one under Inventory → Warehouses.",
+    "splitHint": "Enable each method you use and enter the amount (e.g. cash + card).",
+    "totalTendered": "Total tendered",
+    "overpaymentWarning": "You are paying more than the total amount",
+    "overpaymentWillBeAddedToWallet": "will be added to wallet as credit",
+    "confirmAndAddToWallet": "Confirm & add {{amount}} to wallet",
+    "selectPersonForOverpayment": "Select a person to apply overpayment to their wallet",
+    "showFullLedger": "Show full ledger",
+    "showFullLedgerHelp": "Include every balance line. When off, checkout payments that are already summarized on order and purchase order rows are hidden.",
+    "openOrderReference": "Open order {{ref}}",
+    "openPurchaseOrderReference": "Open purchase order {{ref}}",
+    "openPaymentOperationReference": "Open payment {{ref}}",
+    "retainedStandalonePaymentRef": "Payment {{id}}",
+    "paymentOperationTitle": "Payment",
+    "backToTransactionLog": "Back to transaction log",
+    "paymentOperationNotFound": "This payment could not be found.",
+    "paymentOperationUntitled": "Payment",
+    "person": "Person",
+    "relatedDocument": "Related document",
+    "relatedSalesOrder": "Open sales order",
+    "relatedPurchaseOrder": "Open purchase order",
+    "operationTenderLines": "Tender lines",
+    "operationWalletLines": "Wallet (overpayment)",
+    "operationReversedBanner": "This payment was reversed. Ledger rows are kept for audit with a reversal marker.",
+    "reverseOperation": "Reverse payment",
+    "reverseOperationConfirmTitle": "Reverse this payment?",
+    "reverseOperationConfirmDescription": "This will undo the payment in the ledger, restore the person’s balance when applicable, and update the linked sales order or purchase order if this payment was tied to one. This cannot be undone from the app.",
+    "toastOperationReversed": "Payment reversed",
+    "operationNoteNoEditReversed": "Notes cannot be edited after this payment was reversed.",
+    "reversedBadge": "Reversed",
+    "poCancelledBadge": "Cancelled",
+    "orderCancelledBadge": "Cancelled",
+    "orderCompletedBadge": "Completed",
+    "reversedDetailsHint": "Net effect cancelled",
+    "reversedBalanceImpactHint": "This payment was reversed; net change to balance is zero.",
+    "operationNote": "Note",
+    "operationNotePlaceholder": "Optional note for this payment…",
+    "saveOperationNote": "Save note",
+    "toastOperationNoteSaved": "Note updated",
+    "operationNoteReadOnly": "Editing payment notes is turned off in Control settings.",
+    "notePreview": "Preview",
+    "operationNoteLinkHint": "Order and PO references like O-12 or PO-3 link when the note ends with a document marker from the system.",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import standalone payments from CSV",
+      "uploadHint": "Each row is one payment to a person (received or made), with one tender method. Match columns below; person can be found by phone or unique name.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map CSV columns to payment fields. Type, method, and amount are required. Map at least one of phone or name.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import payments",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldPersonPhone": "Person phone",
+      "fieldPersonName": "Person name",
+      "fieldPaymentType": "Direction (payment_in / payment_out)",
+      "fieldPaymentMethod": "Method (cash, visa, …)",
+      "fieldAmount": "Amount",
+      "fieldNote": "Note",
+      "fieldRegisterWarehouse": "Register warehouse (code or name)",
+      "needPersonColumn": "Map at least one column to person phone or person name.",
+      "exportStandaloneHint": "Export standalone person payments (not tied to orders) for backup or migration.",
+      "toastAllOk": "Recorded {{count}} payment(s).",
+      "toastPartial": "Recorded {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No payments recorded ({{count}} failed).",
+      "issue": {
+        "missing_person": "Phone or name required",
+        "ambiguous_name": "Multiple people match",
+        "person_not_found": "Person not found",
+        "invalid_type": "Invalid direction",
+        "invalid_method": "Invalid method",
+        "invalid_amount": "Invalid amount",
+        "warehouse_missing": "Register warehouse required",
+        "warehouse_not_found": "Warehouse not found"
+      }
+    }
+  },
+  "register": {
+    "title": "Register",
+    "subtitle": "Running balance by tender (cash, card, cheque, InstaPay) from sales and purchases, plus manual movements.",
+    "disclaimer": "Sales or purchase payments that were stored on the ledger without a payment method are counted toward Cash in the register. Split-tender orders use each method as recorded.",
+    "balancesTitle": "Balance by payment method",
+    "totalInRegister": "Total in register",
+    "addToRegister": "Add to register",
+    "withdrawFromRegister": "Withdraw from register",
+    "viewActivity": "Register activity",
+    "activityTitle": "Recent register activity",
+    "activityEmpty": "No register movements yet.",
+    "colWhen": "When",
+    "colType": "Type",
+    "colMethod": "Method",
+    "colEffect": "Register effect",
+    "colNote": "Note",
+    "fieldMethod": "Payment method",
+    "fieldAmount": "Amount",
+    "fieldNoteOptional": "Note (optional)",
+    "confirmAdd": "Add",
+    "confirmWithdraw": "Withdraw",
+    "withdrawAvailable": "Available for this method: {{amount}}",
+    "validationAmount": "Enter a valid amount (at least 0.01).",
+    "toastDeposited": "Added to register",
+    "toastWithdrawn": "Withdrawal recorded",
+    "toastError": "Something went wrong",
+    "loadError": "Could not load register balances.",
+    "reconcileRegister": "Reconcile register",
+    "reconcileRegisterHint": "Replay all register-related ledger lines for every register location.",
+    "reconcileRegisterSuccess": "Recalculated register balances for {{count}} location(s).",
+    "reconcileRegisterError": "Could not reconcile register balances.",
+    "negativeMethodBalance": "This tender balance is negative after reconciliation.",
+    "ledgerPartyName": "Register",
+    "backToRegister": "Back to register",
+    "viewPayment": "View payment",
+    "activityLinkOrder": "Order {{ref}}",
+    "activityLinkPO": "{{ref}}",
+    "activityLinkPayment": "Payment",
+    "activityLinkRegister": "Register movement",
+    "registerWarehouseLabel": "Register location",
+    "inventoryOnlyAssignedHint": "You also have inventory locations without a cash register. Those appear when creating orders (ship-from); this screen only lists registers.",
+    "noRegisterWarehouse": "No warehouse is set up with a cash register.",
+    "withdrawAllDisabled": "Withdraw from register is turned off in Control settings.",
+    "withdrawAllConfirmTitle": "Withdraw everything from this register?",
+    "withdrawAllConfirmDescription": "One withdrawal will be recorded for each tender that has a balance. The register will read zero when finished.",
+    "withdrawAllConfirmAction": "Withdraw all",
+    "withdrawAllLedgerNote": "Withdraw all (clear register)",
+    "toastWithdrawAllDone": "All register balances withdrawn",
+    "disableRegisterPromptTitle": "Turn off register for this warehouse?",
+    "disableRegisterPromptDescription": "The register for “{{name}}” is empty. Do you want to disable the cash register for this location?",
+    "disableRegisterConfirm": "Turn off register",
+    "disableRegisterKeep": "Keep register",
+    "disableRegisterNotAllowed": "The primary or default warehouse must keep a register.",
+    "disableRegisterWarehouseMissing": "Warehouse not found.",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import register movements from CSV",
+      "uploadHint": "Each row is a deposit (+) or withdrawal (−) at a register warehouse, by tender type.",
+      "chooseFile": "Choose CSV file",
+      "parseError": "Could not parse this CSV.",
+      "emptyFile": "The file has no data rows.",
+      "matchHint": "Map columns: action (deposit/withdraw), warehouse code or name, method, amount, optional note.",
+      "notImported": "— Not imported —",
+      "sample": "Sample: {{value}}",
+      "sampleEmpty": "No sample in first rows",
+      "unusedColumns": "Unused columns:",
+      "previewHint": "Review {{count}} row(s).",
+      "colStatus": "Status",
+      "discard": "Discard",
+      "discarded": "Discarded",
+      "backToUpload": "Back",
+      "continueToPreview": "Continue to preview",
+      "backToMatch": "Back to mapping",
+      "startIngesting": "Import movements",
+      "ingesting": "Importing {{done}} / {{total}}…",
+      "fieldAction": "Action (deposit / withdraw)",
+      "fieldWarehouse": "Warehouse (code or name)",
+      "fieldPaymentMethod": "Method",
+      "fieldAmount": "Amount",
+      "fieldNote": "Note",
+      "exportActivityHint": "Download recent register activity for this location as CSV.",
+      "toastAllOk": "Imported {{count}} movement(s).",
+      "toastPartial": "Imported {{ok}}; {{fail}} failed.",
+      "toastAllFailed": "No movements imported ({{count}} failed).",
+      "issue": {
+        "invalid_action": "Invalid action",
+        "invalid_method": "Invalid method",
+        "invalid_amount": "Invalid amount",
+        "warehouse_missing": "Warehouse required",
+        "warehouse_not_found": "Warehouse not found",
+        "deposit_forbidden": "Deposit not allowed",
+        "withdraw_forbidden": "Withdraw not allowed"
+      }
+    }
   },
   "reports": {
     "title": "Reports",
@@ -297,6 +1787,326 @@
     "averageOrderValue": "Average Order Value",
     "mostSoldProduct": "Most sold product",
     "salesPerDay": "Sales per day"
+  },
+  "documentation": {
+    "title": "Platform guide",
+    "pageTitle": "Documentation | StockPilot",
+    "mindmapTitle": "Feature map",
+    "mapHint": "Open or close each card, then each subsection, to browse features.",
+    "mapGroups": {
+      "platform": "Platform & navigation",
+      "catalog": "Catalog & inventory",
+      "commerce": "Purchasing & sales",
+      "money": "People, payments & register",
+      "insights": "Reports & notes",
+      "admin": "Admin, alerts & sync",
+      "security": "Sign-in, members & security"
+    },
+    "adminCalloutPrefix": "Shortcuts:",
+    "adminCalloutMigration": "Migration guide",
+    "adminCalloutControl": "Control",
+    "adminCalloutMembers": "Members",
+    "adminCalloutSync": "Data sync",
+    "adminCalloutSuffix": " — use the sections below for inventory, sales, purchasing, payments, transfers, alerts, and security.",
+    "securityCallout": "Operators sign in with Supabase Auth.",
+    "securityCalloutHint": "Open the “Sign-in, members & security” card below for setup and best practices.",
+    "areas": {
+      "nav": {
+        "title": "Navigation & admin",
+        "items": [
+          "Sidebar visibility toggles (Control)",
+          "Admin hub: Dashboard, Documentation, Migration guide, Members, Data sync (when enabled), Stock movements, Reports",
+          "Control (/control): per-browser feature visibility; Members merges stricter overrides per operator",
+          "Inventory hub, Orders, People, Payments, Register"
+        ]
+      },
+      "header": {
+        "title": "Top bar",
+        "items": [
+          "Low-stock bell and badge (when enabled)",
+          "Language / layout context"
+        ]
+      },
+      "dashboard": {
+        "title": "Dashboard (home)",
+        "items": [
+          "Overview tab: stats, receivables/payables, recent movements, low stock",
+          "Reports tab: sales and inventory reports",
+          "Each section can be gated in Control"
+        ]
+      },
+      "inventoryHub": {
+        "title": "Inventory hub",
+        "items": [
+          "Cards to Products, Purchase orders, Stock transfers, Warehouses, Movements, Categories, Brands",
+          "Entry point for catalog and per-warehouse stock; product detail shows quantities by warehouse when you use multiple locations"
+        ]
+      },
+      "warehouses": {
+        "title": "Warehouses",
+        "items": [
+          "Locations with mandatory location text; human-facing codes auto-generated from location (e.g. NASR-CITY-01)",
+          "Optional cash register per warehouse; orders and payments can target a register warehouse; turning off a register requires an empty balance (withdraw all, then confirm)",
+          "Assign operators to allowed warehouses under Admin → Members so they only see and ship from permitted locations"
+        ]
+      },
+      "products": {
+        "title": "Products",
+        "items": [
+          "Product list, search, and CRUD (when allowed)",
+          "Pricing (cost, retail, business) and stock; multi-warehouse quantities on the product detail page",
+          "CSV import/export when enabled in Control"
+        ]
+      },
+      "categories": {
+        "title": "Categories",
+        "items": [
+          "Manage product categories used in the catalog"
+        ]
+      },
+      "brands": {
+        "title": "Brands",
+        "items": [
+          "Manage brands for products and filters"
+        ]
+      },
+      "movements": {
+        "title": "Stock movements",
+        "items": [
+          "History of stock in, out, and adjustments",
+          "Filters and pagination; ties to sales, POs, transfers, and manual adjustments"
+        ]
+      },
+      "inventoryTransfers": {
+        "title": "Stock transfers",
+        "items": [
+          "Move quantity between two warehouses with a draft → complete flow",
+          "List and detail pages for audit; gated in Control under inventory transfers"
+        ]
+      },
+      "purchaseOrders": {
+        "title": "Purchase orders",
+        "items": [
+          "List, new PO, receive stock, supplier payables, notes, cancel when enabled",
+          "CSV import (live drafts vs historical), export for templates",
+          "“Edit as replacement” (when enabled): cancels the current PO with the same settlement choices as cancel, then opens a new draft with copied lines, supplier, discounts, and draft payments — admins receive an in-app alert"
+        ]
+      },
+      "orders": {
+        "title": "Sales orders",
+        "items": [
+          "POS-style drafts, checkout, customer link, warehouse (ship-from), payments and installments",
+          "Cancel and optional “Edit as replacement” (when enabled): same as cancel semantics, then a new draft with copied lines and splits — admins receive an in-app alert",
+          "CSV import/export when enabled"
+        ]
+      },
+      "people": {
+        "title": "People",
+        "items": [
+          "Customers and suppliers, balances, discounts, credit",
+          "Quick-create from order/PO browsers when allowed"
+        ]
+      },
+      "payments": {
+        "title": "Payments",
+        "items": [
+          "Payment hub, transaction log, new payment",
+          "Ledger notes and reversal when enabled"
+        ]
+      },
+      "register": {
+        "title": "Register",
+        "items": [
+          "Cash-drawer balances by tender, scoped per warehouse register",
+          "Deposit, withdraw, and withdraw-all flow (e.g. from warehouses when disabling a register)",
+          "Deposit and withdraw when enabled in Control"
+        ]
+      },
+      "reports": {
+        "title": "Reports",
+        "items": [
+          "Sales and inventory value reports on the dashboard tab",
+          "CSV export where available"
+        ]
+      },
+      "notes": {
+        "title": "Notes & mentions",
+        "items": [
+          "Rich notes on orders, POs, and people with @mentions",
+          "Links to related documents when supported"
+        ]
+      },
+      "adminHub": {
+        "title": "Admin hub & operators",
+        "items": [
+          "Admin hub routes: /admin (cards), Dashboard, Documentation (/admin/documentation), Migration guide (/admin/migration), Members (/admin/members/*), Data sync (/sync when enabled), Reports, Stock movements",
+          "Members: create operator Auth users, optional password reset, per-user feature checkboxes (same IDs as Control defaults), and allowed warehouses",
+          "Enable “Data sync” in Control for operators who should open /sync to push or pull mirrored tables between local and hosted Supabase (see on-screen warnings)"
+        ]
+      },
+      "stockAlerts": {
+        "title": "Alerts bell",
+        "items": [
+          "Unread stock and system alerts (low stock, sync issues, register/wallet signals, informational notices)",
+          "Some alerts are admin-only (for example document replacement after edit-as-replacement); only admins see them in the bell and realtime toast"
+        ]
+      },
+      "security": {
+        "title": "Sign-in, members & security",
+        "items": [
+          "Every operator is a Supabase Auth user; the app loads a profiles row (is_admin, feature_overrides, allowed_warehouse_ids) after sign-in.",
+          "Only admins may open /admin and /control; route checks use profiles.is_admin, not Control toggles alone.",
+          "Control toggles and localStorage shape default UI for this browser; non-admin permissions merge feature_overrides from the server — if either side disables a capability, the operator cannot use it.",
+          "Sign-in uses a synthetic email: username@members.stockpilot.local — create the Auth user with that email pattern (the create-member Edge Function does this for you).",
+          "Never put the service role key or plaintext operator passwords in VITE_* env or bundled client code; member creation uses the create-member Edge Function with the service role on the server.",
+          "Bootstrap the fixed admin in Supabase Dashboard (Auth → Users) or a one-off script: set user_metadata username and is_admin true; password only in Auth.",
+          "Apply all SQL migrations before go-live so RLS, registers, multi-warehouse stock, and CSV paths match the app version you deploy.",
+          "Logout clears the session from this browser; see Supabase Auth docs for refresh tokens and RLS."
+        ]
+      }
+    }
+  },
+  "migrationGuide": {
+    "title": "Migration & setup guide",
+    "browserTitle": "Migration guide | StockPilot",
+    "subtitle": "End-to-end path to adopt StockPilot: Auth, members, warehouses, catalog, transfers, optional hosted/local sync, CSV loads, register, and go-live checks.",
+    "intro": "Use this page as your master checklist. Order matters: locations and registers before document CSV, people before orders, suppliers before purchase orders. Create operators under Admin → Members and use Control to match what each role should see. Progress saves in this browser only (localStorage). The Platform guide (/admin/documentation) explains each area in more detail.",
+    "savedLocallyHint": "Progress is stored only on this device (localStorage). It is not synced to your account or other browsers.",
+    "progressLabel": "{{done}} of {{total}} steps complete",
+    "markAllComplete": "Mark all complete",
+    "resetProgress": "Reset progress",
+    "resetConfirmTitle": "Reset migration checklist?",
+    "resetConfirmDescription": "This clears all checkmarks in this browser. It does not delete any data in StockPilot.",
+    "resetConfirm": "Reset",
+    "cancel": "Cancel",
+    "markAllConfirmTitle": "Mark every step complete?",
+    "markAllConfirmDescription": "Use this if you have already finished migration and only want the checklist to show 100% complete.",
+    "markAllConfirm": "Mark all",
+    "documentationCallout": "Migrating from another system?",
+    "documentationLink": "Open the migration & setup guide",
+    "phasePrepare": {
+      "title": "1. Prepare"
+    },
+    "phaseTeam": {
+      "title": "2. Operators & access"
+    },
+    "phaseFoundation": {
+      "title": "3. Locations & registers"
+    },
+    "phaseMaster": {
+      "title": "4. Master data & internal transfers"
+    },
+    "phaseSync": {
+      "title": "5. Data sync (optional)"
+    },
+    "phaseOptional": {
+      "title": "6. Optional: opening balances"
+    },
+    "phaseTransactions": {
+      "title": "7. Purchase orders & sales orders (CSV)"
+    },
+    "phaseMoney": {
+      "title": "8. Register & cash"
+    },
+    "phaseCutover": {
+      "title": "9. Go live & documentation"
+    },
+    "steps": {
+      "plan_exports": {
+        "title": "Export and clean data from the old system",
+        "body": "Pull customer/supplier lists with consistent phone numbers (used for matching), product codes/SKUs, units, and any opening stock figures. Normalize dates and currencies to match how you will import. Decide what is truly “historical only” vs what you will operate going forward."
+      },
+      "env_schema": {
+        "title": "Database and app environment ready",
+        "body": "Apply every SQL migration to your Supabase project so multi-warehouse stock, registers, RLS, stock_alerts, and CSV paths match the app you deploy. Set VITE_* variables for the correct Supabase URL and anon key; never expose the service role in the client. Sign in with your bootstrap admin (see Platform guide → security). Confirm you can open Inventory and Admin before loading data."
+      },
+      "operators_members": {
+        "title": "Create members (operators) and warehouse access",
+        "body": "Under Admin → Members, add each clerk or manager: username becomes their sign-in email pattern, password is stored in Auth only, and you pick allowed warehouses plus feature toggles (same switches as Control, stored as overrides on their profile). Operators without admin flag cannot open /control or /admin except via routes you explicitly grant. Do this early so you can test imports signed in as a non-admin user."
+      },
+      "warehouses": {
+        "title": "Create warehouses and registers",
+        "body": "Define each storage location; codes are derived from the location text. Enable a cash register only where you truly take payments—POS checkout and some payment flows require a register-capable warehouse. Align warehouse codes with any CSV you will import. Assign every operator at least one allowed warehouse in Members."
+      },
+      "categories_brands": {
+        "title": "Categories and brands (if needed)",
+        "body": "Create categories and brands before or during product import. Product CSV can create missing brand/category names on the fly; pre-creating them keeps naming tidy."
+      },
+      "people": {
+        "title": "Import or add customers and suppliers",
+        "body": "Load People before order and PO CSV. Phone is the primary match key and is required when creating a new person from CSV. Suppliers must exist (with supplier role) before purchase order import creates linked POs."
+      },
+      "products": {
+        "title": "Import products and opening stock",
+        "body": "Use Products → Import CSV. Set opening quantities per warehouse when you want live on-hand stock from day one (columns per warehouse code). Export CSV from the products page for a template. Resolve cost and list prices so later sales and PO lines stay coherent. Open a product after import to verify per-warehouse quantities."
+      },
+      "inventory_transfers_guide": {
+        "title": "Plan stock transfers between warehouses",
+        "body": "If you split stock across sites, use Inventory → Stock transfers to move quantity with an auditable document (draft to posted). Run a few manual transfers after products exist to validate warehouse access for each operator. This is separate from purchase/sale documents."
+      },
+      "data_sync_environments": {
+        "title": "Optional: sync local and hosted Supabase",
+        "body": "When you run a local stack plus hosted production (or staging), enable “Data sync” in Control for trusted admins, then open /sync. Read the warnings on that screen: pushes overwrite target rows for mirrored business tables. Use history to see past runs. Skip this step if you only have a single cloud project."
+      },
+      "payments_optional": {
+        "title": "Optional: standalone payments for opening balances",
+        "body": "If you need opening customer or supplier balances on the ledger without tying to an order, use Payments → Import CSV where available. Complex split tenders from the old system are often easier to recreate in the UI than in bulk."
+      },
+      "po_csv": {
+        "title": "Purchase orders (CSV)",
+        "body": "On Purchase orders → list, use Import CSV after suppliers and products exist. Choose Live (draft) for POs you will receive in the app—stock and payables update on confirm/receive. Choose Historical for backfill analytics only (no stock or supplier ledger). Use Export CSV on the same page for column headers."
+      },
+      "orders_csv": {
+        "title": "Sales orders (CSV)",
+        "body": "On Orders → list, use Import CSV after customers and products exist. Live creates drafts—stock and register change only when you complete/checkout like a normal order. Historical adds completed orders for charts without moving stock or posting register lines. Export CSV for a matching template."
+      },
+      "register": {
+        "title": "Reconcile the register / cash drawer",
+        "body": "Historical imports do not set physical cash. After cutover, compare the Register screen to your actual drawer and use deposits or withdrawals (if your process allows) so tender balances match reality. Link payments to the correct register warehouse when recording money in."
+      },
+      "smoke_test": {
+        "title": "Smoke test in the live flows",
+        "body": "Create one small draft sale and one draft PO in the normal screens, then complete them end-to-end. Verify stock movement, person balance, and register lines match expectations before relying on bulk data."
+      },
+      "control_review": {
+        "title": "Review Control (feature flags)",
+        "body": "Open Control and confirm which CSV imports, hub shortcuts, POS actions, purchase-order receive/cancel, edit-as-replacement, and admin shortcuts match each role. Remember: toggles hide UI; Members overrides still apply per user. Tighten anything you do not want during stabilization."
+      },
+      "documentation_review": {
+        "title": "Skim the Platform guide",
+        "body": "Open Admin → Documentation and walk the feature map so trainers know where orders, POs, payments, transfers, alerts, and security behaviors live. Keep the Migration guide link handy for the next store or environment you onboard."
+      }
+    },
+    "importShortcut": {
+      "people": "Import people (CSV)",
+      "products": "Import products (CSV)",
+      "payments": "Import payments (CSV)",
+      "orders": "Import orders (CSV)",
+      "purchaseOrders": "Import purchase orders (CSV)",
+      "register": "Import register (CSV)"
+    },
+    "link": {
+      "warehouses": "Open Warehouses",
+      "categories": "Categories",
+      "brands": "Brands",
+      "people": "People",
+      "products": "Products",
+      "payments": "Payments",
+      "purchaseOrdersList": "Purchase orders list",
+      "ordersList": "Orders list",
+      "register": "Register",
+      "newOrder": "New order",
+      "newPo": "New purchase order",
+      "control": "Control",
+      "members": "Members list",
+      "addMember": "Add member",
+      "inventoryTransfersHome": "Stock transfers",
+      "newInventoryTransfer": "New transfer",
+      "inventoryTransfersList": "Transfer list",
+      "dataSync": "Data sync",
+      "dataSyncHistory": "Sync history",
+      "documentation": "Platform guide"
+    }
   },
   "errorBoundary": {
     "title": "Something went wrong",

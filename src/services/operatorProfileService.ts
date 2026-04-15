@@ -1,0 +1,59 @@
+import { supabase } from '@/lib/supabase'
+import type { OperatorProfile } from '@/types/profile'
+
+/** PostgREST usually returns `bigint[]` as a JSON array; tolerate string / legacy shapes. */
+function warehouseIdsFromProfileField(raw: unknown): number[] {
+  if (raw == null) return []
+  if (Array.isArray(raw)) {
+    return raw
+      .map((x) => Number(x))
+      .filter((n) => Number.isFinite(n) && n > 0)
+  }
+  if (typeof raw === 'string') {
+    const s = raw.trim()
+    if (s.startsWith('{') && s.endsWith('}')) {
+      const inner = s.slice(1, -1).trim()
+      if (!inner) return []
+      return inner
+        .split(',')
+        .map((x) => Number(x.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0)
+    }
+  }
+  return []
+}
+
+export async function fetchOperatorProfile(
+  userId: string
+): Promise<OperatorProfile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, is_admin, feature_overrides, allowed_warehouse_ids, created_at')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn(
+      '[profiles] load failed — check migration 034, RLS, and API schema reload:',
+      error.message
+    )
+    return null
+  }
+  if (!data) return null
+  const fo = data.feature_overrides
+  const rawAdmin = data.is_admin as unknown
+  const isAdminFlag =
+    rawAdmin === true || rawAdmin === 'true' || rawAdmin === 1
+  const warehouseIds = warehouseIdsFromProfileField(data.allowed_warehouse_ids)
+  return {
+    id: data.id,
+    username: data.username,
+    is_admin: isAdminFlag,
+    feature_overrides:
+      fo && typeof fo === 'object' && !Array.isArray(fo)
+        ? (fo as Record<string, boolean>)
+        : {},
+    allowed_warehouse_ids: warehouseIds,
+    created_at: data.created_at,
+  }
+}

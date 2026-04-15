@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import {
   useReactTable,
   getCoreRowModel,
@@ -10,9 +10,6 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { toast } from 'sonner'
 import {
   Pencil,
@@ -20,31 +17,29 @@ import {
   ArrowLeftRight,
   AlertTriangle,
   Package,
+  FileUp,
+  FileDown,
+  Loader2,
+  RefreshCw,
 } from 'lucide-react'
 
 import {
   getAllProducts,
-  createProduct,
-  updateProduct,
   deleteProduct,
-  adjustStock,
+  getAllProductWarehouseStock,
 } from '@/services/productService'
+import { insertAlertsForProductsWithNegativeQuantity } from '@/services/stockAlertsService'
+import { recalculateStockFromMovements } from '@/services/stockReconcileService'
+import { listWarehouses } from '@/services/warehouseService'
 import { getAllCategories as getCategories } from '@/services/categoryService'
 import { getAllBrands as getBrands } from '@/services/brandService'
 import type { ProductWithRelations } from '@/types'
-import type { StockMovementType } from '@/types'
+import { supabase } from '@/lib/supabase'
 import { useDebouncedValue } from '@/hooks/useDebouncedValue'
+import { useMigrationImportDialog } from '@/hooks/useMigrationImportDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,45 +51,44 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ProductFormDialog } from '@/components/products/ProductFormDialog'
+import { ProductStockAdjustDialog } from '@/components/products/ProductStockAdjustDialog'
 import { BackToInventoryLink } from '@/components/inventory/BackToInventoryLink'
+import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { formatCurrency } from '@/utils/currency'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/hooks/useLanguage'
+import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { ProductCsvImportDialog } from '@/components/products/ProductCsvImportDialog'
+import { downloadCsv } from '@/utils/csvDownload'
 
-const productSchema = z.object({
-  name: z.string().min(2, 'products.validationNameMin'),
-  brand_id: z.string().nullable(),
-  category_id: z.string().nullable(),
-  customer_price: z.number().min(0, 'products.validationMinZero'),
-  business_price: z.number().min(0, 'products.validationMinZero'),
-  cost_price: z.number().min(0, 'products.validationMinZero').optional(),
-  low_stock_threshold: z.number().int().min(0, 'products.validationMinZero'),
-  unit: z.string().min(1, 'products.validationRequired'),
-  description: z.string().nullable(),
-})
-type ProductFormValues = z.infer<typeof productSchema>
-
-const defaultProductValues: ProductFormValues = {
-  name: '',
-  brand_id: null,
-  category_id: null,
-  customer_price: 0,
-  business_price: 0,
-  cost_price: 0,
-  low_stock_threshold: 5,
-  unit: 'piece',
-  description: null,
+function sanitizeCsvWarehouseCode(code: string): string {
+  const s = String(code)
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return s || 'warehouse'
 }
 
 export function Products() {
   const { t, i18n } = useTranslation()
+  const { isRTL } = useLanguage()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const lowStockOnly = searchParams.get('lowStock') === '1'
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
@@ -107,7 +101,20 @@ export function Products() {
   const [stockProduct, setStockProduct] = useState<ProductWithRelations | null>(null)
   const [deleteProductState, setDeleteProductState] =
     useState<ProductWithRelations | null>(null)
+  const [productCsvOpen, setProductCsvOpen] = useState(false)
   const [sorting, setSorting] = useState<SortingState>([])
+  const defaultWarehouseInitRef = useRef(false)
+  const [defaultStockWarehouseId, setDefaultStockWarehouseId] = useState(1)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportScope, setExportScope] = useState<'all' | 'one'>('all')
+  const [exportWarehouseId, setExportWarehouseId] = useState(1)
+
+  const canAddProduct = useFeatureEnabled('products.addProduct')
+  const canEditProduct = useFeatureEnabled('products.editProduct')
+  const canDeleteProduct = useFeatureEnabled('products.deleteProduct')
+  const canStockAdjust = useFeatureEnabled('products.stockAdjust')
+
+  useMigrationImportDialog(setProductCsvOpen, true, canAddProduct)
 
   const debouncedSearch = useDebouncedValue(search, 300)
 
@@ -133,22 +140,94 @@ export function Products() {
     queryFn: getBrands,
   })
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses'],
+    queryFn: listWarehouses,
+  })
+
+  const { data: pwsRows = [] } = useQuery({
+    queryKey: ['allWarehouseStock'],
+    queryFn: getAllProductWarehouseStock,
+  })
+
+  const sortedWarehouses = useMemo(
+    () => [...warehouses].sort((a, b) => a.name.localeCompare(b.name)),
+    [warehouses]
+  )
+
+  const stockByProduct = useMemo(() => {
+    const m = new Map<string, Map<number, number>>()
+    for (const r of pwsRows) {
+      let inner = m.get(r.product_id)
+      if (!inner) {
+        inner = new Map()
+        m.set(r.product_id, inner)
+      }
+      inner.set(r.warehouse_id, r.quantity)
+    }
+    return m
+  }, [pwsRows])
+
+  const hasNegativeStock = useMemo(() => {
+    for (const p of products) {
+      if (p.quantity < 0) return true
+      const inner = stockByProduct.get(p.id)
+      if (!inner) continue
+      for (const q of inner.values()) {
+        if (q < 0) return true
+      }
+    }
+    return false
+  }, [products, stockByProduct])
+
+  useEffect(() => {
+    if (defaultWarehouseInitRef.current || warehouses.length === 0) return
+    const d = warehouses.find((w) => w.is_default)
+    const id = d?.id ?? warehouses[0]?.id ?? 1
+    setDefaultStockWarehouseId(id)
+    defaultWarehouseInitRef.current = true
+  }, [warehouses])
+
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
+      const q = debouncedSearch.toLowerCase()
       const matchSearch =
         !debouncedSearch ||
-        p.name.toLowerCase().includes(debouncedSearch.toLowerCase())
+        p.name.toLowerCase().includes(q) ||
+        p.product_code.toLowerCase().includes(q)
       const matchCategory = !categoryId || p.category?.id === categoryId
       const matchBrand = !brandId || p.brand?.id === brandId
-      const matchLowStock = !lowStockOnly || p.quantity <= p.low_stock_threshold
+      const matchLowStock =
+        !lowStockOnly ||
+        sortedWarehouses.some((w) => {
+          const whQty = stockByProduct.get(p.id)?.get(w.id) ?? 0
+          return whQty <= p.low_stock_threshold
+        })
       return matchSearch && matchCategory && matchBrand && matchLowStock
     })
-  }, [products, debouncedSearch, categoryId, brandId, lowStockOnly])
+  }, [
+    products,
+    debouncedSearch,
+    categoryId,
+    brandId,
+    lowStockOnly,
+    sortedWarehouses,
+    stockByProduct,
+  ])
 
   const formatCurrencyDisplay = (n: number) => formatCurrency(n, lang)
 
   const columns = useMemo<ColumnDef<ProductWithRelations>[]>(
     () => [
+      {
+        accessorKey: 'product_code',
+        header: t('products.productId'),
+        cell: ({ getValue }) => (
+          <span className="font-mono text-sm tabular-nums">
+            {getValue() as string}
+          </span>
+        ),
+      },
       {
         accessorKey: 'name',
         header: t('common.name'),
@@ -167,8 +246,8 @@ export function Products() {
         header: t('categories.title'),
       },
       {
-        accessorKey: 'customer_price',
-        header: t('products.customerPrice'),
+        accessorKey: 'cost_price',
+        header: t('products.costPrice'),
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
@@ -177,26 +256,80 @@ export function Products() {
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
       {
-        accessorKey: 'cost_price',
-        header: t('products.costPrice'),
+        accessorKey: 'customer_price',
+        header: t('products.customerPrice'),
         cell: ({ getValue }) => formatCurrencyDisplay(getValue() as number),
       },
+      ...sortedWarehouses.map(
+        (w) =>
+          ({
+            id: `wh_${w.id}`,
+            accessorFn: (row: ProductWithRelations) =>
+              stockByProduct.get(row.id)?.get(w.id) ?? 0,
+            header: t('products.qtyAtWarehouseCode', { code: w.code }),
+            cell: ({
+              row,
+            }: {
+              row: { original: ProductWithRelations }
+            }) => {
+              const p = row.original
+              const qty = stockByProduct.get(p.id)?.get(w.id) ?? 0
+              const threshold = p.low_stock_threshold
+              const isNegative = qty < 0
+              const isLow = !isNegative && qty <= threshold
+              return (
+                <span
+                  title={
+                    isNegative
+                      ? t('products.quantityNegative')
+                      : t('products.quantityManagedByPurchaseOrders')
+                  }
+                  className={cn(
+                    'inline-flex items-center gap-1 cursor-help tabular-nums',
+                    isNegative
+                      ? 'text-red-600 font-semibold'
+                      : isLow
+                        ? 'text-red-600 font-medium'
+                        : 'text-green-600'
+                  )}
+                >
+                  {(isNegative || isLow) && (
+                    <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                  )}
+                  {qty}
+                </span>
+              )
+            },
+          }) satisfies ColumnDef<ProductWithRelations>
+      ),
       {
+        id: 'quantityTotal',
         accessorKey: 'quantity',
-        header: t('common.quantity'),
+        header: t('products.totalAcrossLocations'),
         cell: ({ row }) => {
-          const qty = row.original.quantity
-          const threshold = row.original.low_stock_threshold
-          const isLow = qty <= threshold
+          const p = row.original
+          const qty = p.quantity
+          const isNegative = qty < 0
+          const isLow = !isNegative && qty <= p.low_stock_threshold
           return (
             <span
-              title={t('products.quantityManagedByPurchaseOrders')}
+              title={
+                isNegative
+                  ? t('products.quantityNegative')
+                  : t('products.quantityManagedByPurchaseOrders')
+              }
               className={cn(
-                'inline-flex items-center gap-1 cursor-help',
-                isLow ? 'text-red-600 font-medium' : 'text-green-600'
+                'inline-flex items-center gap-1 cursor-help font-medium tabular-nums',
+                isNegative
+                  ? 'text-red-600 font-semibold'
+                  : isLow
+                    ? 'text-red-600'
+                    : 'text-green-600'
               )}
             >
-              {isLow && <AlertTriangle className="h-4 w-4" />}
+              {(isNegative || isLow) && (
+                <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+              )}
               {qty}
             </span>
           )
@@ -206,44 +339,62 @@ export function Products() {
         accessorKey: 'unit',
         header: t('products.unit'),
       },
-      {
-        id: 'actions',
-        header: t('common.actions'),
-        cell: ({ row }) => {
-          const p = row.original
-          return (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setEditProduct(p)}
-                aria-label={t('common.edit')}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setStockProduct(p)}
-                aria-label={t('products.stockAdjust')}
-              >
-                <ArrowLeftRight className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDeleteProductState(p)}
-                aria-label={t('common.delete')}
-                className="text-destructive hover:text-destructive"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          )
-        },
-      },
+      ...(canEditProduct || canStockAdjust || canDeleteProduct
+        ? [
+            {
+              id: 'actions',
+              header: t('common.actions'),
+              cell: ({ row }: { row: { original: ProductWithRelations } }) => {
+                const p = row.original
+                return (
+                  <div className="flex items-center gap-1">
+                    {canEditProduct && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditProduct(p)}
+                        aria-label={t('common.edit')}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canStockAdjust && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setStockProduct(p)}
+                        aria-label={t('products.stockAdjust')}
+                      >
+                        <ArrowLeftRight className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeleteProduct && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDeleteProductState(p)}
+                        aria-label={t('common.delete')}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                )
+              },
+            } satisfies ColumnDef<ProductWithRelations>,
+          ]
+        : []),
     ],
-    [t]
+    [
+      t,
+      formatCurrencyDisplay,
+      canEditProduct,
+      canStockAdjust,
+      canDeleteProduct,
+      sortedWarehouses,
+      stockByProduct,
+    ]
   )
 
   const table = useReactTable({
@@ -255,16 +406,115 @@ export function Products() {
     getSortedRowModel: getSortedRowModel(),
   })
 
+  const runExportDownload = () => {
+    if (
+      exportScope === 'one' &&
+      !warehouses.some((w) => w.id === exportWarehouseId)
+    ) {
+      return
+    }
+
+    const baseCols = (p: ProductWithRelations) => ({
+      product_code: p.product_code,
+      name: p.name,
+      brand_name: p.brand?.name ?? '',
+      category_name: p.category?.name ?? '',
+      customer_price: p.customer_price,
+      business_price: p.business_price,
+      cost_price: p.cost_price,
+      low_stock_threshold: p.low_stock_threshold,
+      unit: p.unit,
+      description: p.description ?? '',
+    })
+
+    let rows: Record<string, unknown>[]
+    let filenameSuffix: string
+
+    if (exportScope === 'all') {
+      rows = products.map((p) => {
+        const row: Record<string, unknown> = {
+          ...baseCols(p),
+          quantity_total: p.quantity,
+        }
+        for (const w of sortedWarehouses) {
+          row[`quantity_${sanitizeCsvWarehouseCode(w.code)}`] =
+            stockByProduct.get(p.id)?.get(w.id) ?? 0
+        }
+        return row
+      })
+      filenameSuffix = 'all-wh'
+    } else {
+      const wh = warehouses.find((w) => w.id === exportWarehouseId)
+      rows = products.map((p) => ({
+        ...baseCols(p),
+        warehouse_code: wh?.code ?? String(exportWarehouseId),
+        quantity_at_warehouse:
+          stockByProduct.get(p.id)?.get(exportWarehouseId) ?? 0,
+        quantity_total: p.quantity,
+      }))
+      filenameSuffix = `wh-${exportWarehouseId}`
+    }
+
+    downloadCsv(
+      `products-export-${filenameSuffix}-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows
+    )
+    setExportDialogOpen(false)
+  }
+
   const invalidateProducts = () => {
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['lowStockProducts'] })
+    queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
+    queryClient.invalidateQueries({ queryKey: ['allWarehouseStock'] })
+    queryClient.invalidateQueries({ queryKey: ['productWhStock'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
     queryClient.invalidateQueries({ queryKey: ['recentMovements'] })
+    queryClient.invalidateQueries({ queryKey: ['productPriceHistory'] })
+    queryClient.invalidateQueries({ queryKey: ['categories'] })
+    queryClient.invalidateQueries({ queryKey: ['brands'] })
+    queryClient.invalidateQueries({ queryKey: ['stockAlerts'] })
   }
+
+  const reconcileMutation = useMutation({
+    mutationFn: async () => {
+      await recalculateStockFromMovements(null)
+      return insertAlertsForProductsWithNegativeQuantity(
+        supabase,
+        'manual_reconcile'
+      )
+    },
+    onSuccess: (negativeAlertCount) => {
+      if (negativeAlertCount > 0) {
+        toast.success(
+          t('products.reconcileStockNegativeSummary', {
+            count: negativeAlertCount,
+          })
+        )
+      } else {
+        toast.success(t('products.reconcileStockSuccess'))
+      }
+      invalidateProducts()
+    },
+    onError: () => {
+      toast.error(t('products.reconcileStockError'))
+    },
+  })
 
   return (
     <div className="space-y-4">
       <BackToInventoryLink />
+
+      {hasNegativeStock && (
+        <div
+          role="alert"
+          className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+          <p className="leading-relaxed">{t('products.negativeStockBanner')}</p>
+        </div>
+      )}
+
       {/* Top bar */}
       <div className="flex flex-wrap items-center gap-3">
         <Input
@@ -305,16 +555,76 @@ export function Products() {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={() => setAddOpen(true)}>
-          {t('products.addProduct')}
+        <WarehouseCombobox
+          id="products-stock-default-warehouse"
+          label={t('products.defaultWarehouseForAdjustments')}
+          warehouses={warehouses}
+          value={defaultStockWarehouseId}
+          onChange={setDefaultStockWarehouseId}
+          className="min-w-[220px] max-w-xs"
+        />
+        <Button
+          type="button"
+          variant="secondary"
+          className="gap-2"
+          title={t('products.reconcileStockHint')}
+          disabled={reconcileMutation.isPending || productsLoading}
+          onClick={() => reconcileMutation.mutate()}
+        >
+          {reconcileMutation.isPending ? (
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <RefreshCw className="h-4 w-4 shrink-0" aria-hidden />
+          )}
+          {t('products.reconcileStock')}
         </Button>
+        {products.length > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2"
+            title={t('products.exportCsvHint')}
+            onClick={() => {
+              setExportScope('all')
+              setExportWarehouseId(defaultStockWarehouseId)
+              setExportDialogOpen(true)
+            }}
+          >
+            <FileDown className="h-4 w-4 shrink-0" aria-hidden />
+            {t('common.exportCsv')}
+          </Button>
+        )}
+        {canAddProduct && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setProductCsvOpen(true)}
+            >
+              <FileUp className="h-4 w-4 shrink-0" aria-hidden />
+              {t('products.importCsv.button')}
+            </Button>
+            <Button onClick={() => setAddOpen(true)}>
+              {t('products.addProduct')}
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         {productsLoading ? (
           <div className="p-4">
-            <LoadingSkeleton rows={8} columns={9} />
+            <LoadingSkeleton
+              rows={8}
+              columns={Math.min(
+                16,
+                8 +
+                  sortedWarehouses.length +
+                  (canEditProduct || canStockAdjust || canDeleteProduct ? 1 : 0)
+              )}
+            />
           </div>
         ) : filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -350,10 +660,19 @@ export function Products() {
                 {table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-border/50 hover:bg-muted/30"
+                    className="border-b border-border/50 hover:bg-muted/30 cursor-pointer"
+                    onClick={() => navigate(`/products/${row.original.id}`)}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-4 py-3">
+                      <td
+                        key={cell.id}
+                        className="px-4 py-3"
+                        onClick={
+                          cell.column.id === 'actions'
+                            ? (e) => e.stopPropagation()
+                            : undefined
+                        }
+                      >
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -373,7 +692,6 @@ export function Products() {
         onOpenChange={setAddOpen}
         categories={categories}
         brands={brands}
-        t={t}
         mode="add"
         onSuccess={() => {
           invalidateProducts()
@@ -383,13 +701,28 @@ export function Products() {
         onError={() => toast.error(t('products.toastError'))}
       />
 
+      <ProductCsvImportDialog
+        open={productCsvOpen}
+        onOpenChange={setProductCsvOpen}
+        existingProducts={products.map((p) => ({
+          product_code: p.product_code,
+          name: p.name,
+        }))}
+        initialBrands={brands}
+        initialCategories={categories}
+        warehouses={warehouses}
+        isRTL={isRTL}
+        onComplete={() => {
+          invalidateProducts()
+        }}
+      />
+
       {editProduct && (
         <ProductFormDialog
           open={!!editProduct}
           onOpenChange={(open) => !open && setEditProduct(null)}
           categories={categories}
           brands={brands}
-          t={t}
           mode="edit"
           initialProduct={editProduct}
           onSuccess={() => {
@@ -402,11 +735,12 @@ export function Products() {
       )}
 
       {stockProduct && (
-        <StockAdjustDialog
+        <ProductStockAdjustDialog
           open={!!stockProduct}
           onOpenChange={(open) => !open && setStockProduct(null)}
           product={stockProduct}
-          t={t}
+          warehouses={warehouses}
+          initialWarehouseId={defaultStockWarehouseId}
           onSuccess={() => {
             invalidateProducts()
             toast.success(t('products.toastStockAdjusted'))
@@ -455,342 +789,77 @@ export function Products() {
           </AlertDialogContent>
         </AlertDialog>
       )}
-    </div>
-  )
-}
 
-function ProductFormDialog({
-  open,
-  onOpenChange,
-  categories,
-  brands,
-  t,
-  mode,
-  initialProduct,
-  onSuccess,
-  onError,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  categories: { id: string; name: string }[]
-  brands: { id: string; name: string }[]
-  t: (key: string) => string
-  mode: 'add' | 'edit'
-  initialProduct?: ProductWithRelations
-  onSuccess: () => void
-  onError: () => void
-}) {
-  const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
-    defaultValues: defaultProductValues,
-  })
-
-  useEffect(() => {
-    if (open && initialProduct) {
-      form.reset({
-        name: initialProduct.name,
-        brand_id: initialProduct.brand?.id ?? null,
-        category_id: initialProduct.category?.id ?? null,
-        customer_price: initialProduct.customer_price,
-        business_price: initialProduct.business_price,
-        cost_price: initialProduct.cost_price ?? 0,
-        low_stock_threshold: initialProduct.low_stock_threshold,
-        unit: initialProduct.unit,
-        description: initialProduct.description ?? null,
-      })
-    } else if (open && mode === 'add') {
-      form.reset(defaultProductValues)
-    }
-  }, [open, initialProduct, mode, form])
-
-  const onSubmit = async (values: ProductFormValues) => {
-    try {
-      const payload = {
-        name: values.name,
-        brand_id: values.brand_id || null,
-        category_id: values.category_id || null,
-        customer_price: values.customer_price,
-        business_price: values.business_price,
-        cost_price: values.cost_price ?? 0,
-        quantity: mode === 'add' ? 0 : initialProduct!.quantity,
-        low_stock_threshold: values.low_stock_threshold,
-        unit: values.unit,
-        description: values.description || null,
-      }
-      if (mode === 'add') {
-        await createProduct(payload)
-      } else if (initialProduct) {
-        await updateProduct(initialProduct.id, payload)
-      }
-      onSuccess()
-    } catch {
-      onError()
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === 'add'
-              ? t('products.addProductTitle')
-              : t('products.editProductTitle')}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div>
-            <Label>{t('common.name')}</Label>
-            <Input {...form.register('name')} className="mt-1" />
-            {form.formState.errors.name && (
-              <p className="text-sm text-destructive mt-1">
-                {t(form.formState.errors.name.message!)}
-              </p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>{t('brands.title')}</Label>
+      <Dialog open={exportDialogOpen} onOpenChange={setExportDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('products.exportCsvDialog.title')}</DialogTitle>
+            <DialogDescription>
+              {t('products.exportCsvDialog.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>{t('products.exportCsvDialog.scopeLabel')}</Label>
               <Select
-                value={form.watch('brand_id') ?? 'none'}
-                onValueChange={(v) =>
-                  form.setValue('brand_id', v === 'none' ? null : v)
-                }
+                value={exportScope}
+                onValueChange={(v) => setExportScope(v as 'all' | 'one')}
               >
-                <SelectTrigger className="mt-1">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {brands.map((b) => (
-                    <SelectItem key={b.id} value={b.id}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">
+                    {t('products.exportCsvDialog.scopeAll')}
+                  </SelectItem>
+                  <SelectItem value="one">
+                    {t('products.exportCsvDialog.scopeOne')}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>{t('categories.title')}</Label>
-              <Select
-                value={form.watch('category_id') ?? 'none'}
-                onValueChange={(v) =>
-                  form.setValue('category_id', v === 'none' ? null : v)
-                }
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <Label>{t('products.customerPrice')}</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                className="mt-1"
-                {...form.register('customer_price', { valueAsNumber: true })}
-              />
-              {form.formState.errors.customer_price && (
-                <p className="text-sm text-destructive mt-1">
-                  {t(form.formState.errors.customer_price.message!)}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label>{t('products.businessPrice')}</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                className="mt-1"
-                {...form.register('business_price', { valueAsNumber: true })}
-              />
-              {form.formState.errors.business_price && (
-                <p className="text-sm text-destructive mt-1">
-                  {t(form.formState.errors.business_price.message!)}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label>{t('products.costPrice')}</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min={0}
-                className="mt-1"
-                {...form.register('cost_price', { valueAsNumber: true })}
-              />
-              {form.formState.errors.cost_price && (
-                <p className="text-sm text-destructive mt-1">
-                  {t(form.formState.errors.cost_price.message!)}
-                </p>
-              )}
-            </div>
-          </div>
-          <div>
-            <Label>{t('products.lowStockThreshold')}</Label>
-              <Input
-                type="number"
-                min={0}
-                className="mt-1"
-                {...form.register('low_stock_threshold', {
-                  valueAsNumber: true,
-                })}
-              />
-              {form.formState.errors.low_stock_threshold && (
-                <p className="text-sm text-destructive mt-1">
-                  {t(form.formState.errors.low_stock_threshold.message!)}
-                </p>
-              )}
-          </div>
-          <div>
-            <Label>{t('products.unit')}</Label>
-            <Input {...form.register('unit')} className="mt-1" />
-            {form.formState.errors.unit && (
-              <p className="text-sm text-destructive mt-1">
-                {t(form.formState.errors.unit.message!)}
-              </p>
+            {exportScope === 'one' && warehouses.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t('products.exportCsvDialog.selectWarehouse')}</Label>
+                <Select
+                  value={String(exportWarehouseId)}
+                  onValueChange={(v) => setExportWarehouseId(Number(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map((w) => (
+                      <SelectItem key={w.id} value={String(w.id)}>
+                        {w.name} ({w.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
           </div>
-          <div>
-            <Label>{t('common.description')}</Label>
-            <Textarea
-              {...form.register('description')}
-              className="mt-1 min-h-[80px]"
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExportDialogOpen(false)}
+            >
               {t('common.cancel')}
             </Button>
-            <Button type="submit">{t('common.save')}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-function StockAdjustDialog({
-  open,
-  onOpenChange,
-  product,
-  t,
-  onSuccess,
-  onError,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  product: ProductWithRelations
-  t: (key: string) => string
-  onSuccess: () => void
-  onError: () => void
-}) {
-  const [type, setType] = useState<StockMovementType>('in')
-  const [quantity, setQuantity] = useState<number>(0)
-  const [note, setNote] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    if (type === 'out' && quantity > product.quantity) {
-      setError(
-        (t as (key: string, opts?: Record<string, number>) => string)(
-          'products.validationStockOutExceeds',
-          { current: product.quantity }
-        )
-      )
-      return
-    }
-    if ((type === 'in' || type === 'out') && quantity < 1) {
-      setError(t('products.validationMinOne'))
-      return
-    }
-    if (type === 'adjustment' && quantity < 0) {
-      setError(t('products.validationMinZero'))
-      return
-    }
-    try {
-      await adjustStock(product.id, type, quantity, note || undefined)
-      onSuccess()
-    } catch {
-      onError()
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t('products.stockAdjustTitle')}</DialogTitle>
-        </DialogHeader>
-        <p className="text-sm text-muted-foreground">
-          {product.name} — {t('products.currentStock')}:{' '}
-          <strong className="text-foreground">{product.quantity}</strong>{' '}
-          {product.unit}
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label className="mb-2 block">{t('dashboard.type')}</Label>
-            <div className="flex gap-4">
-              {(['in', 'out', 'adjustment'] as const).map((opt) => (
-                <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="type"
-                    checked={type === opt}
-                    onChange={() => setType(opt)}
-                    className="rounded-full"
-                  />
-                  <span>{t(`stockMovements.${opt}`)}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <Label>{t('common.quantity')}</Label>
-            <Input
-              type="number"
-              min={type === 'adjustment' ? 0 : 1}
-              value={quantity === 0 ? '' : quantity}
-              onChange={(e) =>
-                setQuantity(e.target.value === '' ? 0 : Number(e.target.value))
+            <Button
+              type="button"
+              onClick={() => runExportDownload()}
+              disabled={
+                exportScope === 'one' &&
+                !warehouses.some((w) => w.id === exportWarehouseId)
               }
-              className="mt-1"
-            />
-            {error && (
-              <p className="text-sm text-destructive mt-1">{error}</p>
-            )}
-          </div>
-          <div>
-            <Label>{t('products.noteOptional')}</Label>
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="mt-1 min-h-[60px]"
-            />
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              {t('common.cancel')}
+            >
+              {t('products.exportCsvDialog.export')}
             </Button>
-            <Button type="submit">{t('common.save')}</Button>
           </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }
