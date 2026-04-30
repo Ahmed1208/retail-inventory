@@ -700,7 +700,9 @@ export function PurchaseOrderForm() {
         items: linesToApiItems(),
         warehouse_id: warehouseId,
         apply_supplier_discount: applySupplierDiscount,
-        order_discount_rate: discountRate,
+        order_discount_rate: applySupplierDiscount
+          ? undefined
+          : discountRate,
       })
     },
     onSuccess: (created) => {
@@ -1033,6 +1035,21 @@ export function PurchaseOrderForm() {
             </span>
           </p>
         )}
+        <div className="flex items-center gap-1.5">
+          <Label className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">
+            {t('orders.discount')} %
+          </Label>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            step="0.01"
+            className="h-8 w-[4.25rem] px-1.5 text-xs"
+            disabled={applySupplierDiscount && !!selectedSupplier}
+            value={discountRate}
+            onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
+          />
+        </div>
       </div>
 
       {selectedSupplier && (
@@ -1051,21 +1068,6 @@ export function PurchaseOrderForm() {
               {t('purchaseOrders.applySupplierDiscount')}
             </span>
           </label>
-          <div className="flex items-center gap-1.5">
-            <Label className="whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs">
-              {t('orders.discount')} %
-            </Label>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step="0.01"
-              className="h-8 w-[4.25rem] px-1.5 text-xs"
-              disabled={applySupplierDiscount && !!selectedSupplier}
-              value={discountRate}
-              onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
-            />
-          </div>
         </div>
       )}
 
