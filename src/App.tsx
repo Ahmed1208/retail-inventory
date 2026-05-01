@@ -33,6 +33,7 @@ import { AdminHub } from '@/pages/AdminHub'
 import { AdminReports } from '@/pages/AdminReports'
 import { Documentation } from '@/pages/Documentation'
 import { AdminMigrationGuide } from '@/pages/AdminMigrationGuide'
+import { AdminNotifications } from '@/pages/AdminNotifications'
 import { AdminMembersList } from '@/pages/AdminMembersList'
 import { AdminMemberEdit } from '@/pages/AdminMemberEdit'
 import { AdminMemberNew } from '@/pages/AdminMemberNew'
@@ -122,6 +123,7 @@ function App() {
             }
           >
             <Route index element={<AdminHub />} />
+            <Route path="notifications" element={<AdminNotifications />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="documentation" element={<Documentation />} />

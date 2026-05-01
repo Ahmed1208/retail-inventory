@@ -14,6 +14,8 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton'
 import { PrintInventoryTransfer } from '@/components/inventoryTransfers/PrintInventoryTransfer'
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { NoteRichText } from '@/components/common/NoteWithDocLinks'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 
 export function InventoryTransferDetail() {
   const { id } = useParams<{ id: string }>()
@@ -65,6 +67,8 @@ export function InventoryTransferDetail() {
       document.title = 'StockPilot'
     }
   }, [t, data])
+
+  useNoteFocusFromSearchParams(data ? `transfer-note-${data.id}` : null)
 
   if (!hubList) {
     return (
@@ -149,9 +153,12 @@ export function InventoryTransferDetail() {
                 {toName ?? `#${data.to_warehouse_id}`}
               </p>
               {data.note ? (
-                <p className="mt-2 text-sm border-l-2 border-border ps-3">
-                  {data.note}
-                </p>
+                <div
+                  id={`transfer-note-${data.id}`}
+                  className="mt-2 border-l-2 border-border ps-3 text-sm"
+                >
+                  <NoteRichText note={data.note} />
+                </div>
               ) : null}
             </div>
 

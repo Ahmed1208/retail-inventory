@@ -1,6 +1,7 @@
 /**
  * Note mention / link grammar (stored in plain text):
  *
+ * - `@[admin]` — pings admins when saving notes (notifications hub only); shown as plain text in notes.
  * - `@[pay:{operationRouteId}]` — ledger payment operation (`balance_transactions.id` or
  *   `payment_group_id`). Renders as a link to `/payments/operations/{id}`.
  * - `@[person:{uuid}]` — person profile page `/people/{uuid}`.
@@ -30,9 +31,17 @@ function normalizeForOrderDocMatch(s: string): string {
   return normalizeUuidHyphens(s)
 }
 
+const RE_ADMIN = /@\[admin\]/g
 const RE_PAY = new RegExp(`@\\[pay:([^\\]]+)\\]`, 'g')
 const RE_PERSON = new RegExp(`@\\[person:(${UUID_RE})\\]`, 'g')
 const RE_ORDER_PO = /\b(O-\d+|PO-\d+)\b/gi
+
+/** True if note text pings admins (`@[admin]` or a loose `@admin` token). */
+export function containsAdminMention(text: string): boolean {
+  RE_ADMIN.lastIndex = 0
+  if (RE_ADMIN.test(text)) return true
+  return /(^|[\s(,;:])@admin\b/i.test(text)
+}
 
 export type NoteLinkRun = {
   from: number

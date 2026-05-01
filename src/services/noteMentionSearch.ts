@@ -7,6 +7,11 @@ const BALANCE_TX = 'balance_transactions'
 
 export type MentionSearchItem =
   | {
+      kind: 'admin'
+      label: string
+      insertText: string
+    }
+  | {
       kind: 'order'
       id: string
       orderNumber: number
@@ -37,6 +42,15 @@ export type MentionSearchItem =
 
 function escapeIlike(s: string): string {
   return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_')
+}
+
+/** Show @admin in the picker when @ is active with no/fuzzy query. */
+export function mentionQueryMatchesAdmin(query: string): boolean {
+  const raw = query.trim().toLowerCase()
+  if (raw.length === 0) return true
+  const q = raw.replace(/^@+/, '')
+  if (q.length === 0) return true
+  return 'admin'.startsWith(q)
 }
 
 /** Recent cap when scanning in memory for numeric prefix match. */
@@ -135,6 +149,14 @@ export async function searchNoteMentions(
 
   const out: MentionSearchItem[] = []
 
+  if (mentionQueryMatchesAdmin(q)) {
+    out.push({
+      kind: 'admin',
+      label: '@admin',
+      insertText: '@[admin]',
+    })
+  }
+
   if (!ordersRes.error && ordersRes.data) {
     const rows = ordersRes.data as { id: string; order_number: number }[]
     const digitsOnly = q.replace(/\D/g, '')
@@ -223,7 +245,13 @@ export async function searchNoteMentions(
     }
   }
 
-  const order = { order: 0, purchase_order: 1, payment: 2, person: 3 } as const
+  const order = {
+    admin: -1,
+    order: 0,
+    purchase_order: 1,
+    payment: 2,
+    person: 3,
+  } as const
   out.sort((a, b) => order[a.kind] - order[b.kind])
   return out.slice(0, 40)
 }

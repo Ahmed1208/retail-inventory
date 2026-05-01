@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   createPerson,
   DuplicatePhoneError,
@@ -138,6 +139,15 @@ export function QuickCreatePersonDialog({
       credit_limit: number | null
     }) => createPerson(payload),
     onSuccess: async (person) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: person.notes ?? '',
+        title: t('notifications.mentionTitlePersonNote', {
+          name: person.name,
+        }),
+        redirectBasePath: `/people/${person.id}`,
+        sourceType: 'quick_create_person_note',
+        sourceEntityId: person.id,
+      })
       await qc.invalidateQueries({ queryKey: ['people'] })
       toast.success(t('people.toastCreated'))
       onOpenChange(false)

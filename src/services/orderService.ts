@@ -1440,7 +1440,8 @@ export async function cloneOrderAsReplacementDraft(
   }))
   const payments = orderPaymentsPayloadForClone(source)
   const baseNote = (source.note ?? '').trim()
-  const cloneTag = `[from order #${source.order_number}]`
+  /** Use ledger-style `O-# · doc:uuid` so {@link splitNoteIntoParts} links to the cancelled source order. */
+  const cloneTag = `[from order] O-${source.order_number} · doc:${source.id}`
   const note = baseNote ? `${baseNote} ${cloneTag}` : cloneTag
 
   await cancelOrder(id, { settlement })
@@ -1456,6 +1457,13 @@ export async function cloneOrderAsReplacementDraft(
     allow_remaining_on_account: source.allow_remaining_on_account,
     warehouse_id: source.warehouse_id,
   })
+
+  const sourceNoteBefore = (source.note ?? '').trim()
+  const replacementRef = `[Edited to] O-${created.order_number} · doc:${created.id}`
+  const sourceNoteAfter = sourceNoteBefore
+    ? `${sourceNoteBefore} ${replacementRef}`
+    : replacementRef
+  await updateOrderNote(id, sourceNoteAfter)
 
   const { data: auth } = await supabase.auth.getUser()
   const u = auth.user

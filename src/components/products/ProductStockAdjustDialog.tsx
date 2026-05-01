@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import { adjustStock, getProductQuantityInWarehouse } from '@/services/productService'
 import type { ProductWithRelations } from '@/types'
 import type { StockMovementType } from '@/types'
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
 import {
   Dialog,
   DialogContent,
@@ -83,15 +84,25 @@ export function ProductStockAdjustDialog({
       return
     }
     try {
+      const noteText = note.trim()
       await adjustStock(
         product.id,
         type,
         quantity,
-        note || undefined,
+        noteText || undefined,
         type === 'in'
           ? { inboundUnitCost: product.cost_price, warehouseId }
           : { warehouseId }
       )
+      await createAdminMentionNotificationIfNeeded({
+        noteText,
+        title: t('notifications.mentionTitleStockAdjust', {
+          name: product.name,
+        }),
+        redirectBasePath: `/products/${product.id}`,
+        sourceType: 'stock_adjust_note',
+        sourceEntityId: product.id,
+      })
       onSuccess()
     } catch {
       onError()
@@ -162,11 +173,14 @@ export function ProductStockAdjustDialog({
             )}
           </div>
           <div>
-            <Label>{t('products.noteOptional')}</Label>
-            <Textarea
+            <Label htmlFor="stock-adjust-note">{t('products.noteOptional')}</Label>
+            <NoteMentionEditor
+              id="stock-adjust-note"
               value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="mt-1 min-h-[60px]"
+              onChange={setNote}
+              rows={3}
+              className="mt-1 [&_textarea]:min-h-[60px]"
+              aria-label={t('products.noteOptional')}
             />
           </div>
           <DialogFooter>

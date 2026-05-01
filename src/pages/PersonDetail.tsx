@@ -45,6 +45,7 @@ import { Label } from '@/components/ui/label'
 import { PersonFormDialog } from '@/components/people/PersonFormDialog'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 
 const DOC_SEARCH_DEBOUNCE_MS = 300
 const DOCS_PAGE_SIZE = 15
@@ -499,6 +500,8 @@ export function PersonDetail() {
     return undefined
   }, [person?.name])
 
+  useNoteFocusFromSearchParams(person ? `person-notes-${person.id}` : null)
+
   if (!canView) {
     return <Navigate to="/people" replace />
   }
@@ -676,7 +679,7 @@ export function PersonDetail() {
           </div>
           <div className="sm:col-span-2 lg:col-span-3">
             <dt className="text-muted-foreground">{t('people.notes')}</dt>
-            <dd className="font-medium">
+            <dd id={`person-notes-${person.id}`} className="font-medium">
               {person.notes?.trim() ? (
                 <NoteWithDocLinks note={person.notes} />
               ) : (

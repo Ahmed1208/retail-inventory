@@ -18,20 +18,25 @@ export function NoteRichText({ note, className }: Props) {
   if (note == null || note.trim() === '') return null
   const parts = splitNoteIntoParts(note)
   const nodes: ReactNode[] = []
+  let offset = 0
   for (let i = 0; i < parts.length; i++) {
     const p = parts[i]!
     if (p.type === 'text') {
-      nodes.push(<span key={i}>{p.text}</span>)
+      const key = `t-${i}-${offset}-${p.text.length}`
+      nodes.push(<span key={key}>{p.text}</span>)
+      offset += p.text.length
     } else {
+      const key = `l-${i}-${offset}-${p.href}`
       nodes.push(
         <Link
-          key={i}
+          key={key}
           to={p.href}
-          className="font-medium text-primary underline-offset-4 hover:underline"
+          className="relative z-[1] font-medium text-primary underline-offset-4 hover:underline"
         >
           {p.label}
         </Link>
       )
+      offset += p.label.length
     }
   }
   return (

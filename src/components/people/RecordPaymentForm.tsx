@@ -9,6 +9,7 @@ import type { PaymentMethod, Person } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import { Label } from '@/components/ui/label'
 import { DialogFooter } from '@/components/ui/dialog'
 import { PAYMENT_METHODS, paymentLabel } from '@/components/orders/ordersShared'
@@ -130,12 +131,22 @@ export function RecordPaymentForm({
     if (!validPayment) return
     setSubmitting(true)
     try {
+      const noteText = note.trim()
       await recordPayment({
         person_id: person.id,
         type,
         payments: paymentsPayload,
-        note: note.trim() || undefined,
+        note: noteText || undefined,
         register_warehouse_id: registerWarehouseId,
+      })
+      await createAdminMentionNotificationIfNeeded({
+        noteText,
+        title: t('notifications.mentionTitleRecordPayment', {
+          name: person.name,
+        }),
+        redirectBasePath: `/people/${person.id}`,
+        sourceType: 'record_payment_note',
+        sourceEntityId: person.id,
       })
       onSuccess()
     } catch (e) {

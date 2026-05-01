@@ -49,6 +49,7 @@ import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { NoteWithDocLinks } from '@/components/common/NoteWithDocLinks'
 import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   depositToRegister,
   getRegisterBalances,
@@ -303,7 +304,14 @@ export function Register() {
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: note,
+        title: t('notifications.mentionTitleRegister'),
+        redirectBasePath: `/payments/operations/${data.id}`,
+        sourceType: 'register_note',
+        sourceEntityId: data.id,
+      })
       toast.success(t('register.toastDeposited'), {
         action: {
           label: t('register.viewPayment'),
@@ -327,7 +335,14 @@ export function Register() {
         amount: parseFloat(amountStr) || 0,
         note: note.trim() || undefined,
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: note,
+        title: t('notifications.mentionTitleRegister'),
+        redirectBasePath: `/payments/operations/${data.id}`,
+        sourceType: 'register_note',
+        sourceEntityId: data.id,
+      })
       toast.success(t('register.toastWithdrawn'), {
         action: {
           label: t('register.viewPayment'),

@@ -13,6 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AlertTriangle, Loader2, Trash2 } from 'lucide-react'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import { createInventoryTransfer } from '@/services/inventoryTransferService'
 import {
   getAllProducts,
@@ -26,7 +27,7 @@ import { useQtyInputDraft } from '@/hooks/useQtyInputDraft'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { NoteMentionEditor } from '@/components/common/NoteMentionEditor'
 import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { ProductBrowserModal } from '@/components/orders/ProductBrowserModal'
 import {
@@ -493,7 +494,14 @@ export function InventoryTransferForm() {
           quantity: l.qty,
         })),
       }),
-    onSuccess: async (id) => {
+    onSuccess: async (transferId) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: note,
+        title: t('notifications.mentionTitleInventoryTransfer'),
+        redirectBasePath: `/inventory-transfers/${transferId}`,
+        sourceType: 'inventory_transfer_note',
+        sourceEntityId: transferId,
+      })
       qc.invalidateQueries({ queryKey: ['inventoryTransfers'] })
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['warehouseStock'] })
@@ -507,13 +515,13 @@ export function InventoryTransferForm() {
           0
         )
         if (total <= 0) {
-          setPostTransferPath(`/inventory-transfers/${id}`)
+          setPostTransferPath(`/inventory-transfers/${transferId}`)
           setPromptDeleteAfterTransfer(Math.trunc(Number(promptWh)))
           return
         }
       }
       setSearchParams({}, { replace: true })
-      navigate(`/inventory-transfers/${id}`)
+      navigate(`/inventory-transfers/${transferId}`)
     },
     onError: (e: Error) =>
       toast.error(e.message || t('inventoryTransfers.toastError')),
@@ -582,12 +590,14 @@ export function InventoryTransferForm() {
           >
             {t('inventoryTransfers.note')}
           </Label>
-          <Textarea
+          <NoteMentionEditor
             id="transfer-note"
-            className="mt-0.5 min-h-[52px] text-xs"
+            className="mt-0.5 [&_textarea]:min-h-[52px] [&_textarea]:text-xs"
+            rows={2}
             value={note}
-            onChange={(e) => setNote(e.target.value)}
+            onChange={setNote}
             placeholder={t('inventoryTransfers.notePlaceholder')}
+            aria-label={t('inventoryTransfers.note')}
           />
         </div>
       </div>

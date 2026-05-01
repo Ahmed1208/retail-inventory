@@ -51,6 +51,7 @@ import { WarehouseCombobox } from '@/components/warehouses/WarehouseCombobox'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PRODUCT_PRICE_CHART_STROKES } from '@/constants/productPriceChart'
 import { useDocumentDarkClass } from '@/hooks/useDocumentDarkClass'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 function priceRowDelta(
   current: number,
   older: number | undefined,
@@ -186,6 +187,10 @@ export function ProductDetail() {
     setDetailWarehouseId(d?.id ?? 1)
     detailWhInitRef.current = true
   }, [product, warehouses])
+
+  useNoteFocusFromSearchParams(
+    product ? `product-detail-stock-${product.id}` : null
+  )
 
   const { data: detailWhQty = 0 } = useQuery({
     queryKey: ['productWhStock', id, detailWarehouseId],
@@ -484,7 +489,10 @@ export function ProductDetail() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-border bg-card/40 p-4 md:p-6">
+      <section
+        id={product ? `product-detail-stock-${product.id}` : undefined}
+        className="rounded-xl border border-border bg-card/40 p-4 md:p-6"
+      >
         <h2 className="mb-4 text-lg font-semibold">
           {t('products.detailSectionInfo')}
         </h2>

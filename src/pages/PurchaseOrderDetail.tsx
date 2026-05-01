@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   cancelPurchaseOrder,
   clonePurchaseOrderAsReplacementDraft,
@@ -44,6 +45,8 @@ import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 import { PAYMENT_METHODS } from '@/components/orders/ordersShared'
 import { PurchaseOrderCheckoutModal } from '@/components/purchaseOrders/PurchaseOrderCheckoutModal'
 import { PoRegisterPaymentGateDialog } from '@/components/purchaseOrders/PoRegisterPaymentGateDialog'
+import { PurchaseOrderForm } from '@/components/purchaseOrders/PurchaseOrderForm'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 
 export function PurchaseOrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -235,7 +238,19 @@ export function PurchaseOrderDetail() {
   }
 
   const noteMut = useMutation({
-    mutationFn: (text: string) => updatePurchaseOrderNote(id!, text),
+    mutationFn: async (text: string) => {
+      await updatePurchaseOrderNote(id!, text)
+      const num = po?.order_number
+      await createAdminMentionNotificationIfNeeded({
+        noteText: text,
+        title: t('notifications.mentionTitlePoNote', {
+          number: num != null ? String(num) : id!.slice(0, 8),
+        }),
+        redirectBasePath: `/purchase-orders/${id}`,
+        sourceType: 'po_note',
+        sourceEntityId: id,
+      })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchaseOrder', id] })
       invalidatePO()
@@ -315,6 +330,15 @@ export function PurchaseOrderDetail() {
           ? paymentRegisterWarehouseId
           : undefined,
       })
+      await createAdminMentionNotificationIfNeeded({
+        noteText: confirmNote,
+        title: t('notifications.mentionTitlePoNote', {
+          number: String(po.order_number),
+        }),
+        redirectBasePath: `/purchase-orders/${po.id}`,
+        sourceType: 'po_checkout_note',
+        sourceEntityId: po.id,
+      })
       invalidatePO()
       setConfirmOpen(false)
       toast.success(t('purchaseOrders.toastCreated'))
@@ -324,6 +348,16 @@ export function PurchaseOrderDetail() {
       setConfirming(false)
     }
   }
+
+  const isPoDraftEditor =
+    !!po &&
+    po.status === 'draft' &&
+    !po.is_historical_snapshot &&
+    canCreatePo
+
+  useNoteFocusFromSearchParams(
+    po && !isPoDraftEditor ? `po-note-${po.id}` : null
+  )
 
   if (!id) return null
 
@@ -374,6 +408,11 @@ export function PurchaseOrderDetail() {
     po.items.length > 0 &&
     Boolean(po.person_id?.trim())
 
+  const paidRatio =
+    po.total_amount > 0
+      ? Math.min(100, (paidAtPo / po.total_amount) * 100)
+      : 0
+
   return (
     <div
       className={cn(
@@ -393,9 +432,52 @@ export function PurchaseOrderDetail() {
           <ArrowLeft className="h-4 w-4 rtl:rotate-180" />
           {t('purchaseOrders.backToList')}
         </Link>
+        {showClonePoButton ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setCloneSettlement('reverse_payments')
+              setCloneOpen(true)
+            }}
+          >
+            {t('purchaseOrders.editAsReplacement')}
+          </Button>
+        ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-auto">
+      <div className="flex min-h-0 flex-1 flex-col">
+        {isPoDraftEditor ? (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {canCancel ? (
+              <div className="flex shrink-0 flex-wrap gap-2 border-b bg-background px-2 py-2">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setCancelSettlement('reverse_payments')
+                    setCancelOpen(true)
+                  }}
+                >
+                  {t('purchaseOrders.cancelPurchaseOrder')}
+                </Button>
+              </div>
+            ) : null}
+            <PurchaseOrderForm
+              draftPurchaseOrderId={po.id}
+              initialDraft={po}
+            />
+          </div>
+        ) : po.status === 'draft' &&
+          !po.is_historical_snapshot &&
+          !canCreatePo ? (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
+            {t('control.disabled.newPurchaseOrder')}
+          </div>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
         <header className="flex flex-wrap items-start gap-3 border-b bg-background p-4">
           <div>
             <h1 className="text-2xl font-bold tabular-nums">
@@ -428,18 +510,6 @@ export function PurchaseOrderDetail() {
                 {t('purchaseOrders.confirmReceiveDraft')}
               </Button>
             )}
-            {showClonePoButton ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCloneSettlement('reverse_payments')
-                  setCloneOpen(true)
-                }}
-              >
-                {t('purchaseOrders.editAsReplacement')}
-              </Button>
-            ) : null}
             {canCancel && (
               <Button
                 type="button"
@@ -455,7 +525,7 @@ export function PurchaseOrderDetail() {
           </div>
         </header>
 
-        <div className="border-b bg-background p-4">
+        <div className="border-b p-4">
           <p className="font-medium">
             {supplierPerson?.name ?? po.supplier_name ?? '—'}
           </p>
@@ -467,93 +537,18 @@ export function PurchaseOrderDetail() {
           )}
         </div>
 
-        <div className="p-4">
-          <div className="mb-4 grid gap-2 text-sm sm:grid-cols-2">
-            <p>
-              <span className="text-muted-foreground">
-                {t('purchaseOrders.date')}:
-              </span>{' '}
-              {new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
-                dateStyle: 'medium',
-              }).format(new Date(po.created_at))}
-            </p>
-            <p>
-              <span className="text-muted-foreground">
-                {t('orders.inventoryForDocument')}:
-              </span>{' '}
-              {poWarehouse
-                ? `#${poWarehouse.id} · ${poWarehouse.name}`
-                : `#${poWarehouseId}`}
-            </p>
-            {po.payments && po.payments.length > 0 && (
-              <p className="sm:col-span-2">
-                <span className="text-muted-foreground">
-                  {t('orders.paymentMethod')}:
-                </span>
-                <span className="mt-1 block">
-                  {po.payments.map((p: PurchaseOrderPayment, i: number) => {
-                    const rwId = poPaymentRegisterIds?.[i]
-                    const rwName =
-                      rwId != null
-                        ? warehouses.find((w) => w.id === rwId)?.name
-                        : undefined
-                    return (
-                      <span
-                        key={p.id ?? `${p.payment_method}-${i}`}
-                        className="block"
-                      >
-                        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                          <span>
-                            {paymentLabelPO(p.payment_method, t)}: {fc(p.amount)}
-                          </span>
-                          {poPayRegFetching ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-                          ) : rwId != null ? (
-                            <span className="text-muted-foreground">
-                              {t('orders.paymentRegister')}: #{rwId}
-                              {rwName ? ` · ${rwName}` : ''}
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                    )
-                  })}
-                </span>
-                {showPoPaymentOpLink && (
-                  <span className="mt-2 block text-muted-foreground">
-                    {poPaymentOpFetching ? (
-                      <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
-                    ) : poPaymentOpRouteId ? (
-                      <Link
-                        to={`/payments/operations/${poPaymentOpRouteId}`}
-                        className={cn(
-                          buttonVariants({ variant: 'link' }),
-                          'h-auto p-0 align-baseline font-medium text-primary'
-                        )}
-                      >
-                        {t('purchaseOrders.openPaymentOperation')}
-                      </Link>
-                    ) : (
-                      '—'
-                    )}
-                  </span>
-                )}
-              </p>
-            )}
-            <div className="sm:col-span-2">
-              <EditableNoteCard
-                label={t('purchaseOrders.note')}
-                value={po.note ?? ''}
-                canEdit={canEditPoNote && !po.is_historical_snapshot}
-                isPending={noteMut.isPending}
-                fieldId={`po-note-${po.id}`}
-                onSave={async (text) => {
-                  await noteMut.mutateAsync(text)
-                }}
-              />
-            </div>
-          </div>
+        <div className="border-b p-4">
+          <p className="text-sm">
+            <span className="text-muted-foreground">
+              {t('orders.inventoryForDocument')}:
+            </span>{' '}
+            {poWarehouse
+              ? `#${poWarehouse.id} · ${poWarehouse.name}`
+              : `#${poWarehouseId}`}
+          </p>
+        </div>
 
+        <div className="p-4">
           <h2 className="mb-2 text-sm font-semibold">{t('orders.products')}</h2>
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full text-sm">
@@ -615,27 +610,108 @@ export function PurchaseOrderDetail() {
               </tbody>
             </table>
           </div>
-          <div className="mt-4 space-y-1 text-sm tabular-nums">
-            <div className="flex justify-between gap-4">
-              <span className="text-muted-foreground">{t('orders.subtotal')}</span>
+        </div>
+
+        <div className="border-b p-4">
+          <h2 className="mb-2 text-sm font-semibold">
+            {t('orders.paymentBreakdown')}
+          </h2>
+          {!po.payments || po.payments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">—</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {po.payments.map((p: PurchaseOrderPayment, i: number) => {
+                const rwId = poPaymentRegisterIds?.[i]
+                const rwName =
+                  rwId != null
+                    ? warehouses.find((w) => w.id === rwId)?.name
+                    : undefined
+                return (
+                  <li key={p.id ?? `${p.payment_method}-${i}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 tabular-nums">
+                      <span>{paymentLabelPO(p.payment_method, t)}</span>
+                      <span>{fc(p.amount)}</span>
+                    </div>
+                    {poPayRegFetching ? (
+                      <div className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      </div>
+                    ) : rwId != null ? (
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {t('orders.paymentRegister')}: #{rwId}
+                        {rwName ? ` · ${rwName}` : ''}
+                      </p>
+                    ) : null}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+          {showPoPaymentOpLink ? (
+            <div className="mt-2 text-sm text-muted-foreground">
+              {poPaymentOpFetching ? (
+                <Loader2 className="inline h-4 w-4 animate-spin align-middle" />
+              ) : poPaymentOpRouteId ? (
+                <Link
+                  to={`/payments/operations/${poPaymentOpRouteId}`}
+                  className={cn(
+                    buttonVariants({ variant: 'link' }),
+                    'h-auto p-0 align-baseline font-medium text-primary'
+                  )}
+                >
+                  {t('purchaseOrders.openPaymentOperation')}
+                </Link>
+              ) : (
+                '—'
+              )}
+            </div>
+          ) : null}
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full bg-emerald-500 transition-all"
+              style={{ width: `${paidRatio}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="grid gap-2 p-4 sm:grid-cols-2">
+          <div className="space-y-1 text-sm tabular-nums">
+            <div className="flex justify-between">
+              <span>{t('orders.subtotal')}</span>
               <span>{fc(po.subtotal)}</span>
             </div>
             {po.discount_amount > 0.005 && (
-              <div className="flex justify-between gap-4 text-emerald-600">
+              <div className="flex justify-between text-emerald-600">
                 <span>
                   {t('orders.discount')} ({roundMoney(po.discount_rate)}%)
                 </span>
                 <span>−{fc(po.discount_amount)}</span>
               </div>
             )}
-            <p className="flex justify-between gap-4 border-t border-border pt-1 font-semibold">
+            <div className="flex justify-between text-base font-bold">
               <span>{t('purchaseOrders.totalAmount')}</span>
               <span>{fc(po.total_amount)}</span>
-            </p>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <EditableNoteCard
+              label={t('purchaseOrders.note')}
+              value={po.note ?? ''}
+              canEdit={canEditPoNote && !po.is_historical_snapshot}
+              isPending={noteMut.isPending}
+              fieldId={`po-note-${po.id}`}
+              onSave={async (text) => {
+                await noteMut.mutateAsync(text)
+              }}
+            />
           </div>
         </div>
+          </div>
+        )}
       </div>
 
+      {!isPoDraftEditor ? (
+        <>
       <PoRegisterPaymentGateDialog
         open={registerGateOpen}
         onOpenChange={setRegisterGateOpen}
@@ -668,6 +744,8 @@ export function PurchaseOrderDetail() {
         onConfirm={handleConfirmDraftSubmit}
         registerPaymentPicker={null}
       />
+        </>
+      ) : null}
 
       <AlertDialog open={cloneOpen} onOpenChange={setCloneOpen}>
         <AlertDialogContent dir={isRTL ? 'rtl' : 'ltr'}>

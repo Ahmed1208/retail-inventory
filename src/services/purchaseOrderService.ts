@@ -845,6 +845,154 @@ export async function createPurchaseOrder(data: {
   return created
 }
 
+/** Replace draft PO lines and header totals (no stock, ledger, or confirm). */
+export async function saveDraftPurchaseOrder(
+  id: string,
+  data: {
+    supplier_name?: string
+    note?: string
+    person_id: string
+    items: {
+      product_id: string
+      quantity: number
+      cost_price: number
+      line_discount_rate?: number
+      update_default_cost_price: boolean
+      catalog_customer_price?: number | null
+      catalog_business_price?: number | null
+    }[]
+    apply_supplier_discount?: boolean
+    order_discount_rate?: number
+    warehouse_id?: number
+  }
+): Promise<PurchaseOrderWithItems> {
+  const existing = await getPurchaseOrderById(id)
+  if (!existing) throw new Error('Purchase order not found')
+  assertPurchaseOrderNotHistoricalSnapshot(existing, 'save draft')
+  if (existing.status !== 'draft') {
+    throw new Error('Only draft purchase orders can be edited')
+  }
+
+  if (!data.items.length) {
+    throw new Error('At least one product is required')
+  }
+
+  const supplierId = data.person_id.trim()
+  const { data: prow, error: peSup } = await supabase
+    .from('people')
+    .select('*')
+    .eq('id', supplierId)
+    .maybeSingle()
+  if (peSup) throw peSup
+  if (!prow) throw new Error('Supplier not found')
+  const supplierPerson = mapPersonRow(prow as Record<string, unknown>)
+  if (!supplierPerson.roles.includes('supplier')) {
+    throw new Error('Selected person must have the supplier role')
+  }
+
+  type ProductPriceSnap = {
+    cost: number
+    customer: number
+    business: number
+  }
+  const productSnap = new Map<string, ProductPriceSnap>()
+  for (const item of data.items) {
+    if (productSnap.has(item.product_id)) continue
+    const product = await getProductById(item.product_id)
+    if (!product) throw new Error(`Product not found: ${item.product_id}`)
+    productSnap.set(item.product_id, {
+      cost: product.cost_price,
+      customer: product.customer_price,
+      business: product.business_price,
+    })
+  }
+
+  let poDiscountRate = 0
+  if (
+    data.order_discount_rate != null &&
+    !Number.isNaN(data.order_discount_rate) &&
+    data.order_discount_rate >= 0
+  ) {
+    poDiscountRate = roundMoney(Math.min(100, data.order_discount_rate))
+  } else if (
+    data.apply_supplier_discount !== false &&
+    supplierPerson.discount_rate > 0
+  ) {
+    poDiscountRate = supplierPerson.discount_rate
+  }
+
+  const computedLines = data.items.map((item) => {
+    const ld = roundMoney(Math.min(100, item.line_discount_rate ?? 0))
+    const gross = item.quantity * item.cost_price
+    const lineTotal = roundMoney(gross * (1 - ld / 100))
+    return { ...item, line_discount_rate: ld, lineTotal }
+  })
+
+  const subtotal = roundMoney(
+    computedLines.reduce((s, l) => s + l.lineTotal, 0)
+  )
+  const discount_amount = roundMoney(subtotal * (poDiscountRate / 100))
+  const total_amount = roundMoney(subtotal - discount_amount)
+
+  const warehouse_id =
+    data.warehouse_id != null && Number.isFinite(Number(data.warehouse_id))
+      ? Math.trunc(Number(data.warehouse_id))
+      : DEFAULT_WAREHOUSE_ID
+
+  const { error: updOrderErr } = await supabase
+    .from(PURCHASE_ORDERS)
+    .update({
+      supplier_name: data.supplier_name?.trim() || null,
+      note: data.note?.trim() || null,
+      subtotal,
+      discount_amount,
+      discount_rate: poDiscountRate,
+      total_amount,
+      person_id: supplierId,
+      warehouse_id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+  if (updOrderErr) throw updOrderErr
+
+  const { error: delErr } = await supabase
+    .from(PURCHASE_ORDER_ITEMS)
+    .delete()
+    .eq('purchase_order_id', id)
+  if (delErr) throw delErr
+
+  const itemsPayload = computedLines.map((item) => {
+    const snap = productSnap.get(item.product_id)!
+    const fullCatalog =
+      item.update_default_cost_price &&
+      item.catalog_customer_price != null &&
+      item.catalog_business_price != null
+    return {
+      purchase_order_id: id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      line_discount_rate: item.line_discount_rate,
+      total_price: item.lineTotal,
+      previous_cost_price: snap.cost,
+      previous_customer_price: snap.customer,
+      previous_business_price: snap.business,
+      cost_price_updated: item.update_default_cost_price,
+      catalog_customer_price: fullCatalog ? item.catalog_customer_price! : null,
+      catalog_business_price: fullCatalog ? item.catalog_business_price! : null,
+    }
+  })
+
+  const { error: itemsError } = await supabase
+    .from(PURCHASE_ORDER_ITEMS)
+    .insert(itemsPayload)
+  if (itemsError) throw itemsError
+
+  const out = await getPurchaseOrderById(id)
+  if (!out) throw new Error('Failed to fetch purchase order')
+  return out
+}
+
 /**
  * CSV / backfill: received PO visible in purchase analytics only.
  * No stock in, no catalog price updates, no supplier ledger/register.
@@ -1374,7 +1522,8 @@ export async function clonePurchaseOrderAsReplacementDraft(
     .filter((p) => p.amount > 0.001)
 
   const baseNote = (source.note ?? '').trim()
-  const cloneTag = `[from PO #${source.order_number}]`
+  /** Use ledger-style `PO-# · doc:uuid` so {@link splitNoteIntoParts} links to the cancelled source PO. */
+  const cloneTag = `[from PO] PO-${source.order_number} · doc:${source.id}`
   const note = baseNote ? `${baseNote} ${cloneTag}` : cloneTag
 
   await cancelPurchaseOrder(id, { settlement })
@@ -1390,6 +1539,13 @@ export async function clonePurchaseOrderAsReplacementDraft(
     apply_supplier_discount: false,
     warehouse_id: source.warehouse_id,
   })
+
+  const sourceNoteBefore = (source.note ?? '').trim()
+  const replacementRef = `[Edited to] PO-${created.order_number} · doc:${created.id}`
+  const sourceNoteAfter = sourceNoteBefore
+    ? `${sourceNoteBefore} ${replacementRef}`
+    : replacementRef
+  await updatePurchaseOrderNote(id, sourceNoteAfter)
 
   const { data: auth } = await supabase.auth.getUser()
   const u = auth.user

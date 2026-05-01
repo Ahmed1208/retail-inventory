@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   ArrowLeftRight,
   Banknote,
+  Bell,
   ShoppingCart,
   Shield,
   SlidersHorizontal,
@@ -10,10 +11,16 @@ import {
   Wallet,
   Warehouse,
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
 
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { Badge } from '@/components/ui/badge'
+import {
+  ADMIN_NOTIFICATIONS_UNREAD_QUERY_KEY,
+  countUnreadAdminNotifications,
+} from '@/services/adminNotificationService'
 
 const INVENTORY_PATHS = [
   '/inventory',
@@ -86,6 +93,13 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
   const showPaymentsNav = useFeatureEnabled('sidebar.payments')
   const showRegisterNav = useFeatureEnabled('sidebar.register')
 
+  const { data: notificationsUnread = 0 } = useQuery({
+    queryKey: ADMIN_NOTIFICATIONS_UNREAD_QUERY_KEY,
+    queryFn: countUnreadAdminNotifications,
+    enabled: showAdminNav,
+    staleTime: 15_000,
+  })
+
   const content = (
     <>
       <div className="flex h-14 shrink-0 items-center border-b border-white/10 px-4">
@@ -111,6 +125,25 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
           >
             <Shield className="h-5 w-5 shrink-0" aria-hidden />
             <span>{t('nav.admin')}</span>
+          </NavLink>
+        )}
+
+        {showAdminNav && (
+          <NavLink
+            to="/admin/notifications"
+            onClick={onNavigate}
+            className={(opts) => cn(linkClass(opts), 'min-w-0')}
+          >
+            <Bell className="h-5 w-5 shrink-0" aria-hidden />
+            <span className="flex-1 truncate">{t('nav.notifications')}</span>
+            {notificationsUnread > 0 ? (
+              <Badge
+                variant="destructive"
+                className="h-5 min-w-5 shrink-0 justify-center px-1.5 py-0 text-[10px] tabular-nums"
+              >
+                {notificationsUnread > 99 ? '99+' : notificationsUnread}
+              </Badge>
+            ) : null}
           </NavLink>
         )}
 

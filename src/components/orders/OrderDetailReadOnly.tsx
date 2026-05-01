@@ -263,7 +263,7 @@ export function OrderDetailReadOnly({
             <span>{fc(order.remaining_amount)}</span>
           </div>
         </div>
-        <div>
+        <div className="min-w-0">
           <EditableNoteCard
             label={t('orders.note')}
             value={order.note ?? ''}

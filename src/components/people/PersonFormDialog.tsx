@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useQuery } from '@tanstack/react-query'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   createPerson,
   countCustomerOrdersForPerson,
@@ -159,10 +160,29 @@ export function PersonFormDialog({
         discount_rate: discount,
         credit_limit: credit,
       }
+      const notesText = values.notes?.trim() || ''
       if (person) {
         await updatePerson(person.id, payload)
+        await createAdminMentionNotificationIfNeeded({
+          noteText: notesText,
+          title: t('notifications.mentionTitlePersonNote', {
+            name: values.name.trim(),
+          }),
+          redirectBasePath: `/people/${person.id}`,
+          sourceType: 'person_form_note',
+          sourceEntityId: person.id,
+        })
       } else {
-        await createPerson(payload)
+        const created = await createPerson(payload)
+        await createAdminMentionNotificationIfNeeded({
+          noteText: notesText,
+          title: t('notifications.mentionTitlePersonNote', {
+            name: values.name.trim(),
+          }),
+          redirectBasePath: `/people/${created.id}`,
+          sourceType: 'person_form_note',
+          sourceEntityId: created.id,
+        })
       }
       onSaved()
     } catch (e) {

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   cancelOrder,
   cloneOrderAsReplacementDraft,
@@ -37,6 +38,7 @@ import { PrintInvoice } from '@/components/orders/PrintInvoice'
 import { PosOrderForm } from '@/components/orders/PosOrderForm'
 import { OrderDetailReadOnly } from '@/components/orders/OrderDetailReadOnly'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>()
@@ -159,8 +161,19 @@ export function OrderDetail() {
   }
 
   const noteMut = useMutation({
-    mutationFn: ({ id, text }: { id: string; text: string }) =>
-      updateOrderNote(id, text),
+    mutationFn: async ({ id, text }: { id: string; text: string }) => {
+      await updateOrderNote(id, text)
+      const num = order?.order_number
+      await createAdminMentionNotificationIfNeeded({
+        noteText: text,
+        title: t('notifications.mentionTitleOrderNote', {
+          number: num != null ? String(num) : id.slice(0, 8),
+        }),
+        redirectBasePath: `/orders/${id}`,
+        sourceType: 'order_note',
+        sourceEntityId: id,
+      })
+    },
     onSuccess: () => invalidateAll(),
   })
 
@@ -205,6 +218,12 @@ export function OrderDetail() {
     setPrintOrder(o)
     setPrintTrigger((n) => n + 1)
   }
+
+  useNoteFocusFromSearchParams(
+    order && order.status_flow !== 'draft'
+      ? `order-note-${order.id}`
+      : null
+  )
 
   if (!id) {
     return null

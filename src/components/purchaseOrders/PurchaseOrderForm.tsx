@@ -13,7 +13,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { AlertTriangle, ChevronDown, Loader2 } from 'lucide-react'
 
-import { createPurchaseOrder } from '@/services/purchaseOrderService'
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
+import {
+  confirmPurchaseOrder,
+  createPurchaseOrder,
+  saveDraftPurchaseOrder,
+} from '@/services/purchaseOrderService'
 import {
   getAllProducts,
   getProductQuantitiesByWarehouse,
@@ -25,7 +30,12 @@ import {
   roundMoney,
   supabaseErrorMessage,
 } from '@/services/peopleService'
-import type { PaymentMethod, Person, ProductWithRelations } from '@/types'
+import type {
+  PaymentMethod,
+  Person,
+  ProductWithRelations,
+  PurchaseOrderWithItems,
+} from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -50,6 +60,7 @@ import {
 } from '@/components/purchaseOrders/PoCatalogPricesDialog'
 import {
   type POLineRow,
+  type PoCostOverrideChoice,
   PO_LINE_CELL_COLS,
   PO_TABLE_GRID,
   applyProductCostDefaults,
@@ -65,7 +76,19 @@ function isPurchaseOrderDraftStatusConstraintError(err: unknown): boolean {
     .includes('purchase_orders_status_check')
 }
 
-export function PurchaseOrderForm() {
+export type PurchaseOrderFormProps = {
+  /** When set, form updates this draft instead of creating a new PO on save/checkout. */
+  draftPurchaseOrderId?: string | null
+  initialDraft?: PurchaseOrderWithItems | null
+  isLoadingDraft?: boolean
+}
+
+export function PurchaseOrderForm(props: PurchaseOrderFormProps = {}) {
+  const {
+    draftPurchaseOrderId = null,
+    initialDraft = null,
+    isLoadingDraft = false,
+  } = props
   const { t, i18n } = useTranslation()
   const lang = (i18n.language?.split('-')[0] ?? 'en') as 'en' | 'ar'
   const isRTL = lang === 'ar'
@@ -74,6 +97,7 @@ export function PurchaseOrderForm() {
   const fc = useCallback((n: number) => formatCurrency(n, lang), [lang])
   const canSaveDraft = useFeatureEnabled('orders.posSaveDraft')
   const canCheckout = useFeatureEnabled('orders.posCheckout')
+  const canConfirmReceivePo = useFeatureEnabled('purchaseOrders.confirmReceive')
   const canAddPerson = useFeatureEnabled('people.addPerson')
   const useCostOverrideDialog = useFeatureEnabled(
     'purchaseOrders.costOverridePriceDialog'
@@ -113,6 +137,7 @@ export function PurchaseOrderForm() {
   const [discountRate, setDiscountRate] = useState(0)
   const [lines, setLines] = useState<POLineRow[]>(() => [emptyPOLine()])
   const warehouseInitRef = useRef(false)
+  const formSyncKey = useRef<string | null>(null)
   const [warehouseId, setWarehouseId] = useState(1)
   const [paymentRegisterWarehouseId, setPaymentRegisterWarehouseId] =
     useState(1)
@@ -135,11 +160,12 @@ export function PurchaseOrderForm() {
   })
 
   useEffect(() => {
+    if (draftPurchaseOrderId) return
     if (warehouseInitRef.current || warehouses.length === 0) return
     const d = warehouses.find((w) => w.is_default)
     setWarehouseId(d?.id ?? 1)
     warehouseInitRef.current = true
-  }, [warehouses])
+  }, [warehouses, draftPurchaseOrderId])
 
   const selectedWarehouse = useMemo(
     () => warehouses.find((w) => w.id === warehouseId) ?? null,
@@ -177,6 +203,105 @@ export function PurchaseOrderForm() {
     () => people.filter((p) => p.roles.includes('supplier')),
     [people]
   )
+
+  const syncDraftFormFromPurchaseOrder = useCallback(
+    (po: PurchaseOrderWithItems) => {
+      const key = `${po.id}:${po.updated_at}`
+      if (formSyncKey.current === key) return
+      formSyncKey.current = key
+      warehouseInitRef.current = true
+      setWarehouseId(
+        po.warehouse_id != null && Number.isFinite(Number(po.warehouse_id))
+          ? Math.trunc(Number(po.warehouse_id))
+          : 1
+      )
+      const sup = po.person_id
+        ? suppliers.find((p) => p.id === po.person_id) ?? null
+        : null
+      setSelectedSupplier(sup)
+      const dr = roundMoney(po.discount_rate ?? 0)
+      setDiscountRate(dr)
+      if (sup && roundMoney(sup.discount_rate) === dr) {
+        setApplySupplierDiscount(true)
+      } else {
+        setApplySupplierDiscount(false)
+      }
+      setNote(po.note ?? '')
+      setLines(
+        po.items.length
+          ? po.items.map((it) => {
+              const p = it.product
+              const fullCatalog =
+                it.catalog_customer_price != null &&
+                it.catalog_business_price != null
+              const differs = Math.abs(it.cost_price - p.cost_price) > 0.005
+              let costOverrideChoice: PoCostOverrideChoice = 'unset'
+              if (useCostOverrideDialog) {
+                if (it.cost_price_updated && fullCatalog) {
+                  costOverrideChoice = 'catalog'
+                } else if (differs) {
+                  costOverrideChoice = 'once'
+                }
+              }
+              return {
+                key: it.id,
+                product_id: it.product_id,
+                productIdInput: p.product_code,
+                name: p.name,
+                qty: it.quantity,
+                costPrice: it.cost_price,
+                listCostPrice: p.cost_price,
+                listCustomerPrice: p.customer_price,
+                listBusinessPrice: p.business_price,
+                costOverridden: differs,
+                discountPct: it.line_discount_rate,
+                stock: 0,
+                updateDefaultCostPrice:
+                  !useCostOverrideDialog && it.cost_price_updated,
+                costOverrideChoice,
+                catalogCustomerPrice: it.catalog_customer_price,
+                catalogBusinessPrice: it.catalog_business_price,
+                lookupInvalid: false,
+              }
+            })
+          : [emptyPOLine()]
+      )
+      const use: Record<PaymentMethod, boolean> = {
+        cash: false,
+        visa: false,
+        cheque: false,
+        instapay: false,
+      }
+      const amts: Record<PaymentMethod, string> = {
+        cash: '',
+        visa: '',
+        cheque: '',
+        instapay: '',
+      }
+      for (const pay of po.payments ?? []) {
+        use[pay.payment_method] = true
+        const cur = roundMoney(parseFloat(amts[pay.payment_method]) || 0)
+        amts[pay.payment_method] = String(roundMoney(cur + pay.amount))
+      }
+      setPayUse(use)
+      setPayAmounts(amts)
+      setFocusCellPos({ row: 0, col: 0 })
+    },
+    [suppliers, useCostOverrideDialog]
+  )
+
+  useEffect(() => {
+    if (!draftPurchaseOrderId) {
+      formSyncKey.current = null
+      return
+    }
+    if (!initialDraft || initialDraft.status !== 'draft') return
+    syncDraftFormFromPurchaseOrder(initialDraft)
+  }, [
+    draftPurchaseOrderId,
+    initialDraft,
+    syncDraftFormFromPurchaseOrder,
+  ])
 
   const poPreview = useMemo(
     () => computePoPreview(lines, discountRate),
@@ -683,6 +808,7 @@ export function PurchaseOrderForm() {
 
   const invalidatePO = () => {
     queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] })
+    queryClient.invalidateQueries({ queryKey: ['purchaseOrder'] })
     queryClient.invalidateQueries({ queryKey: ['products'] })
     queryClient.invalidateQueries({ queryKey: ['warehouseStock'] })
     queryClient.invalidateQueries({ queryKey: ['dashboardStats'] })
@@ -692,9 +818,25 @@ export function PurchaseOrderForm() {
 
   const saveDraftMut = useMutation({
     mutationFn: async () => {
+      if (!selectedSupplier?.id) {
+        throw new Error(t('purchaseOrders.validationSupplierRequired'))
+      }
+      if (draftPurchaseOrderId) {
+        return saveDraftPurchaseOrder(draftPurchaseOrderId, {
+          supplier_name: selectedSupplier.name,
+          person_id: selectedSupplier.id,
+          note: note.trim() || undefined,
+          items: linesToApiItems(),
+          warehouse_id: warehouseId,
+          apply_supplier_discount: applySupplierDiscount,
+          order_discount_rate: applySupplierDiscount
+            ? undefined
+            : discountRate,
+        })
+      }
       return createPurchaseOrder({
-        supplier_name: selectedSupplier?.name,
-        person_id: selectedSupplier?.id,
+        supplier_name: selectedSupplier.name,
+        person_id: selectedSupplier.id,
         note: note.trim() || undefined,
         asDraft: true,
         items: linesToApiItems(),
@@ -705,10 +847,21 @@ export function PurchaseOrderForm() {
           : discountRate,
       })
     },
-    onSuccess: (created) => {
+    onSuccess: async (saved) => {
+      if (!draftPurchaseOrderId) {
+        await createAdminMentionNotificationIfNeeded({
+          noteText: note,
+          title: t('notifications.mentionTitlePoNote', {
+            number: String(saved.order_number),
+          }),
+          redirectBasePath: `/purchase-orders/${saved.id}`,
+          sourceType: 'po_note',
+          sourceEntityId: saved.id,
+        })
+        navigate(`/purchase-orders/${saved.id}`)
+      }
       invalidatePO()
       toast.success(t('purchaseOrders.toastDraftSaved'))
-      navigate(`/purchase-orders/${created.id}`)
     },
     onError: (e: unknown) => {
       if (isPurchaseOrderDraftStatusConstraintError(e)) {
@@ -813,26 +966,69 @@ export function PurchaseOrderForm() {
     setSubmitting(true)
     try {
       const payments = buildPaymentsPayload()
-      const created = await createPurchaseOrder({
-        supplier_name: selectedSupplier?.name,
-        person_id: selectedSupplier?.id,
-        note: note.trim() || undefined,
-        allow_remaining_on_account: allowRemaining,
-        payments,
-        items: linesToApiItems(),
-        warehouse_id: warehouseId,
-        register_warehouse_id: needsPaymentRegister
-          ? paymentRegisterWarehouseId
-          : undefined,
-        apply_supplier_discount: applySupplierDiscount,
-        order_discount_rate: applySupplierDiscount
-          ? undefined
-          : discountRate,
-      })
+      let destPoId: string
+      if (draftPurchaseOrderId) {
+        await saveDraftPurchaseOrder(draftPurchaseOrderId, {
+          supplier_name: selectedSupplier?.name,
+          person_id: selectedSupplier!.id,
+          note: note.trim() || undefined,
+          items: linesToApiItems(),
+          warehouse_id: warehouseId,
+          apply_supplier_discount: applySupplierDiscount,
+          order_discount_rate: applySupplierDiscount
+            ? undefined
+            : discountRate,
+        })
+        await confirmPurchaseOrder(draftPurchaseOrderId, {
+          payments,
+          allow_remaining_on_account: allowRemaining,
+          note: note.trim() || null,
+          register_warehouse_id: needsPaymentRegister
+            ? paymentRegisterWarehouseId
+            : undefined,
+        })
+        await createAdminMentionNotificationIfNeeded({
+          noteText: note,
+          title: t('notifications.mentionTitlePoNote', {
+            number: String(initialDraft?.order_number ?? ''),
+          }),
+          redirectBasePath: `/purchase-orders/${draftPurchaseOrderId}`,
+          sourceType: 'po_checkout_note',
+          sourceEntityId: draftPurchaseOrderId,
+        })
+        destPoId = draftPurchaseOrderId
+      } else {
+        const created = await createPurchaseOrder({
+          supplier_name: selectedSupplier?.name,
+          person_id: selectedSupplier?.id,
+          note: note.trim() || undefined,
+          allow_remaining_on_account: allowRemaining,
+          payments,
+          items: linesToApiItems(),
+          warehouse_id: warehouseId,
+          register_warehouse_id: needsPaymentRegister
+            ? paymentRegisterWarehouseId
+            : undefined,
+          apply_supplier_discount: applySupplierDiscount,
+          order_discount_rate: applySupplierDiscount
+            ? undefined
+            : discountRate,
+        })
+        await createAdminMentionNotificationIfNeeded({
+          noteText: note,
+          title: t('notifications.mentionTitlePoNote', {
+            number: String(created.order_number),
+          }),
+          redirectBasePath: `/purchase-orders/${created.id}`,
+          sourceType: 'po_checkout_note',
+          sourceEntityId: created.id,
+        })
+        destPoId = created.id
+      }
       invalidatePO()
       toast.success(t('purchaseOrders.toastCreated'))
       setCheckoutOpen(false)
-      navigate(`/purchase-orders/${created.id}`)
+      navigate(`/purchase-orders/${destPoId}`)
     } catch (err) {
       const message =
         err instanceof Error
@@ -848,10 +1044,21 @@ export function PurchaseOrderForm() {
 
   const showDupBanner = duplicateProductIds.size > 0
 
+  if (isLoadingDraft) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(
-        'flex max-h-[calc(100dvh-8.5rem)] min-h-0 flex-1 flex-col',
+        'flex min-h-0 flex-1 flex-col',
+        draftPurchaseOrderId
+          ? 'max-h-none'
+          : 'max-h-[calc(100dvh-8.5rem)]',
         isRTL && 'rtl'
       )}
       dir={isRTL ? 'rtl' : 'ltr'}
@@ -954,7 +1161,12 @@ export function PurchaseOrderForm() {
         <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-100 sm:text-xs">
           {t('orders.draft')}
         </span>
-        {canSaveDraft && (
+        {draftPurchaseOrderId && initialDraft ? (
+          <span className="text-[10px] tabular-nums text-muted-foreground sm:text-xs">
+            #{t('purchaseOrders.poPrefix')}-{initialDraft.order_number}
+          </span>
+        ) : null}
+        {(canSaveDraft || draftPurchaseOrderId) && (
           <div className="ms-auto">
             <Button
               type="button"
@@ -1197,7 +1409,8 @@ export function PurchaseOrderForm() {
               <span>{fc(poPreview.total)}</span>
             </div>
           </div>
-          {canCheckout && (
+          {canCheckout &&
+            (!draftPurchaseOrderId || canConfirmReceivePo) && (
             <Button
               type="button"
               className="h-9 shrink-0"

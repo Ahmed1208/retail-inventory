@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { AlertTriangle, ChevronDown, Loader2, Trash2 } from 'lucide-react'
 
 import { isInsufficientStockConfirmError } from '@/errors/insufficientStockConfirmError'
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   confirmOrder,
   createOrder,
@@ -651,7 +652,16 @@ export function PosOrderForm({
         warehouse_id: warehouseId,
       })
     },
-    onSuccess: (o) => {
+    onSuccess: async (o) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: note,
+        title: t('notifications.mentionTitleOrderNote', {
+          number: String(o.order_number),
+        }),
+        redirectBasePath: `/orders/${o.id}`,
+        sourceType: 'order_note',
+        sourceEntityId: o.id,
+      })
       invalidateAll()
       if (!draftOrderId) {
         navigate(`/orders/${o.id}`, { replace: true })
@@ -699,7 +709,16 @@ export function PosOrderForm({
       }
       return confirmOrder(id)
     },
-    onSuccess: () => {
+    onSuccess: async (confirmed) => {
+      await createAdminMentionNotificationIfNeeded({
+        noteText: confirmed.note ?? '',
+        title: t('notifications.mentionTitleOrderNote', {
+          number: String(confirmed.order_number),
+        }),
+        redirectBasePath: `/orders/${confirmed.id}`,
+        sourceType: 'order_checkout_note',
+        sourceEntityId: confirmed.id,
+      })
       invalidateAll()
       setCheckoutOpen(false)
       toast.success(t('orders.confirmOrder'))

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 
+import { createAdminMentionNotificationIfNeeded } from '@/services/adminNotificationService'
 import {
   getLedgerPaymentOperation,
   reverseLedgerPaymentOperation,
@@ -32,6 +33,7 @@ import { useLanguage } from '@/hooks/useLanguage'
 import { ledgerPaymentRelatedDocumentHref } from '@/utils/ledgerLinks'
 import { EditableNoteCard } from '@/components/common/EditableNoteCard'
 import { listWarehouses } from '@/services/warehouseService'
+import { useNoteFocusFromSearchParams } from '@/hooks/useNoteFocusFromSearchParams'
 
 function isPaymentMethod(m: unknown): m is PaymentMethod {
   return typeof m === 'string' && PAYMENT_METHODS.includes(m as PaymentMethod)
@@ -85,8 +87,16 @@ export function PaymentOperationDetail() {
   }, [op?.reference_number, t])
 
   const noteMut = useMutation({
-    mutationFn: (text: string) =>
-      updateLedgerPaymentOperationNote(id!, text || null),
+    mutationFn: async (text: string) => {
+      await updateLedgerPaymentOperationNote(id!, text || null)
+      await createAdminMentionNotificationIfNeeded({
+        noteText: text || '',
+        title: t('notifications.mentionTitlePaymentOperation'),
+        redirectBasePath: `/payments/operations/${id}`,
+        sourceType: 'payment_operation_note',
+        sourceEntityId: id ?? null,
+      })
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['ledgerPaymentOperation', id] })
       qc.invalidateQueries({ queryKey: ['balanceTransactions'] })
@@ -119,6 +129,8 @@ export function PaymentOperationDetail() {
     onError: (e: unknown) =>
       toast.error(supabaseErrorMessage(e) || t('people.toastError')),
   })
+
+  useNoteFocusFromSearchParams(id ? `operation-note-${id}` : null)
 
   if (!canList) {
     return <Navigate to="/payments" replace />
@@ -405,7 +417,7 @@ export function PaymentOperationDetail() {
             value={op.note ?? ''}
             canEdit={canEditNote && !op.reversed}
             isPending={noteMut.isPending}
-            fieldId="op-note"
+            fieldId={`operation-note-${id}`}
             emptyPlaceholder={t('payments.operationNotePlaceholder')}
             onSave={async (text) => {
               await noteMut.mutateAsync(text || '')

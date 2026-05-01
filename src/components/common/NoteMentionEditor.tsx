@@ -157,7 +157,7 @@ export function NoteMentionEditor({
             >
               {suggestions.map((item, idx) => (
                 <li
-                  key={`${item.kind}-${item.kind === 'payment' ? item.operationRouteId : item.kind === 'person' ? item.id : item.kind === 'order' || item.kind === 'purchase_order' ? item.id : idx}`}
+                  key={`${item.kind}-${item.kind === 'admin' ? 'admin' : item.kind === 'payment' ? item.operationRouteId : item.kind === 'person' ? item.id : item.kind === 'order' || item.kind === 'purchase_order' ? item.id : idx}`}
                   role="option"
                   aria-selected={idx === highlightIdx}
                   data-idx={idx}
@@ -172,13 +172,15 @@ export function NoteMentionEditor({
                   onMouseEnter={() => setHighlightIdx(idx)}
                 >
                   <span className="font-medium capitalize text-muted-foreground">
-                    {item.kind === 'order'
-                      ? t('notes.mentionKindOrder')
-                      : item.kind === 'purchase_order'
-                        ? t('notes.mentionKindPO')
-                        : item.kind === 'payment'
-                          ? t('notes.mentionKindPayment')
-                          : t('notes.mentionKindPerson')}
+                    {item.kind === 'admin'
+                      ? t('notes.mentionKindAdmin')
+                      : item.kind === 'order'
+                        ? t('notes.mentionKindOrder')
+                        : item.kind === 'purchase_order'
+                          ? t('notes.mentionKindPO')
+                          : item.kind === 'payment'
+                            ? t('notes.mentionKindPayment')
+                            : t('notes.mentionKindPerson')}
                   </span>{' '}
                   {item.label}
                 </li>
