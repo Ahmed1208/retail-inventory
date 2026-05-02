@@ -45,7 +45,14 @@ export function AdminNotifications() {
     setOpenedTick((t) => t + 1)
   }, [])
 
-  const { data: rows = [], isLoading } = useQuery({
+  const {
+    data: rows = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useQuery({
     queryKey: ADMIN_NOTIFICATIONS_QUERY_KEY,
     queryFn: () => listAdminNotifications(200),
   })
@@ -126,10 +133,33 @@ export function AdminNotifications() {
         ))}
       </div>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">
+          <p className="text-destructive">{t('notifications.loadError')}</p>
+          <p className="mt-1 text-muted-foreground">
+            {error instanceof Error ? error.message : String(error)}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            disabled={isFetching}
+            onClick={() => void refetch()}
+          >
+            {isFetching && (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" aria-hidden />
+            )}
+            {t('notifications.retry')}
+          </Button>
+        </div>
+      ) : isLoading ? (
         <LoadingSkeleton className="h-40" />
       ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('notifications.empty')}</p>
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <p>{t('notifications.empty')}</p>
+          <p className="leading-snug">{t('notifications.emptyHintHeaderBell')}</p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {filtered.map((n) => (

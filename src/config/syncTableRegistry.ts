@@ -9,6 +9,11 @@
  * free on cloud, else the DB assigns the next number. Cloud repair RPCs fix true duplicates.
  * Stock levels merge via `product_warehouse_stock.updated_at` in cloud-master mode
  * (see `dataSyncService` — PWS is not reference-only).
+ *
+ * `admin_notifications` / `admin_notification_comments`: @admin mention inbox; FK `created_by` /
+ * `author_id` → `auth.users`. Requires migration `20260501120000_admin_notifications_sync.sql`
+ * (admin mirror INSERT/DELETE RLS + `updated_at`) on both databases. Operators referenced on rows
+ * must exist in Auth on the target (same as profiles sync).
  */
 
 export type SyncTimestampColumn = 'updated_at' | 'created_at' | 'recorded_at'
@@ -97,6 +102,18 @@ export const SYNC_TABLES: SyncTableDef[] = [
     primaryKey: 'id',
     timestampColumn: null,
     preferNewer: false,
+  },
+  {
+    name: 'admin_notifications',
+    primaryKey: 'id',
+    timestampColumn: 'updated_at',
+    preferNewer: true,
+  },
+  {
+    name: 'admin_notification_comments',
+    primaryKey: 'id',
+    timestampColumn: 'created_at',
+    preferNewer: true,
   },
 ]
 

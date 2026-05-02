@@ -37,6 +37,7 @@ export type AdminNotificationRow = {
   source_entity_id: string | null
   created_by: string
   created_at: string
+  updated_at: string
   read_at: string | null
   resolved_at: string | null
 }
@@ -89,6 +90,7 @@ export async function createAdminMentionNotificationIfNeeded(params: {
       id
     )
 
+    const nowIso = new Date().toISOString()
     const { error } = await supabase.from(ADMIN_NOTIFICATIONS).insert({
       id,
       kind: 'mention_at_admin',
@@ -98,6 +100,7 @@ export async function createAdminMentionNotificationIfNeeded(params: {
       source_type: params.sourceType,
       source_entity_id: params.sourceEntityId ?? null,
       created_by: user.id,
+      updated_at: nowIso,
     })
 
     if (error) throw error
@@ -128,6 +131,7 @@ export async function listAdminNotifications(
 }
 
 function mapNotificationRow(row: Record<string, unknown>): AdminNotificationRow {
+  const createdAt = String(row.created_at ?? '')
   return {
     id: String(row.id),
     kind: String(row.kind ?? ''),
@@ -138,7 +142,11 @@ function mapNotificationRow(row: Record<string, unknown>): AdminNotificationRow 
     source_entity_id:
       row.source_entity_id != null ? String(row.source_entity_id) : null,
     created_by: String(row.created_by ?? ''),
-    created_at: String(row.created_at ?? ''),
+    created_at: createdAt,
+    updated_at:
+      row.updated_at != null && String(row.updated_at) !== ''
+        ? String(row.updated_at)
+        : createdAt,
     read_at: row.read_at != null ? String(row.read_at) : null,
     resolved_at: row.resolved_at != null ? String(row.resolved_at) : null,
   }
@@ -162,6 +170,7 @@ export async function updateAdminNotificationRead(
     .from(ADMIN_NOTIFICATIONS)
     .update({
       read_at: read ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
 
@@ -179,6 +188,7 @@ export async function updateAdminNotificationResolved(
     .from(ADMIN_NOTIFICATIONS)
     .update({
       resolved_at: resolved ? new Date().toISOString() : null,
+      updated_at: new Date().toISOString(),
     })
     .eq('id', id)
 

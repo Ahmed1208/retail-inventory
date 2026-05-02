@@ -172,6 +172,21 @@ export function StockAlertsBell() {
             ))}
           </div>
         </div>
+
+        {isAdmin ? (
+          <div className="border-t border-border px-4 py-3 text-sm">
+            <p className="text-muted-foreground leading-snug">
+              {t('stockAlerts.footerAdminMentionsDesc')}
+            </p>
+            <Link
+              to="/admin/notifications"
+              className="mt-2 inline-block font-medium text-primary underline-offset-4 hover:underline"
+              onClick={() => setOpen(false)}
+            >
+              {t('stockAlerts.footerAdminMentionsLink')}
+            </Link>
+          </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   )
