@@ -6,6 +6,8 @@ SELECT public.ensure_default_warehouse();
 -- ---------------------------------------------------------------------------
 -- Local dev operator: username `admin` → admin@members.stockpilot.local
 -- Password (local Supabase only): devpass123
+-- Uses placeholder id 11111111-… (local only). Never push that id to hosted —
+-- on shop PCs run mirror:cloud-auth-to-local then Reset local from cloud.
 -- If this user already exists (any id), only the missing identity row may be added.
 -- ---------------------------------------------------------------------------
 

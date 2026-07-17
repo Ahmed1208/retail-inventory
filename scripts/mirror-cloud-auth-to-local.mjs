@@ -8,9 +8,12 @@
  *   (default `devpass123`).
  * - Destructive: set `I_CONFIRM_WIPE_LOCAL_AUTH=YES` or use `--dry-run` only.
  *
- * Usage:
+ * Usage (bash/zsh):
  *   I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local
  *   npm run mirror:cloud-auth-to-local -- --dry-run
+ *
+ * Usage (Windows PowerShell):
+ *   $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local
  *
  * Afterward: run **Admin → Data sync** once to refresh `profiles` and business data from cloud.
  */

@@ -26,7 +26,9 @@ function json(status: number, body: Record<string, unknown>) {
 }
 
 function isUuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+  // Accept any 8-4-4-4-12 hex UUID (v1–v8 / RFC 9562). Strict RFC4122 v1–v5-only
+  // checks rejected valid modern ids and produced opaque "Invalid user_id" on sync.
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
     s,
   )
 }
@@ -96,18 +98,40 @@ Deno.serve(async (req) => {
 
   let body: {
     user_id?: string
+    userId?: string
+    id?: string
     email?: string
     user_metadata?: Record<string, unknown>
   }
   try {
-    body = await req.json()
+    let raw: unknown = await req.json()
+    // Some clients/gateways double-encode JSON as a string.
+    if (typeof raw === 'string') {
+      try {
+        raw = JSON.parse(raw)
+      } catch {
+        return json(400, { error: 'Invalid JSON string body' })
+      }
+    }
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      return json(400, {
+        error: `Invalid body type=${raw === null ? 'null' : typeof raw}`,
+      })
+    }
+    body = raw as typeof body
   } catch {
     return json(400, { error: 'Invalid JSON' })
   }
 
-  const userId = String(body.user_id ?? '').trim()
+  const userId = String(body.user_id ?? body.userId ?? body.id ?? '').trim()
   if (!isUuid(userId)) {
-    return json(400, { error: 'Invalid user_id' })
+    // #region agent log
+    const keys = Object.keys(body)
+    const bodyType = typeof body
+    // #endregion
+    return json(400, {
+      error: `Invalid user_id (len=${userId.length} bodyType=${bodyType} keys=${keys.join(',') || 'none'} preview=${JSON.stringify(userId).slice(0, 80)})`,
+    })
   }
 
   let email = String(body.email ?? '').trim().toLowerCase()
@@ -151,17 +175,83 @@ Deno.serve(async (req) => {
     })
   }
 
-  const { error: createErr } = await adminClient.auth.admin.createUser({
+  async function findUserIdByEmail(targetEmail: string): Promise<string | null> {
+    let page = 1
+    for (;;) {
+      const { data, error } = await adminClient.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      })
+      if (error) throw new Error(`listUsers: ${error.message}`)
+      const users = data?.users ?? []
+      const hit = users.find(
+        (u) => (u.email ?? '').toLowerCase() === targetEmail.toLowerCase(),
+      )
+      if (hit) return hit.id
+      if (users.length < 200) return null
+      page += 1
+      if (page > 50) return null
+    }
+  }
+
+  const createPayload = {
     id: userId,
     email,
     password: tempPassword,
     email_confirm: true,
-    ban_duration: 'none',
+    ban_duration: 'none' as const,
     user_metadata,
-  })
+  }
+
+  let { error: createErr } = await adminClient.auth.admin.createUser(createPayload)
+
+  if (createErr && /already.*(registered|exists|been)/i.test(String(createErr.message))) {
+    // Seeded local admin (or a stale mirror) often holds the operator email under a
+    // different id. Reclaim the email so sync can create the hosted id on this DB.
+    let conflictId: string | null = null
+    try {
+      conflictId = await findUserIdByEmail(email)
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e)
+      return json(400, { error: `email conflict lookup failed: ${m}` })
+    }
+    if (conflictId === userId) {
+      return json(200, { ok: true, already_existed: true })
+    }
+    if (conflictId) {
+      const { error: delErr } = await adminClient.auth.admin.deleteUser(conflictId)
+      if (delErr) {
+        return json(409, {
+          error:
+            `Email ${email} is held by auth user ${conflictId} (wanted ${userId}); ` +
+            `could not delete conflict: ${delErr.message}. ` +
+            'On Windows PowerShell: $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local',
+        })
+      }
+      const retry = await adminClient.auth.admin.createUser(createPayload)
+      if (retry.error) {
+        return json(400, {
+          error: `createUser after reclaiming email: ${retry.error.message}`,
+        })
+      }
+      return json(200, {
+        ok: true,
+        created: true,
+        replaced_email_conflict: true,
+        previous_id: conflictId,
+      })
+    }
+    return json(409, {
+      error:
+        `${createErr.message} (email=${email}, requested_id=${userId}). ` +
+        'On Windows PowerShell: $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local',
+    })
+  }
 
   if (createErr) {
-    return json(400, { error: createErr.message })
+    return json(400, {
+      error: `createUser: ${String(createErr.message ?? 'createUser failed')}`,
+    })
   }
 
   return json(200, { ok: true, created: true })

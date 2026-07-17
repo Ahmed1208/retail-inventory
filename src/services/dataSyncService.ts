@@ -95,6 +95,12 @@ const CLOUD_MASTER_REFERENCE_TABLES = new Set<string>([
   'people',
 ])
 
+/**
+ * Local-only seeded admin from `supabase/seed.sql`. Must never be pushed to hosted Auth
+ * (email collides with the real cloud admin).
+ */
+const LOCAL_SEED_ADMIN_USER_ID = '11111111-1111-1111-1111-111111111111'
+
 /** Where cloud-master sync stopped when `error` is set (recovery may clear `error`). */
 export type CloudMasterSyncFailurePhase =
   | 'cloud_push'
@@ -316,29 +322,36 @@ async function rpcUpsertProfileRow(
   throw new Error(`profiles upsert: unexpected RPC result ${JSON.stringify(data)}`)
 }
 
-async function formatEdgeFunctionInvokeError(err: unknown): Promise<string> {
-  if (!err || typeof err !== 'object') return String(err)
-  const e = err as { name?: string; message?: string; context?: unknown }
-  if (e.name === 'FunctionsHttpError' && e.context instanceof Response) {
-    try {
-      const res = e.context
-      const txt = await res.clone().text()
-      const status = res.status
-      try {
-        const j = JSON.parse(txt) as { error?: string }
-        if (typeof j?.error === 'string' && j.error) {
-          return `HTTP ${status}: ${j.error}`
-        }
-      } catch {
-        /* not JSON */
-      }
-      const snippet = txt.replace(/\s+/g, ' ').trim().slice(0, 400)
-      return snippet ? `HTTP ${status}: ${snippet}` : `HTTP ${status}`
-    } catch {
-      return e.message ?? 'FunctionsHttpError'
-    }
+/** Same UUID shape check as `ensure-local-operator-auth` (any 8-4-4-4-12 hex). */
+function isRfc4122Uuid(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+}
+
+function profileIdDebugMeta(id: string): {
+  len: number
+  rfc4122: boolean
+  versionNibble: string | null
+  variantNibble: string | null
+  hasHyphens: boolean
+} {
+  const parts = id.split('-')
+  return {
+    len: id.length,
+    rfc4122: isRfc4122Uuid(id),
+    versionNibble: parts[2]?.[0] ?? null,
+    variantNibble: parts[3]?.[0] ?? null,
+    hasHyphens: id.includes('-'),
   }
-  return e.message ?? String(err)
+}
+
+function supabaseClientUrlAndAnon(client: SupabaseClient): {
+  url: string
+  anonKey: string
+} {
+  const c = client as unknown as { supabaseUrl?: string; supabaseKey?: string }
+  const url = typeof c.supabaseUrl === 'string' ? c.supabaseUrl.replace(/\/$/, '') : ''
+  const anonKey = typeof c.supabaseKey === 'string' ? c.supabaseKey : ''
+  return { url, anonKey }
 }
 
 async function invokeMirroredOperatorAuthEdge(
@@ -360,34 +373,127 @@ async function invokeMirroredOperatorAuthEdge(
     allowed_warehouse_ids: warehouseIdsFromProfileRow(row),
   }
 
-  const { data, error } = await invokeClient.functions.invoke(
-    'ensure-local-operator-auth',
-    {
-      body: {
-        user_id: id,
-        email,
-        user_metadata,
+  // #region agent log
+  const idMeta = profileIdDebugMeta(id)
+  const invokePayload = { user_id: id, email, user_metadata }
+  let payloadJsonLen = 0
+  try {
+    payloadJsonLen = JSON.stringify(invokePayload).length
+  } catch {
+    payloadJsonLen = -1
+  }
+  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': '8ccbb7',
+    },
+    body: JSON.stringify({
+      sessionId: '8ccbb7',
+      runId: 'post-fix',
+      hypothesisId: 'A',
+      location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge',
+      message: 'about to invoke ensure-local-operator-auth',
+      data: {
+        userId: id,
+        username: String(row.username ?? ''),
+        emailLocal: email.split('@')[0] ?? '',
+        idMeta,
+        payloadJsonLen,
+        emailDomainOk: email.endsWith(`@${OPERATOR_MEMBER_DOMAIN}`),
       },
-    }
-  )
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
 
-  if (error) {
-    const detail = await formatEdgeFunctionInvokeError(error)
+  /**
+   * Use explicit fetch (not functions.invoke) so the JSON body cannot be dropped by
+   * Content-Type / SDK edge cases — empty body surfaced as HTTP 400 Invalid user_id on shop PCs.
+   */
+  const { url: baseUrl, anonKey } = supabaseClientUrlAndAnon(invokeClient)
+  const {
+    data: { session },
+  } = await invokeClient.auth.getSession()
+  const accessToken = session?.access_token
+  if (!baseUrl || !anonKey || !accessToken) {
+    throw new Error(
+      'profiles: ensure-local-operator-auth: missing session or Supabase URL/anon key on target client'
+    )
+  }
+  if (signal.aborted) return
+
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}/functions/v1/ensure-local-operator-auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify(invokePayload),
+      signal,
+    })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new Error(`profiles: ensure-local-operator-auth: network error: ${msg}`)
+  }
+
+  const rawText = await res.text()
+  let parsed: { ok?: boolean; error?: string; created?: boolean; already_existed?: boolean } | null =
+    null
+  try {
+    parsed = rawText ? (JSON.parse(rawText) as typeof parsed) : null
+  } catch {
+    parsed = null
+  }
+
+  if (!res.ok) {
+    const detail =
+      typeof parsed?.error === 'string' && parsed.error
+        ? `HTTP ${res.status}: ${parsed.error}`
+        : `HTTP ${res.status}: ${rawText.replace(/\s+/g, ' ').trim().slice(0, 400) || res.statusText}`
+    // #region agent log
+    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '8ccbb7',
+      },
+      body: JSON.stringify({
+        sessionId: '8ccbb7',
+        runId: 'post-fix',
+        hypothesisId: detail.includes('Invalid user_id') ? 'B' : 'C',
+        location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge:error',
+        message: 'ensure-local-operator-auth fetch failed',
+        data: {
+          userId: id,
+          idMeta,
+          detail: detail.slice(0, 400),
+          payloadJsonLen,
+          status: res.status,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
     const hint =
-      detail.includes('HTTP 404') ||
-      (error as { message?: string }).message?.includes('Failed to send')
+      res.status === 404
         ? ' If the status was 404, restart `npx supabase start` (or deploy `ensure-local-operator-auth` on hosted).'
         : ''
-    throw new Error(`profiles: ensure-local-operator-auth: ${detail}${hint}`)
+    const idDiag = ` [id=${id} len=${idMeta.len} uuidOk=${idMeta.rfc4122} ver=${idMeta.versionNibble} var=${idMeta.variantNibble}]`
+    throw new Error(
+      `profiles: ensure-local-operator-auth: ${detail}${hint}${idDiag}`
+    )
   }
 
-  const res = data as { ok?: boolean; error?: string } | null
-  if (res && typeof res.error === 'string') {
-    throw new Error(`profiles: ensure-local-operator-auth: ${res.error}`)
+  if (parsed && typeof parsed.error === 'string') {
+    throw new Error(`profiles: ensure-local-operator-auth: ${parsed.error}`)
   }
-  if (!res?.ok) {
+  if (!parsed?.ok) {
     throw new Error(
-      `profiles: ensure-local-operator-auth: unexpected response ${JSON.stringify(data)}`
+      `profiles: ensure-local-operator-auth: unexpected response ${rawText.slice(0, 400)}`
     )
   }
 }
@@ -925,6 +1031,12 @@ export async function runCloudMasterSync({
           if (!cloudMap.has(rowKey)) {
             const row = localMap.get(rowKey)
             if (row) {
+              if (
+                def.name === 'profiles' &&
+                String(row.id ?? '') === LOCAL_SEED_ADMIN_USER_ID
+              ) {
+                continue
+              }
               toCloud.push(row)
               rowsPushedToCloud += 1
             }
