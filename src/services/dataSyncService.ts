@@ -403,31 +403,6 @@ async function invokeMirroredOperatorAuthEdge(
     parsed = null
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '46eadb',
-    },
-    body: JSON.stringify({
-      sessionId: '46eadb',
-      runId: 'post-fix',
-      hypothesisId: 'A',
-      location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge:parsed',
-      message: 'ensure-local-operator-auth response typed',
-      data: {
-        resOk: res.ok,
-        status: res.status,
-        parsedIsNull: parsed === null,
-        hasErrorField: typeof parsed?.error === 'string',
-        hasOkField: typeof parsed?.ok === 'boolean',
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
-
   if (!res.ok) {
     const detail =
       typeof parsed?.error === 'string' && parsed.error
