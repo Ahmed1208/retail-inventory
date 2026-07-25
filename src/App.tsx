@@ -38,6 +38,7 @@ import { AdminMembersList } from '@/pages/AdminMembersList'
 import { AdminMemberEdit } from '@/pages/AdminMemberEdit'
 import { AdminMemberNew } from '@/pages/AdminMemberNew'
 import { AdminDataSync } from '@/pages/AdminDataSync'
+import { AdminUpdates } from '@/pages/AdminUpdates'
 import { DataSyncHistory } from '@/pages/DataSyncHistory'
 import { PaymentsHub } from '@/pages/PaymentsHub'
 import { PaymentsList } from '@/pages/PaymentsList'
@@ -134,6 +135,7 @@ function App() {
             <Route path="members" element={<AdminMembersList />} />
             <Route path="members/new" element={<AdminMemberNew />} />
             <Route path="members/:id" element={<AdminMemberEdit />} />
+            <Route path="updates" element={<AdminUpdates />} />
             <Route path="sync" element={<Navigate to="/sync" replace />} />
           </Route>
           <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />

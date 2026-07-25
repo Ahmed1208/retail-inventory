@@ -124,9 +124,25 @@ Sign in to the local app with a mirrored operator, open **Admin → Data sync**,
 
 ---
 
+## Updates (Admin → Updates)
+
+Shop code tracks the **`develop`** branch (not tags).
+
+| State | What you see |
+|-------|----------------|
+| **Offline** | Warning that update checks need internet; app keeps working. |
+| **Online, same version** | “Up to date” with the version from `shop-version.json`. |
+| **Online, newer on develop** | “Update available” + download / apply steps. |
+
+**Developer:** merge to `develop` only. A GitHub Action bumps `shop-version.json` automatically (see [BRANCHES.md](../BRANCHES.md)).
+
+**Apply an update on this PC:** use the same project folder. Download the [develop zip](https://github.com/Ahmed1208/retail-inventory/archive/refs/heads/develop.zip) (or pull), replace app files only, **keep** `./volumes` and `.env` / `.env.*.local`, then `docker compose up -d` and `npm run second-pc:setup` (use `--no-seed` if you already have live data). After applying, you can click **I applied this update** on Admin → Updates.
+
+---
+
 ## After the first time / troubleshooting
 
-- When you change code or Docker config: `docker compose up -d`, then `npm run second-pc:setup` (or `--no-build` / full setup if you need a new `dist/`).
+- When you change code or Docker config: `docker compose up -d`, then `npm run second-pc:setup` (or `--no-build` / full setup if you need a new `dist/`). Prefer **Admin → Updates** when online to see if `develop` is newer.
 - Re-run **Part B** mirror + Data sync when hosted operators change and the shop must match them again.
 - If Data sync fails with a missing table (e.g. `admin_notifications`) in the schema cache, Postgres is behind migrations. With Compose running:
 

@@ -19,11 +19,12 @@
     "register": "الصندوق",
     "admin": "الإدارة",
     "documentation": "التوثيق",
-    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو دليل الهجرة أو الأعضاء أو مزامنة البيانات أو حركات المخزون أو التقارير من هنا.",
+    "adminHubDescription": "افتح لوحة التحكم أو التوثيق أو دليل الهجرة أو الأعضاء أو التحديثات أو مزامنة البيانات أو حركات المخزون أو التقارير من هنا.",
     "migrationGuide": "دليل الهجرة",
     "backToAdmin": "العودة للإدارة",
     "members": "الأعضاء",
     "dataSync": "مزامنة البيانات",
+    "updates": "التحديثات",
     "notifications": "الإشعارات"
   },
   "auth": {
@@ -179,6 +180,33 @@
         }
       }
     }
+  },
+  "adminUpdates": {
+    "title": "التحديثات",
+    "subtitle": "قارن هذا التثبيت مع أحدث كود على فرع develop. التحقق من التحديثات يحتاج إنترنت؛ بقية StockPilot تعمل دون اتصال.",
+    "netChecking": "جارٍ التحقق من الاتصال…",
+    "netOnline": "متصل",
+    "netOffline": "غير متصل",
+    "checkAgain": "التحقق من التحديثات",
+    "offlineWarning": "هذا الجهاز غير متصل بالإنترنت. لا يمكن التحقق من التحديثات حتى يتوفر الاتصال. التطبيق والبيانات المحلية يستمران كالمعتاد.",
+    "errorOffline": "لا يوجد اتصال بالإنترنت.",
+    "errorFetch": "تعذّر الوصول إلى GitHub لقراءة إصدار المتجر. أعد المحاولة عند توفر الشبكة.",
+    "errorInvalid": "ملف shop-version.json البعيد غير صالح.",
+    "localTitle": "هذا التثبيت",
+    "remoteTitle": "الأحدث على develop",
+    "version": "الإصدار",
+    "commit": "الالتزام",
+    "branch": "الفرع",
+    "updatedAt": "التحديث (UTC)",
+    "loadingLocal": "جارٍ تحميل الإصدار المحلي…",
+    "updateAvailable": "يتوفر تحديث: {{version}}",
+    "upToDate": "أنت على أحدث إصدار للمتجر ({{version}}).",
+    "updateHow": "طبّق التحديث في نفس مجلد المشروع (احتفظ بـ volumes/ وملفات .env). لا تفك الأرشيف في مجلد جديد فارغ إذا أردت الإبقاء على البيانات المحلية.",
+    "updateStep1": "حمّل أرشيف develop (أو اسحب أحدث كود develop إلى هذا المجلد).",
+    "updateStep2": "استبدل ملفات التطبيق فقط — لا تحذف volumes/ أو .env / .env.*.local.",
+    "updateStep3": "من هذا المجلد شغّل: docker compose up -d ثم npm run second-pc:setup (أو --no-seed إذا كانت لديك بيانات).",
+    "downloadDevelop": "تحميل أرشيف develop",
+    "markApplied": "طبّقت هذا التحديث"
   },
   "adminSync": {
     "title": "مزامنة البيانات",

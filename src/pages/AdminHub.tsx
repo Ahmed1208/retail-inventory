@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   LineChart,
   ListChecks,
+  RefreshCw,
   Users,
 } from 'lucide-react'
 
@@ -56,6 +57,12 @@ const sections = [
     icon: CloudCog,
     key: 'nav.dataSync',
     feature: 'admin.dataSync' as const,
+  },
+  {
+    to: '/admin/updates',
+    icon: RefreshCw,
+    key: 'nav.updates',
+    feature: 'sidebar.admin' as const,
   },
 ] as const
 

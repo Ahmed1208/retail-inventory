@@ -31,6 +31,14 @@ git push -u origin feature/your-feature-name
 
 Open a **Pull Request** on GitHub targeting `develop`. After review and CI passing, merge.
 
+### How to ship updates to second PCs (shops)
+
+1. Merge your feature/fix into **`develop`** and push (PR merge is enough).
+2. The **Shop version** GitHub Action runs on `develop` and writes `shop-version.json` (and `public/shop-version.json`) with an automatic version like `26.7.26.12` (UTC date + run number) plus the commit SHA. No tags or Releases required.
+3. Online second PCs: **Admin → Updates** compares the local install to that file on `develop`. Offline PCs show an Offline warning and skip the check.
+
+`master` is not used for shop updates.
+
 ### How to release to production
 
 1. Open a **Pull Request** from `develop` → `master`.

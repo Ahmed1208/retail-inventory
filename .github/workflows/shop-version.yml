@@ -1,0 +1,63 @@
+name: Shop version
+
+# On every push to develop (except version-only / [skip ci] commits), write
+# shop-version.json so second PCs can detect updates without tags or releases.
+on:
+  push:
+    branches: [develop]
+    paths-ignore:
+      - 'shop-version.json'
+      - 'public/shop-version.json'
+
+concurrency:
+  group: shop-version-develop
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    if: ${{ !contains(github.event.head_commit.message || '', '[skip ci]') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Write shop-version.json
+        id: version
+        env:
+          SHA: ${{ github.sha }}
+          RUN: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          VERSION="$(date -u +%-y.%-m.%-d).${RUN}"
+          UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          SHORT_SHA="$(printf '%s' "$SHA" | cut -c1-7)"
+          PAYLOAD="$(jq -n \
+            --arg version "$VERSION" \
+            --arg sha "$SHA" \
+            --arg branch "develop" \
+            --arg updatedAt "$UPDATED_AT" \
+            '{version:$version,sha:$sha,branch:$branch,updatedAt:$updatedAt}')"
+          printf '%s\n' "$PAYLOAD" > shop-version.json
+          printf '%s\n' "$PAYLOAD" > public/shop-version.json
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "Wrote shop version ${VERSION} (${SHORT_SHA})"
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add shop-version.json public/shop-version.json
+          if git diff --staged --quiet; then
+            echo "No shop-version changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: shop version ${VERSION} [skip ci]"
+          git push

@@ -19,11 +19,12 @@
     "register": "Register",
     "admin": "Admin",
     "documentation": "Documentation",
-    "adminHubDescription": "Open dashboard, documentation, migration guide, members, data sync, stock movements, or reports from here.",
+    "adminHubDescription": "Open dashboard, documentation, migration guide, members, updates, data sync, stock movements, or reports from here.",
     "migrationGuide": "Migration guide",
     "backToAdmin": "Back to Admin",
     "members": "Members",
     "dataSync": "Data sync",
+    "updates": "Updates",
     "notifications": "Notifications"
   },
   "auth": {
@@ -179,6 +180,33 @@
         }
       }
     }
+  },
+  "adminUpdates": {
+    "title": "Updates",
+    "subtitle": "Compare this install with the latest code on the develop branch. Checking for updates needs internet; the rest of StockPilot works offline.",
+    "netChecking": "Checking connection…",
+    "netOnline": "Online",
+    "netOffline": "Offline",
+    "checkAgain": "Check for updates",
+    "offlineWarning": "This PC is not connected to the internet. Update checks are unavailable until you are online. Your local app and data keep working as usual.",
+    "errorOffline": "No internet connection.",
+    "errorFetch": "Could not reach GitHub to read the latest shop version. Try again when the network is available.",
+    "errorInvalid": "The remote shop-version.json file was invalid.",
+    "localTitle": "This install",
+    "remoteTitle": "Latest on develop",
+    "version": "Version",
+    "commit": "Commit",
+    "branch": "Branch",
+    "updatedAt": "Updated (UTC)",
+    "loadingLocal": "Loading local version…",
+    "updateAvailable": "Update available: {{version}}",
+    "upToDate": "You are on the latest shop version ({{version}}).",
+    "updateHow": "Apply the update in the same project folder (keep volumes/ and .env files). Do not unzip into a new empty folder if you want to keep local data.",
+    "updateStep1": "Download the develop zip (or pull the latest develop code into this folder).",
+    "updateStep2": "Replace app files only — do not delete volumes/ or .env / .env.*.local.",
+    "updateStep3": "From this folder run: docker compose up -d, then npm run second-pc:setup (or --no-seed if you already have data).",
+    "downloadDevelop": "Download develop zip",
+    "markApplied": "I applied this update"
   },
   "adminSync": {
     "title": "Data sync",
