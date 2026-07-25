@@ -332,6 +332,14 @@ function supabaseClientUrlAndAnon(client: SupabaseClient): {
   return { url, anonKey }
 }
 
+/** Response body from `ensure-local-operator-auth` (named type avoids `typeof parsed` → `null` narrowing). */
+type EnsureLocalOperatorAuthResponse = {
+  ok?: boolean
+  error?: string
+  created?: boolean
+  already_existed?: boolean
+}
+
 async function invokeMirroredOperatorAuthEdge(
   invokeClient: SupabaseClient,
   row: Record<string, unknown>,
@@ -386,13 +394,39 @@ async function invokeMirroredOperatorAuthEdge(
   }
 
   const rawText = await res.text()
-  let parsed: { ok?: boolean; error?: string; created?: boolean; already_existed?: boolean } | null =
-    null
+  let parsed: EnsureLocalOperatorAuthResponse | null = null
   try {
-    parsed = rawText ? (JSON.parse(rawText) as typeof parsed) : null
+    parsed = rawText
+      ? (JSON.parse(rawText) as EnsureLocalOperatorAuthResponse)
+      : null
   } catch {
     parsed = null
   }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': '46eadb',
+    },
+    body: JSON.stringify({
+      sessionId: '46eadb',
+      runId: 'post-fix',
+      hypothesisId: 'A',
+      location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge:parsed',
+      message: 'ensure-local-operator-auth response typed',
+      data: {
+        resOk: res.ok,
+        status: res.status,
+        parsedIsNull: parsed === null,
+        hasErrorField: typeof parsed?.error === 'string',
+        hasOkField: typeof parsed?.ok === 'boolean',
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
 
   if (!res.ok) {
     const detail =
