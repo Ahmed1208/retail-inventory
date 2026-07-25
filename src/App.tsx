@@ -46,14 +46,16 @@ import { NewPayment } from '@/pages/NewPayment'
 import { Register } from '@/pages/Register'
 import { NotFound } from '@/pages/NotFound'
 import { Login } from '@/pages/Login'
+import { HomePage } from '@/pages/HomePage'
 
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<RootRedirect />} />
+          <Route path="/app" element={<RootRedirect />} />
           <Route path="/inventory" element={<InventoryHub />} />
           <Route path="/warehouses" element={<Warehouses />} />
           <Route path="/inventory-transfers/list" element={<InventoryTransfersList />} />

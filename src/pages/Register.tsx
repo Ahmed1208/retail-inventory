@@ -479,7 +479,7 @@ export function Register() {
   }
 
   if (!canPage) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/app" replace />
   }
 
   const b = balancesQuery.data

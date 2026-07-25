@@ -2,7 +2,7 @@ import { Navigate, useSearchParams } from 'react-router-dom'
 
 import { useAuth } from '@/context/AuthContext'
 
-/** Sends `/` to admin dashboard or inventory home; preserves query except legacy tab routes. */
+/** Sends `/app` to admin dashboard or inventory home; preserves query except legacy tab routes. */
 export function RootRedirect() {
   const [searchParams] = useSearchParams()
   const { isAdmin, session, profileLoading } = useAuth()

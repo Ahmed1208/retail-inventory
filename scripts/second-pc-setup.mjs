@@ -1,13 +1,15 @@
 /**
- * Second PC / shop — one command after you copy the repo + env files.
+ * Second PC / shop — standalone setup (no cloud env required).
  *
  * Usage (from repo root):
  *   npm run second-pc:setup
- *   npm run second-pc:setup -- --with-seed
+ *   npm run second-pc:setup -- --no-seed
  *   npm run second-pc:setup -- --no-build
+ *   npm run second-pc:setup -- --with-seed   # alias (seed is default)
  *
- * Prerequisites: Docker + Node on PATH; `.env` next to `docker-compose.yml`.
- * Recommended: `.env.cloud.local` (sync), `.env.production.local` (VITE_SUPABASE_* for this PC).
+ * Prerequisites: Docker + Node on PATH.
+ * If `.env` / `.env.production.local` are missing, they are generated automatically.
+ * Cloud sync (`.env.cloud.local`, mirror-auth) is optional — see docs/SECOND_PC.md.
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -16,7 +18,8 @@ import { dirname, join } from 'node:path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const args = new Set(process.argv.slice(2))
-const withSeed = args.has('--with-seed')
+const noSeed = args.has('--no-seed')
+const withSeed = !noSeed // default on; --with-seed kept as explicit alias
 const noBuild = args.has('--no-build')
 
 function run(cmd, argv, opts = {}) {
@@ -42,17 +45,25 @@ function needFile(rel, hint) {
 process.chdir(root)
 
 needFile('docker-compose.yml', 'Run from the retail-inventory repo root.')
-needFile('.env', 'Copy root .env from your first PC or generate from Supabase docker .env.example + utils/generate-keys.sh.')
 needFile('package.json', '')
+
+console.log('\n=== 0/5 Generate local env if needed ===\n')
+run('npm', ['run', 'generate:docker-env'])
+
+needFile(
+  '.env',
+  'Env generation failed — run `npm run generate:docker-env` and check .env.docker.example.',
+)
 
 if (!existsSync(join(root, '.env.production.local'))) {
   console.warn(
-    '\n[warn] No .env.production.local — copy .env.shop.example → .env.production.local and set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY (Kong on this PC).\n',
+    '\n[warn] No .env.production.local after generate — Vite build may miss VITE_SUPABASE_*.\n',
   )
 }
+
 if (!existsSync(join(root, '.env.cloud.local'))) {
-  console.warn(
-    '\n[warn] No .env.cloud.local — Admin → Data sync will not work until you add hosted VITE_SUPABASE_* (see .env.cloud.example).\n',
+  console.log(
+    '\n[info] No .env.cloud.local — fine for standalone. Add it later only if you want Admin → Data sync with hosted cloud (see docs/SECOND_PC.md Part B).\n',
   )
 }
 
@@ -70,10 +81,24 @@ run('npm', ['run', 'functions:sync:docker'])
 run('docker', ['compose', 'restart', 'functions'])
 
 if (withSeed) {
-  console.log('\n=== Optional seed.sql ===\n')
+  console.log('\n=== Seed local admin (seed.sql) ===\n')
   const seed = spawnSync(
     'docker',
-    ['compose', 'exec', '-T', 'db', 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-f', '-'],
+    [
+      'compose',
+      'exec',
+      '-T',
+      'db',
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-f',
+      '-',
+    ],
     {
       cwd: root,
       input: readFileSync(join(root, 'supabase', 'seed.sql')),
@@ -81,26 +106,28 @@ if (withSeed) {
     },
   )
   if (seed.status !== 0) process.exit(seed.status ?? 1)
+} else {
+  console.log('\n=== Skipping seed (--no-seed) ===\n')
 }
 
 if (!noBuild) {
   console.log('\n=== 5/5 Production build (Vite) ===\n')
   run('npm', ['run', 'build'])
+} else {
+  console.log('\n=== Skipping build (--no-build) ===\n')
 }
 
 console.log(`
-=== Done ===
-
-If operators must match hosted Auth (same user ids), configure .env.mirror-auth.local then run:
-  npm run mirror:cloud-auth-to-local -- --dry-run
-  I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local
-Then Admin → Data sync once. See docs/SECOND_PC.md
+=== Done (standalone) ===
 
 Open the app:
   npx serve -s dist -l 8080
 Then browser: http://localhost:8080  (or http://THIS-PC-LAN-IP:8080 from other devices)
 
-Firewall: allow ports 8080 (UI) and 8000 (API) if needed.
+Sign in (after seed): username admin · password devpass123
 
-More detail: docs/SECOND_PC.md
+Optional — connect this PC to hosted cloud later (mirror Auth + Data sync):
+  see docs/SECOND_PC.md Part B
+
+Firewall: allow ports 8080 (UI) and 8000 (API) if needed.
 `)

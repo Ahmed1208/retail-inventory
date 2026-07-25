@@ -11,11 +11,11 @@ export function Login() {
   const { t } = useTranslation()
   const { session, signIn, loading } = useAuth()
   const location = useLocation()
+  const rawFrom = (location.state as { from?: string } | null)?.from
   const from =
-    (location.state as { from?: string } | null)?.from &&
-    (location.state as { from?: string }).from !== '/login'
-      ? (location.state as { from: string }).from
-      : '/'
+    rawFrom && rawFrom !== '/login' && rawFrom !== '/'
+      ? rawFrom
+      : '/app'
 
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('')

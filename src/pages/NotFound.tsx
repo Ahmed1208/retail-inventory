@@ -15,7 +15,7 @@ export function NotFound() {
       <p className="text-muted-foreground max-w-md">
         {t('notFound.message')}
       </p>
-      <Link to="/" className={buttonVariants()}>
+      <Link to="/app" className={buttonVariants()}>
         <Home className="h-4 w-4 me-2" />
         {t('notFound.goToDashboard')}
       </Link>

@@ -83,8 +83,9 @@ Git ignores `*.local` env files (see [`.gitignore`](./.gitignore)); use them for
 | **`.env.cloud.local`** | **Hosted** Supabase URL + anon for `npm run dev:cloud` | Vite `cloud` mode; merged into **`development`** and **`production`** builds as **`VITE_SYNC_CLOUD_*`** when unset in mode files (see [`vite.config.ts`](./vite.config.ts)) |
 | **`.env.local`** | **CLI / scripts only** — DB password, `DATABASE_URL`, optional `SUPABASE_ACCESS_TOKEN` | Not for switching app target: **do not** put `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` here (they override every mode and break local vs cloud switching) |
 | [`.env.example`](.env.example) | Long-form comments and patterns for all of the above | Reference only |
-| **`.env.mirror-auth.local`** | **`npm run mirror:cloud-auth-to-local`** — copy hosted Auth users to local/self-hosted (same ids) | Template: [`.env.mirror-auth.example`](./.env.mirror-auth.example); see [`.env.example`](./.env.example) and [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) |
-| **`.env.production.local`** | Local **`npm run build`** — self-hosted Kong (`VITE_SUPABASE_*`) or hosted dashboard vars on Vercel | Vite `production`; shop Docker + sync: see [`.env.shop.example`](./.env.shop.example) and [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) |
+| **`.env.mirror-auth.local`** | **Optional** — `npm run mirror:cloud-auth-to-local` when connecting a shop PC to hosted Auth | Template: [`.env.mirror-auth.example`](./.env.mirror-auth.example); see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) Part B |
+| **`.env.production.local`** | Local **`npm run build`** — self-hosted Kong (`VITE_SUPABASE_*`); auto-created by `npm run generate:docker-env` / `second-pc:setup` | Vite `production`; see [`.env.shop.example`](./.env.shop.example) and [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) |
+| [`.env.docker.example`](.env.docker.example) | Template for Docker Compose root **`.env`** (filled by `npm run generate:docker-env`) | Used by self-hosted / second PC standalone setup |
 
 ### Variables by file
 
@@ -225,9 +226,9 @@ Then sign in on the sync page with a **hosted** Supabase user that is allowed by
 
 Multi-table sync is best-effort across HTTP (not one giant SQL transaction).
 
-#### Mirror hosted Auth onto local (required for shop ↔ cloud operator parity)
+#### Mirror hosted Auth onto local (optional — shop ↔ cloud operator parity)
 
-To **replace all local Auth users** with the same ids as on the hosted project (so **members/operators** and **`profiles`** line up with cloud), use the **service role** script (run on your machine only; keys stay in a gitignored env file). On a **second PC** with Docker Compose Kong, treat this as **part of the standard setup**, not an edge case — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md).
+To **replace all local Auth users** with the same ids as on the hosted project (so **members/operators** and **`profiles`** line up with cloud), use the **service role** script (run on your machine only; keys stay in a gitignored env file). On a **second PC**, standalone install does **not** require this — only when you choose to connect to hosted cloud. See [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) Part B.
 
 1. Copy [`.env.mirror-auth.example`](./.env.mirror-auth.example) → **`.env.mirror-auth.local`** and set `MIRROR_CLOUD_*`, `MIRROR_LOCAL_*` (for self-hosted Docker use **`http://127.0.0.1:8000`** and **`SERVICE_ROLE_KEY`** from root **`.env`**), and optionally `MIRROR_LOCAL_PASSWORD` (default `devpass123`).
 2. `npm run mirror:cloud-auth-to-local -- --dry-run` — lists counts only.
@@ -269,7 +270,7 @@ The compose **`functions`** service mounts **`./volumes/functions`** and runs th
 
 **Note:** `ensure-local-operator-auth` is intended for the **CLI local** stack (`supabase start`); on self-hosted it may still run if you sync it, but behavior is only needed where that flow is used.
 
-**Second PC / shop + hosted Data sync:** copy env files (see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md)), then run **`npm run second-pc:setup`**. Build env template: [`.env.shop.example`](./.env.shop.example).
+**Second PC / shop:** download or clone the repo, then run **`npm run second-pc:setup`** (auto-generates Docker `.env` + `.env.production.local`, seeds local admin). Cloud sync is optional — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md). Build env template: [`.env.shop.example`](./.env.shop.example).
 
 ### First time setup (hosted Supabase)
 
