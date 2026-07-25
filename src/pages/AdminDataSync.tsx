@@ -168,31 +168,6 @@ export function AdminDataSync() {
     }
 
     if (result.error) {
-      // #region agent log
-      fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Debug-Session-Id': '8ccbb7',
-        },
-        body: JSON.stringify({
-          sessionId: '8ccbb7',
-          runId: 'pre-fix',
-          hypothesisId: 'D',
-          location: 'AdminDataSync.tsx:startSync:error',
-          message: 'cloud master sync failed',
-          data: {
-            failurePhase: result.failurePhase ?? null,
-            cloudWritesMayBePartial: result.cloudWritesMayBePartial ?? false,
-            cloudPushTablesCompleted: result.cloudPushTablesCompleted ?? null,
-            rowsPushedToCloud: result.rowsPushedToCloud,
-            rowsPulledToLocal: result.rowsPulledToLocal,
-            errorSnippet: String(result.error).slice(0, 400),
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {})
-      // #endregion
       toast.error(result.error)
       if (result.cloudWritesMayBePartial) {
         toast.warning(t('adminSync.cloudPartialWarning'), { duration: 12_000 })

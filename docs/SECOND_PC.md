@@ -66,13 +66,30 @@ npm run second-pc:setup -- --with-seed   # also load supabase/seed.sql into Post
 npm run second-pc:setup -- --no-build    # skip npm run build (faster if you only changed Docker)
 ```
 
+If Data sync fails with **`Could not find the table 'public.admin_notifications' in the schema cache`** (or similar missing table), this PC’s Postgres is behind the repo migrations. With Docker Compose running:
+
+```bash
+npm run db:push:docker-compose
+```
+
+Then retry sync. Prefer a full `npm run second-pc:setup -- --no-build` if you are unsure the stack is current.
+
 ## Align members (Auth) with cloud — run on this PC after `second-pc:setup`
 
 With **`.env.mirror-auth.local`** filled (see table above):
 
 ```bash
 npm run mirror:cloud-auth-to-local -- --dry-run
+```
+
+```bash
+# bash / zsh / macOS / Linux
 I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local
+```
+
+```powershell
+# Windows PowerShell
+$env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local
 ```
 
 Then open the app and run **Admin → Data sync** once (refreshes `profiles` and business tables from cloud).

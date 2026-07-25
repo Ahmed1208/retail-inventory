@@ -125,12 +125,9 @@ Deno.serve(async (req) => {
 
   const userId = String(body.user_id ?? body.userId ?? body.id ?? '').trim()
   if (!isUuid(userId)) {
-    // #region agent log
     const keys = Object.keys(body)
-    const bodyType = typeof body
-    // #endregion
     return json(400, {
-      error: `Invalid user_id (len=${userId.length} bodyType=${bodyType} keys=${keys.join(',') || 'none'} preview=${JSON.stringify(userId).slice(0, 80)})`,
+      error: `Invalid user_id (len=${userId.length} keys=${keys.join(',') || 'none'} preview=${JSON.stringify(userId).slice(0, 80)})`,
     })
   }
 

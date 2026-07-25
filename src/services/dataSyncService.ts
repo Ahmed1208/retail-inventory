@@ -322,28 +322,6 @@ async function rpcUpsertProfileRow(
   throw new Error(`profiles upsert: unexpected RPC result ${JSON.stringify(data)}`)
 }
 
-/** Same UUID shape check as `ensure-local-operator-auth` (any 8-4-4-4-12 hex). */
-function isRfc4122Uuid(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
-}
-
-function profileIdDebugMeta(id: string): {
-  len: number
-  rfc4122: boolean
-  versionNibble: string | null
-  variantNibble: string | null
-  hasHyphens: boolean
-} {
-  const parts = id.split('-')
-  return {
-    len: id.length,
-    rfc4122: isRfc4122Uuid(id),
-    versionNibble: parts[2]?.[0] ?? null,
-    variantNibble: parts[3]?.[0] ?? null,
-    hasHyphens: id.includes('-'),
-  }
-}
-
 function supabaseClientUrlAndAnon(client: SupabaseClient): {
   url: string
   anonKey: string
@@ -372,40 +350,7 @@ async function invokeMirroredOperatorAuthEdge(
     feature_overrides: featureOverridesJsonFromRow(row),
     allowed_warehouse_ids: warehouseIdsFromProfileRow(row),
   }
-
-  // #region agent log
-  const idMeta = profileIdDebugMeta(id)
   const invokePayload = { user_id: id, email, user_metadata }
-  let payloadJsonLen = 0
-  try {
-    payloadJsonLen = JSON.stringify(invokePayload).length
-  } catch {
-    payloadJsonLen = -1
-  }
-  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '8ccbb7',
-    },
-    body: JSON.stringify({
-      sessionId: '8ccbb7',
-      runId: 'post-fix',
-      hypothesisId: 'A',
-      location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge',
-      message: 'about to invoke ensure-local-operator-auth',
-      data: {
-        userId: id,
-        username: String(row.username ?? ''),
-        emailLocal: email.split('@')[0] ?? '',
-        idMeta,
-        payloadJsonLen,
-        emailDomainOk: email.endsWith(`@${OPERATOR_MEMBER_DOMAIN}`),
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
 
   /**
    * Use explicit fetch (not functions.invoke) so the JSON body cannot be dropped by
@@ -454,38 +399,11 @@ async function invokeMirroredOperatorAuthEdge(
       typeof parsed?.error === 'string' && parsed.error
         ? `HTTP ${res.status}: ${parsed.error}`
         : `HTTP ${res.status}: ${rawText.replace(/\s+/g, ' ').trim().slice(0, 400) || res.statusText}`
-    // #region agent log
-    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '8ccbb7',
-      },
-      body: JSON.stringify({
-        sessionId: '8ccbb7',
-        runId: 'post-fix',
-        hypothesisId: detail.includes('Invalid user_id') ? 'B' : 'C',
-        location: 'dataSyncService.ts:invokeMirroredOperatorAuthEdge:error',
-        message: 'ensure-local-operator-auth fetch failed',
-        data: {
-          userId: id,
-          idMeta,
-          detail: detail.slice(0, 400),
-          payloadJsonLen,
-          status: res.status,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     const hint =
       res.status === 404
         ? ' If the status was 404, restart `npx supabase start` (or deploy `ensure-local-operator-auth` on hosted).'
         : ''
-    const idDiag = ` [id=${id} len=${idMeta.len} uuidOk=${idMeta.rfc4122} ver=${idMeta.versionNibble} var=${idMeta.variantNibble}]`
-    throw new Error(
-      `profiles: ensure-local-operator-auth: ${detail}${hint}${idDiag}`
-    )
+    throw new Error(`profiles: ensure-local-operator-auth: ${detail}${hint}`)
   }
 
   if (parsed && typeof parsed.error === 'string') {
