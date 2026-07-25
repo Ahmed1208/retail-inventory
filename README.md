@@ -270,7 +270,7 @@ The compose **`functions`** service mounts **`./volumes/functions`** and runs th
 
 **Note:** `ensure-local-operator-auth` is intended for the **CLI local** stack (`supabase start`); on self-hosted it may still run if you sync it, but behavior is only needed where that flow is used.
 
-**Second PC / shop:** download or clone the repo, then run **`npm run second-pc:setup`** (auto-generates Docker `.env` + `.env.production.local`, seeds local admin). Cloud sync is optional — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md). Build env template: [`.env.shop.example`](./.env.shop.example).
+**Second PC / shop:** download or clone into its **own folder**, then run **`npm run second-pc:setup`** (auto-generates Docker `.env` + `.env.production.local` with a unique Compose project name and free ports, seeds local admin). Multiple folders on one machine stay isolated (separate DBs/containers). Cloud sync is optional — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md). Build env template: [`.env.shop.example`](./.env.shop.example).
 
 ### First time setup (hosted Supabase)
 

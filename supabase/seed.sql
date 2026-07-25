@@ -1,14 +1,14 @@
 -- Runs after migrations on `supabase db reset` when [db.seed] enabled = true (see supabase/config.toml).
--- Idempotent: warehouse defaults + local dev operator for login.
+-- Idempotent: warehouse defaults + local admin with is_admin for Control / Admin / Notifications / Data sync.
 
 SELECT public.ensure_default_warehouse();
 
 -- ---------------------------------------------------------------------------
--- Local dev operator: username `admin` → admin@members.stockpilot.local
+-- Local / second-PC operator: username `admin` → admin@members.stockpilot.local
 -- Password (local Supabase only): devpass123
--- Uses placeholder id 11111111-… (local only). Never push that id to hosted —
--- on shop PCs run mirror:cloud-auth-to-local then Reset local from cloud.
--- If this user already exists (any id), only the missing identity row may be added.
+-- Uses placeholder id 11111111-… when inserting fresh (local only). Never push that
+-- id to hosted — on shop PCs that connect to cloud, run mirror then Data sync.
+-- Re-running seed always repairs admin metadata + profiles.is_admin = true.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO auth.users (
@@ -58,6 +58,18 @@ WHERE NOT EXISTS (
   WHERE lower(u.email::text) = lower('admin@members.stockpilot.local')
 );
 
+-- Always ensure password, confirmation, and admin metadata for the local admin email.
+UPDATE auth.users u
+SET
+  encrypted_password = extensions.crypt('devpass123', extensions.gen_salt('bf')),
+  email_confirmed_at = COALESCE(u.email_confirmed_at, now()),
+  raw_app_meta_data = COALESCE(u.raw_app_meta_data, '{}'::jsonb)
+    || '{"provider":"email","providers":["email"]}'::jsonb,
+  raw_user_meta_data = COALESCE(u.raw_user_meta_data, '{}'::jsonb)
+    || '{"username":"admin","is_admin":true}'::jsonb,
+  updated_at = now()
+WHERE lower(u.email::text) = lower('admin@members.stockpilot.local');
+
 INSERT INTO auth.identities (
   provider_id,
   user_id,
@@ -90,4 +102,20 @@ WHERE lower(u.email::text) = lower('admin@members.stockpilot.local')
     SELECT 1
     FROM auth.identities i
     WHERE i.user_id = u.id
+      AND i.provider = 'email'
   );
+
+-- Ensure profiles row: admin UI (Control / Admin / Notifications / Data sync) requires is_admin.
+INSERT INTO public.profiles (id, username, is_admin, feature_overrides)
+SELECT
+  u.id,
+  'admin',
+  true,
+  '{}'::jsonb
+FROM auth.users u
+WHERE lower(u.email::text) = lower('admin@members.stockpilot.local')
+ON CONFLICT (id) DO UPDATE
+SET
+  username = EXCLUDED.username,
+  is_admin = true,
+  feature_overrides = COALESCE(public.profiles.feature_overrides, '{}'::jsonb);

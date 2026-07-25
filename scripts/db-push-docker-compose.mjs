@@ -46,8 +46,13 @@ if (!password) {
 
 const db = env.POSTGRES_DB || 'postgres'
 const dbUrl = `postgresql://postgres:${encodeURIComponent(password)}@db:5432/${db}`
-const network = process.env.SUPABASE_DOCKER_NETWORK || 'supabase_default'
+const projectName = (env.COMPOSE_PROJECT_NAME || 'stockpilot').trim() || 'stockpilot'
+const network =
+  process.env.SUPABASE_DOCKER_NETWORK ||
+  `${projectName}_default`
 const dry = process.env.DRY_RUN === '1' || process.env.DRY_RUN === 'true'
+
+console.log(`[db:push:docker-compose] Using Docker network: ${network}`)
 
 const inner = dry
   ? 'npx supabase db push --db-url "$SUPABASE_MIGRATE_URL" --dry-run --yes'

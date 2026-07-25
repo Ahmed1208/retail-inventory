@@ -2,6 +2,8 @@
 
 A second PC runs a **full local StockPilot** (Docker Supabase + built UI). You do **not** need cloud credentials to get started. Connecting to a hosted cloud project is an **optional** later step.
 
+**Each project folder is isolated:** its own Compose project name, host ports, containers, and database under `./volumes`. You can run two downloads on the same machine without mixing data — **do not copy `.env` between folders**.
+
 Download: [retail-inventory (develop zip)](https://github.com/Ahmed1208/retail-inventory/archive/refs/heads/develop.zip) — or `git clone` the repo.
 
 ---
@@ -34,7 +36,7 @@ Expect **Node ≥ 20** (LTS). If `docker` or `node` is missing, finish the insta
 - Use **Download Now** on the StockPilot homepage (develop zip), **or**
 - `git clone` the repository
 
-Unzip if needed, then `cd` into the project folder (the directory that contains `docker-compose.yml` and `package.json`).
+Unzip if needed, then `cd` into **this** project folder (the directory that contains `docker-compose.yml` and `package.json`). Keep each download in its own folder if you run more than one.
 
 ### 3. One command (auto env + Docker + seed + build)
 
@@ -44,25 +46,37 @@ npm run second-pc:setup
 
 This will:
 
-1. **Create** root `.env` and `.env.production.local` if they are missing (generated secrets; SPA points at `http://127.0.0.1:8000`) — you do **not** copy env files from another PC for standalone use
-2. `docker compose up -d`
+1. **Create** root `.env` and `.env.production.local` if they are missing — unique `COMPOSE_PROJECT_NAME`, free host ports (Kong / Postgres publish / UI), generated secrets, SPA pointed at this folder’s Kong URL. You do **not** copy env files from another PC or folder.
+2. `docker compose up -d` (only this folder’s stack)
 3. `npm install`
 4. Apply StockPilot migrations
 5. Sync Edge Functions into the Docker volumes
 6. Load `supabase/seed.sql` (local admin user) — skip with `--no-seed` if you must
 7. `npm run build` — skip with `--no-build` if you only changed Docker
 
+Setup prints the **Compose project name** and the **ports** for this folder (Kong may not be `8000` if that port is already in use).
+
 ### 4. Open the app and sign in
+
+Use the UI port printed by setup (also in `.env` as `STOCKPILOT_UI_PORT`; default `8080` when free):
 
 ```bash
 npx serve -s dist -l 8080
 ```
 
-Browser: **http://localhost:8080** (or `http://THIS-PC-LAN-IP:8080` from other devices).
+Replace `8080` with your `STOCKPILOT_UI_PORT` if different. Browser: **http://localhost:UI_PORT** (or `http://THIS-PC-LAN-IP:UI_PORT`) — use the port printed by setup.
 
-Sign in with username **`admin`** and password **`devpass123`** (from the seed).
+Sign in with username **`admin`** and password **`devpass123`** (from the seed). That admin account shows **Control**, **Admin**, **Notifications**, and **Data sync** in the sidebar. Member accounts do not. Data sync page is available before cloud env is configured; sync **actions** stay disabled until Part B.
 
-Firewall: allow **8000** (API) and **8080** (UI) on the LAN if needed.
+Firewall: allow this folder’s **Kong HTTP** and **UI** ports on the LAN if needed.
+
+**Stop only this stack** (from this folder):
+
+```bash
+docker compose down
+```
+
+That does not stop other StockPilot folders running on the same machine.
 
 ---
 
@@ -82,11 +96,11 @@ Vite bakes sync keys into `dist/` at build time:
 npm run build
 ```
 
-Serve again with `npx serve -s dist -l 8080`.
+Serve again with your `STOCKPILOT_UI_PORT`.
 
 ### 3. Mirror Auth (same user ids as hosted)
 
-Copy [`.env.mirror-auth.example`](../.env.mirror-auth.example) → **`.env.mirror-auth.local`**. Fill hosted **service_role** and local **`SERVICE_ROLE_KEY`** from this PC’s root `.env`. For **`MIRROR_LOCAL_SUPABASE_URL`** use **`http://127.0.0.1:8000`** (localhost only).
+Copy [`.env.mirror-auth.example`](../.env.mirror-auth.example) → **`.env.mirror-auth.local`**. Fill hosted **service_role** and local **`SERVICE_ROLE_KEY`** from this PC’s root `.env`. For **`MIRROR_LOCAL_SUPABASE_URL`** use `http://127.0.0.1:` plus this folder’s **`KONG_HTTP_PORT`** from `.env` (localhost only).
 
 ```bash
 npm run mirror:cloud-auth-to-local -- --dry-run
@@ -120,6 +134,7 @@ Sign in to the local app with a mirrored operator, open **Admin → Data sync**,
   npm run db:push:docker-compose
   ```
 
-- For tablets on the LAN, set `VITE_SUPABASE_URL` in `.env.production.local` and Docker `.env` (`SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`, `SITE_URL`) to `http://THIS-PC-LAN-IP:8000`, then recreate containers and rebuild.
+- For tablets on the LAN, set `VITE_SUPABASE_URL` in `.env.production.local` and Docker `.env` (`SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`, `SITE_URL`) to this PC’s LAN IP with this folder’s **`KONG_HTTP_PORT`**, then recreate containers and rebuild.
+- **Multiple folders on one PC:** each keeps its own `./volumes` DB and ports. Never share or copy `.env` / `.env.production.local` between them.
 
 More context: main [README](../README.md), [`.env.shop.example`](../.env.shop.example), `npm run generate:docker-env`.
