@@ -36,8 +36,11 @@ Open a **Pull Request** on GitHub targeting `develop`. After review and CI passi
 1. Merge your feature/fix into **`develop`** and push (PR merge is enough).
 2. The **Shop version** GitHub Action runs on `develop` and writes `shop-version.json` (and `public/shop-version.json`) with an automatic version like `26.7.26.12` (UTC date + run number) plus the commit SHA. No tags or Releases required.
 3. Online second PCs: **Admin → Updates** compares the local install to that file on `develop`. Offline PCs show an Offline warning and skip the check.
+4. Shop staff apply updates by double-clicking **Update StockPilot** (`.bat` / `.command`) in the same folder — no manual zip/copy.
 
 `master` is not used for shop updates.
+
+**Note:** The browser can only read `shop-version.json` (and the develop zip) if the repo is **public**, or you publish the version feed another way. Private repos block raw GitHub fetches from the shop UI.
 
 ### How to release to production
 

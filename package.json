@@ -13,6 +13,7 @@
     "db:push:docker-compose": "node scripts/db-push-docker-compose.mjs",
     "functions:sync:docker": "node scripts/sync-edge-functions-docker.mjs",
     "second-pc:setup": "node scripts/second-pc-setup.mjs",
+    "second-pc:update": "node scripts/second-pc-update.mjs",
     "second-pc:fresh": "node scripts/second-pc-fresh.mjs",
     "second-pc:cleanup": "node scripts/second-pc-cleanup.mjs",
     "generate:docker-env": "node scripts/generate-docker-env.mjs",

@@ -134,6 +134,7 @@ You do **not** need to remember a separate cleanup step.
 | **`npm run second-pc:setup`** | Normal install / re-run. Auto-removes this folder’s stack, old `sp-retail-inventory-*` downloads, and `hash_supabase-*` leftovers, then sets up. |
 | **`npm run second-pc:fresh`** | Something is broken — wipes `volumes/db/data` + cleans + full setup. |
 | Double-click **`Start StockPilot`** (`.bat` / `.command`) | Same as setup, then serves the UI. |
+| Double-click **`Update StockPilot`** (`.bat` / `.command`) | Downloads latest `develop` into this folder (keeps data), runs setup, serves the UI. |
 
 Deleting a zip folder without running anything can leave Docker leftovers; the next `second-pc:setup` in a new folder cleans those shop leftovers automatically.
 
@@ -166,17 +167,17 @@ Confirm Kong is published: `docker compose ps` should show something like `0.0.0
 
 ## Updates (Admin → Updates)
 
-Shop code tracks the **`develop`** branch (not tags).
+Shop code tracks the **`develop`** branch.
 
 | State | What you see |
 |-------|----------------|
 | **Offline** | Warning that update checks need internet; app keeps working. |
-| **Online, same version** | “Up to date” with the version from `shop-version.json`. |
-| **Online, newer on develop** | “Update available” + download / apply steps. |
+| **Online, up to date** | Local version matches the latest feed. |
+| **Online, update available** | Instructions to double-click **Update StockPilot** (`.bat` / `.command`) in this folder. |
 
-**Developer:** merge to `develop` only. A GitHub Action bumps `shop-version.json` automatically (see [BRANCHES.md](../BRANCHES.md)).
+**Shop user:** double-click **Update StockPilot** — it downloads the new code into the same folder, keeps `volumes/` and `.env*`, runs setup, and opens the app. No manual file copying.
 
-**Apply an update on this PC:** use the same project folder. Download the [develop zip](https://github.com/Ahmed1208/retail-inventory/archive/refs/heads/develop.zip) (or pull), replace app files only, **keep** `./volumes` and `.env` / `.env.*.local`, then `docker compose up -d` and `npm run second-pc:setup` (use `--no-seed` if you already have live data). After applying, you can click **I applied this update** on Admin → Updates.
+**Developer:** merge to `develop` only. A GitHub Action bumps `shop-version.json` (see [BRANCHES.md](../BRANCHES.md)).
 
 ---
 

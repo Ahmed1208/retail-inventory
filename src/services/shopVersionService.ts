@@ -14,8 +14,6 @@ export const SHOP_VERSION_REMOTE_URL = `https://raw.githubusercontent.com/${SHOP
 /** Fallback when shop-version.json is missing on the branch. */
 export const SHOP_COMMITS_API_URL = `https://api.github.com/repos/${SHOP_VERSION_REPO}/commits/${SHOP_VERSION_BRANCH}`
 
-export const SHOP_DEVELOP_ZIP_URL = `https://github.com/${SHOP_VERSION_REPO}/archive/refs/heads/${SHOP_VERSION_BRANCH}.zip`
-
 const LOCAL_STORAGE_KEY = 'stockpilot.shopVersion.local'
 
 const FALLBACK_LOCAL: ShopVersionInfo = {
@@ -175,24 +173,6 @@ export async function probeShopConnectivity(
   signal?: AbortSignal
 ): Promise<ShopConnectivity> {
   const browserOnline = browserIsOnline()
-  // #region agent log
-  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '46eadb',
-    },
-    body: JSON.stringify({
-      sessionId: '46eadb',
-      runId: 'post-fix',
-      hypothesisId: 'H1',
-      location: 'shopVersionService.ts:probeShopConnectivity',
-      message: 'probe start',
-      data: { browserOnline, url: SHOP_VERSION_REMOTE_URL },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
 
   if (!browserOnline) {
     return {
@@ -234,31 +214,6 @@ export async function probeShopConnectivity(
     }
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Debug-Session-Id': '46eadb',
-    },
-    body: JSON.stringify({
-      sessionId: '46eadb',
-      runId: 'post-fix',
-      hypothesisId: 'H2',
-      location: 'shopVersionService.ts:probeShopConnectivity',
-      message: 'probe result',
-      data: {
-        browserOnline,
-        githubReachable,
-        versionStatus,
-        commitsStatus,
-        wouldHaveShownOfflineBefore: !githubReachable,
-      },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {})
-  // #endregion
-
   return {
     browserOnline,
     githubReachable,
@@ -288,24 +243,6 @@ export async function fetchRemoteShopVersion(
       cache: 'no-store',
       signal,
     })
-    // #region agent log
-    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '46eadb',
-      },
-      body: JSON.stringify({
-        sessionId: '46eadb',
-        runId: 'post-fix',
-        hypothesisId: 'H2',
-        location: 'shopVersionService.ts:fetchRemoteShopVersion',
-        message: 'version file fetch',
-        data: { status: res.status, ok: res.ok },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     if (res.ok) {
       const remote = asInfo(await res.json())
       if (!remote) return { ok: false, local, error: 'invalid' }
@@ -319,28 +256,6 @@ export async function fetchRemoteShopVersion(
 
     // File missing on branch (common before Action/push) — fall back to tip commit.
     const fromCommit = await fetchRemoteFromCommitsApi(signal)
-    // #region agent log
-    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '46eadb',
-      },
-      body: JSON.stringify({
-        sessionId: '46eadb',
-        runId: 'post-fix',
-        hypothesisId: 'H5',
-        location: 'shopVersionService.ts:fetchRemoteShopVersion',
-        message: 'commits API fallback',
-        data: {
-          versionFileStatus: res.status,
-          fallbackOk: Boolean(fromCommit),
-          fallbackSha: fromCommit ? fromCommit.sha.slice(0, 7) : null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
     if (fromCommit) {
       return {
         ok: true,

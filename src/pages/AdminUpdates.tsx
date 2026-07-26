@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Loader2, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
-  SHOP_DEVELOP_ZIP_URL,
   fetchRemoteShopVersion,
   probeShopConnectivity,
   resolveLocalShopVersion,
@@ -33,27 +32,6 @@ export function AdminUpdates() {
     setNet('checking')
 
     const connectivity = await probeShopConnectivity()
-    // #region agent log
-    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Debug-Session-Id': '46eadb',
-      },
-      body: JSON.stringify({
-        sessionId: '46eadb',
-        runId: 'post-fix',
-        hypothesisId: 'H4',
-        location: 'AdminUpdates.tsx:checkForUpdates',
-        message: 'UI mapped connectivity',
-        data: {
-          ...connectivity,
-          showOfflineBanner: !connectivity.browserOnline,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {})
-    // #endregion
 
     if (!connectivity.browserOnline) {
       setNet('offline')
@@ -199,14 +177,6 @@ export function AdminUpdates() {
               <dt className="text-muted-foreground">{t('adminUpdates.commit')}</dt>
               <dd className="font-mono">{shortSha(local.sha)}</dd>
             </div>
-            <div>
-              <dt className="text-muted-foreground">{t('adminUpdates.branch')}</dt>
-              <dd>{local.branch || 'develop'}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('adminUpdates.updatedAt')}</dt>
-              <dd>{local.updatedAt || '—'}</dd>
-            </div>
           </dl>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -227,43 +197,26 @@ export function AdminUpdates() {
               <dt className="text-muted-foreground">{t('adminUpdates.commit')}</dt>
               <dd className="font-mono">{shortSha(remote.sha)}</dd>
             </div>
-            <div>
-              <dt className="text-muted-foreground">{t('adminUpdates.branch')}</dt>
-              <dd>{remote.branch || 'develop'}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('adminUpdates.updatedAt')}</dt>
-              <dd>{remote.updatedAt || '—'}</dd>
-            </div>
           </dl>
 
           {updateAvailable ? (
-            <div className="space-y-3 border-t border-border pt-4">
+            <div className="space-y-4 border-t border-border pt-4">
               <p className="text-sm font-medium text-primary">
                 {t('adminUpdates.updateAvailable', { version: remote.version })}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {t('adminUpdates.updateHow')}
-              </p>
-              <ol className="list-decimal space-y-1 ps-5 text-sm text-muted-foreground">
-                <li>{t('adminUpdates.updateStep1')}</li>
-                <li>{t('adminUpdates.updateStep2')}</li>
-                <li>{t('adminUpdates.updateStep3')}</li>
-              </ol>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  href={SHOP_DEVELOP_ZIP_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  <Download className="h-4 w-4" aria-hidden />
-                  {t('adminUpdates.downloadDevelop')}
-                </a>
-                <Button type="button" variant="outline" onClick={markApplied}>
-                  {t('adminUpdates.markApplied')}
-                </Button>
+              <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
+                <p className="font-medium">{t('adminUpdates.updateHowTitle')}</p>
+                <p className="mt-2 text-muted-foreground">
+                  {t('adminUpdates.updateHow')}
+                </p>
+                <ol className="mt-3 list-decimal space-y-1 ps-5 text-muted-foreground">
+                  <li>{t('adminUpdates.updateStep1')}</li>
+                  <li>{t('adminUpdates.updateStep2')}</li>
+                </ol>
               </div>
+              <Button type="button" variant="outline" onClick={markApplied}>
+                {t('adminUpdates.markApplied')}
+              </Button>
             </div>
           ) : (
             <p className="border-t border-border pt-4 text-sm text-muted-foreground">
