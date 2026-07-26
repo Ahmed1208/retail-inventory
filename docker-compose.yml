@@ -27,7 +27,8 @@ services:
       retries: 3
     depends_on:
       analytics:
-        condition: service_healthy
+        # Shop stacks must not block Kong/API if Logflare is slow to become healthy.
+        condition: service_started
     environment:
       #  Listen on all IPv4 interfaces
       HOSTNAME: "0.0.0.0"
@@ -83,7 +84,8 @@ services:
       retries: 5
     depends_on:
       studio:
-        condition: service_healthy
+        # Do not wait for Studio/Logflare health — Auth API only needs Kong + Auth/DB.
+        condition: service_started
     ports:
       - ${KONG_HTTP_PORT}:8000/tcp
       - ${KONG_HTTPS_PORT}:8443/tcp
@@ -470,11 +472,13 @@ services:
         [
           "CMD",
           "curl",
+          "-sf",
           "http://localhost:4000/health"
         ]
       timeout: 5s
-      interval: 5s
-      retries: 10
+      interval: 10s
+      retries: 20
+      start_period: 60s
     depends_on:
       db:
         # Disable this if you are using an external Postgres database

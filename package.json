@@ -13,6 +13,8 @@
     "db:push:docker-compose": "node scripts/db-push-docker-compose.mjs",
     "functions:sync:docker": "node scripts/sync-edge-functions-docker.mjs",
     "second-pc:setup": "node scripts/second-pc-setup.mjs",
+    "second-pc:fresh": "node scripts/second-pc-fresh.mjs",
+    "second-pc:cleanup": "node scripts/second-pc-cleanup.mjs",
     "generate:docker-env": "node scripts/generate-docker-env.mjs",
     "db:reset": "npx supabase db reset",
     "verify:local-login": "node scripts/verify-local-supabase-login.mjs",

@@ -38,21 +38,22 @@ Expect **Node ≥ 20** (LTS). If `docker` or `node` is missing, finish the insta
 
 Unzip if needed, then `cd` into **this** project folder (the directory that contains `docker-compose.yml` and `package.json`). Keep each download in its own folder if you run more than one.
 
-### 3. One command (auto env + Docker + seed + build)
+### 3. One command (auto-clean + env + Docker + seed + build)
 
 ```bash
 npm run second-pc:setup
 ```
 
+Or double-click **`Start StockPilot.bat`** (Windows) / **`Start StockPilot.command`** (Mac).
+
 This will:
 
-1. **Create** root `.env` and `.env.production.local` if they are missing — unique `COMPOSE_PROJECT_NAME`, free host ports (Kong / Postgres publish / UI), generated secrets, SPA pointed at this folder’s Kong URL. You do **not** copy env files from another PC or folder.
-2. `docker compose up -d` (only this folder’s stack)
-3. `npm install`
-4. Apply StockPilot migrations
-5. Sync Edge Functions into the Docker volumes
-6. Load `supabase/seed.sql` (local admin user) — skip with `--no-seed` if you must
-7. `npm run build` — skip with `--no-build` if you only changed Docker
+1. **Auto-clean** this folder’s old containers, leftover stacks from previous unzip folders (`sp-retail-inventory-*`), and renamed orphans (`hash_supabase-*`) — you do not need a separate cleanup command
+2. **Create** root `.env` and `.env.production.local` if they are missing — unique `COMPOSE_PROJECT_NAME`, free host ports, secrets, SPA → this folder’s Kong
+3. `docker compose up -d` (retries with new ports / one automatic DB wipe if needed)
+4. `npm install` → migrations → Edge Functions → seed admin → `npm run build`
+
+If the machine is in a bad state: `npm run second-pc:fresh` (wipe DB + setup).
 
 Setup prints the **Compose project name** and the **ports** for this folder (Kong may not be `8000` if that port is already in use).
 
@@ -121,6 +122,20 @@ $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local
 ### 4. Data sync
 
 Sign in to the local app with a mirrored operator, open **Admin → Data sync**, connect to hosted cloud, and run sync once (refreshes `profiles` and business tables).
+
+---
+
+## You only need one command (auto-cleans)
+
+You do **not** need to remember a separate cleanup step.
+
+| Command | When |
+|---------|------|
+| **`npm run second-pc:setup`** | Normal install / re-run. Auto-removes this folder’s stack, old `sp-retail-inventory-*` downloads, and `hash_supabase-*` leftovers, then sets up. |
+| **`npm run second-pc:fresh`** | Something is broken — wipes `volumes/db/data` + cleans + full setup. |
+| Double-click **`Start StockPilot`** (`.bat` / `.command`) | Same as setup, then serves the UI. |
+
+Deleting a zip folder without running anything can leave Docker leftovers; the next `second-pc:setup` in a new folder cleans those shop leftovers automatically.
 
 ---
 

@@ -5,22 +5,25 @@
  *   npm run second-pc:setup
  *   npm run second-pc:setup -- --no-seed
  *   npm run second-pc:setup -- --no-build
- *   npm run second-pc:setup -- --with-seed   # alias (seed is default)
+ *   npm run second-pc:setup -- --fresh     # wipe local DB first, then setup
+ *
+ * Always auto-cleans this folder’s Docker stack + leftover shop containers from
+ * old unzip folders so you do not need a separate cleanup step.
  *
  * Prerequisites: Docker + Node on PATH.
- * If `.env` / `.env.production.local` are missing, they are generated automatically.
- * Cloud sync (`.env.cloud.local`, mirror-auth) is optional — see docs/SECOND_PC.md.
  */
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { cleanShopDocker, parseEnv } from './lib/secondPcDocker.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const args = new Set(process.argv.slice(2))
 const noSeed = args.has('--no-seed')
-const withSeed = !noSeed // default on; --with-seed kept as explicit alias
+const withSeed = !noSeed
 const noBuild = args.has('--no-build')
+const fresh = args.has('--fresh')
 
 function run(cmd, argv, opts = {}) {
   const r = spawnSync(cmd, argv, {
@@ -51,24 +54,29 @@ function needFile(rel, hint) {
   }
 }
 
-function parseEnv(text) {
-  /** @type {Record<string, string>} */
-  const out = {}
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    if (!t || t.startsWith('#') || !t.includes('=')) continue
-    const i = t.indexOf('=')
-    out[t.slice(0, i).trim()] = t.slice(i + 1)
-  }
-  return out
-}
-
 process.chdir(root)
 
 needFile('docker-compose.yml', 'Run from the retail-inventory repo root.')
 needFile('package.json', '')
 
-console.log('\n=== 0/5 Generate local env if needed ===\n')
+console.log('\n=== 0a/5 Auto-clean Docker leftovers (safe to re-run) ===\n')
+console.log(
+  '[info] Removes this folder’s stack, other old sp-retail-inventory-* downloads,\n' +
+    '       and hash_supabase-* rename leftovers. Does not touch a healthy\n' +
+    '       `npx supabase start` stack unless you pass --fresh with purge later.\n',
+)
+cleanShopDocker({
+  root,
+  wipeDb: fresh,
+  allStockpilot: true,
+  purgeHashOrphans: true,
+  purgeOrphanSupabase: false,
+})
+if (fresh) {
+  console.log('[info] --fresh: local volumes/db/data was wiped.\n')
+}
+
+console.log('\n=== 0b/5 Generate local env if needed ===\n')
 run('npm', ['run', 'generate:docker-env'])
 
 needFile(
@@ -76,7 +84,7 @@ needFile(
   'Env generation failed — run `npm run generate:docker-env` and check .env.docker.example.',
 )
 
-const dockerEnv = parseEnv(readFileSync(join(root, '.env'), 'utf8'))
+let dockerEnv = parseEnv(readFileSync(join(root, '.env'), 'utf8'))
 const uiPort = (dockerEnv.STOCKPILOT_UI_PORT || '8080').trim() || '8080'
 const kongPort = (dockerEnv.KONG_HTTP_PORT || '8000').trim() || '8000'
 const projectName = (dockerEnv.COMPOSE_PROJECT_NAME || 'stockpilot').trim()
@@ -95,33 +103,53 @@ if (!existsSync(join(root, '.env.cloud.local'))) {
 
 console.log(`\n[info] Isolated Compose project: ${projectName}\n`)
 
-console.log('\n=== 1/5 Docker Compose up ===\n')
-{
-  let up = runAllowFail('docker', ['compose', 'up', '-d'])
-  if (up.status !== 0) {
-    console.warn(
-      '\n[warn] Compose up failed (host port or container-name conflict). Reassigning free ports and retrying once.\n' +
-        'If this persists, ensure docker-compose.yml has no fixed container_name values like supabase-imgproxy,\n' +
-        'and that name: uses COMPOSE_PROJECT_NAME (see docs/SECOND_PC.md).\n',
-    )
-    run('npm', ['run', 'generate:docker-env'])
-    up = runAllowFail('docker', [
-      'compose',
-      'up',
-      '-d',
-      '--force-recreate',
-    ])
-  }
-  if (up.status !== 0) process.exit(up.status ?? 1)
+function composeUp(forceRecreate) {
+  const argv = ['compose', 'up', '-d']
+  if (forceRecreate) argv.push('--force-recreate')
+  return runAllowFail('docker', argv)
 }
 
-// Re-read after possible port reassignment
-const dockerEnvAfter = parseEnv(readFileSync(join(root, '.env'), 'utf8'))
-const uiPortFinal = (dockerEnvAfter.STOCKPILOT_UI_PORT || uiPort).trim() || uiPort
-const kongPortFinal =
-  (dockerEnvAfter.KONG_HTTP_PORT || kongPort).trim() || kongPort
+console.log('\n=== 1/5 Docker Compose up ===\n')
+{
+  let up = composeUp(false)
+  if (up.status !== 0) {
+    console.warn(
+      '\n[warn] Compose up failed — reassigning free ports and retrying…\n',
+    )
+    run('npm', ['run', 'generate:docker-env'])
+    up = composeUp(true)
+  }
+  if (up.status !== 0) {
+    console.warn(
+      '\n[warn] Compose still failing — wiping local DB data once and retrying (keeps .env).\n' +
+        '        Next time you can skip straight to: npm run second-pc:fresh\n',
+    )
+    cleanShopDocker({
+      root,
+      wipeDb: true,
+      allStockpilot: true,
+      purgeHashOrphans: true,
+      purgeOrphanSupabase: false,
+    })
+    run('npm', ['run', 'generate:docker-env'])
+    up = composeUp(true)
+  }
+  if (up.status !== 0) {
+    console.error(
+      '\n[error] Docker Compose could not start.\n' +
+        'Try: npm run second-pc:fresh\n' +
+        'Or cleanup with --purge-orphan-supabase if old supabase-* names block you\n' +
+        '(only if you do not need `npx supabase start` on this machine).\n',
+    )
+    process.exit(up.status ?? 1)
+  }
+}
+
+dockerEnv = parseEnv(readFileSync(join(root, '.env'), 'utf8'))
+const uiPortFinal = (dockerEnv.STOCKPILOT_UI_PORT || uiPort).trim() || uiPort
+const kongPortFinal = (dockerEnv.KONG_HTTP_PORT || kongPort).trim() || kongPort
 const projectNameFinal =
-  (dockerEnvAfter.COMPOSE_PROJECT_NAME || projectName).trim() || projectName
+  (dockerEnv.COMPOSE_PROJECT_NAME || projectName).trim() || projectName
 
 console.log('\n=== 2/5 npm install ===\n')
 run('npm', ['install'])
@@ -192,7 +220,7 @@ if (withSeed) {
     console.error(
       '\n[error] Seeded admin profile missing or is_admin=false.\n' +
         'Control / Admin / Notifications / Data sync will not appear until profiles.is_admin is true.\n' +
-        'Re-run seed or check migrations landed on this Compose project’s database.\n',
+        'Try: npm run second-pc:fresh\n',
     )
     process.exit(1)
   }
@@ -208,26 +236,33 @@ if (!noBuild) {
   console.log('\n=== Skipping build (--no-build) ===\n')
 }
 
+try {
+  writeFileSync(
+    join(root, '.stockpilot-ready'),
+    `${new Date().toISOString()}\nproject=${projectNameFinal}\nkong=${kongPortFinal}\nui=${uiPortFinal}\n`,
+  )
+} catch {
+  /* ignore */
+}
+
 console.log(`
 === Done (standalone, isolated stack) ===
 
 Compose project: ${projectNameFinal}
-(Do not copy .env between folders — each download gets its own project name, ports, and DB.)
 
 Open the app:
   npx serve -s dist -l ${uiPortFinal}
-Then browser: http://localhost:${uiPortFinal}  (or http://THIS-PC-LAN-IP:${uiPortFinal} from other devices)
+Then browser: http://localhost:${uiPortFinal}
 
 API (Kong): http://127.0.0.1:${kongPortFinal}
 
-Sign in as username admin · password devpass123
-(That admin account unlocks Control, Admin, Notifications, and Data sync in the sidebar.
- Members do not see those links. Data sync actions need Part B cloud env later.)
+Sign in: admin / devpass123
 
-Optional — connect this PC to hosted cloud later (mirror Auth + Data sync):
-  see docs/SECOND_PC.md Part B
+Remember only one command next time (it auto-cleans leftovers):
+  npm run second-pc:setup
 
-Stop only this stack (from this folder): docker compose down
+Full reset if something is broken:
+  npm run second-pc:fresh
 
-Firewall: allow ports ${uiPortFinal} (UI) and ${kongPortFinal} (API) if needed.
+Optional cloud: docs/SECOND_PC.md Part B
 `)
