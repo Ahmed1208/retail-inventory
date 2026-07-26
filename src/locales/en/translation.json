@@ -190,7 +190,7 @@
     "checkAgain": "Check for updates",
     "offlineWarning": "This PC is not connected to the internet. Update checks are unavailable until you are online. Your local app and data keep working as usual.",
     "errorOffline": "No internet connection.",
-    "errorFetch": "Could not reach GitHub to read the latest shop version. Try again when the network is available.",
+    "errorFetch": "You appear online, but GitHub could not return the latest shop version. Check the network, or push shop-version.json to develop and try again.",
     "errorInvalid": "The remote shop-version.json file was invalid.",
     "localTitle": "This install",
     "remoteTitle": "Latest on develop",

@@ -11,6 +11,9 @@ export const SHOP_VERSION_BRANCH = 'develop'
 /** Canonical file on `develop` (updated by GitHub Action). */
 export const SHOP_VERSION_REMOTE_URL = `https://raw.githubusercontent.com/${SHOP_VERSION_REPO}/${SHOP_VERSION_BRANCH}/shop-version.json`
 
+/** Fallback when shop-version.json is missing on the branch. */
+export const SHOP_COMMITS_API_URL = `https://api.github.com/repos/${SHOP_VERSION_REPO}/commits/${SHOP_VERSION_BRANCH}`
+
 export const SHOP_DEVELOP_ZIP_URL = `https://github.com/${SHOP_VERSION_REPO}/archive/refs/heads/${SHOP_VERSION_BRANCH}.zip`
 
 const LOCAL_STORAGE_KEY = 'stockpilot.shopVersion.local'
@@ -45,6 +48,11 @@ function readStoredLocal(): ShopVersionInfo | null {
   }
 }
 
+function browserIsOnline(): boolean {
+  if (typeof navigator === 'undefined') return true
+  return navigator.onLine
+}
+
 /** Version from this install’s `public/shop-version.json` (served with the app). */
 export async function fetchInstalledShopVersion(
   signal?: AbortSignal
@@ -69,7 +77,6 @@ export async function resolveLocalShopVersion(
   const installed = await fetchInstalledShopVersion(signal)
   const stored = readStoredLocal()
   if (!stored) return installed
-  // Prefer stored only when it is newer or equal (operator confirmed an update).
   if (compareShopVersions(stored.version, installed.version) >= 0) {
     return stored
   }
@@ -123,28 +130,156 @@ export type ShopVersionCheckResult =
       error: 'offline' | 'fetch_failed' | 'invalid'
     }
 
-/** Lightweight probe: browser online + reachable shop-version on GitHub. */
-export async function probeShopVersionOnline(
+export type ShopConnectivity = {
+  /** Real browser offline flag — only this should show the offline banner. */
+  browserOnline: boolean
+  /** GitHub responded somehow (version file or commits API). */
+  githubReachable: boolean
+  versionStatus: number | null
+  commitsStatus: number | null
+}
+
+async function fetchRemoteFromCommitsApi(
   signal?: AbortSignal
-): Promise<boolean> {
-  if (typeof navigator !== 'undefined' && !navigator.onLine) return false
+): Promise<ShopVersionInfo | null> {
+  const res = await fetch(SHOP_COMMITS_API_URL, {
+    method: 'GET',
+    cache: 'no-store',
+    headers: { Accept: 'application/vnd.github+json' },
+    signal,
+  })
+  if (!res.ok) return null
+  const body = (await res.json()) as {
+    sha?: string
+    commit?: { committer?: { date?: string } }
+  }
+  const sha = typeof body.sha === 'string' ? body.sha : ''
+  if (!sha) return null
+  const updatedAt =
+    typeof body.commit?.committer?.date === 'string'
+      ? body.commit.committer.date
+      : ''
+  // Synthetic version from date + short sha so shops can still compare.
+  const d = updatedAt ? new Date(updatedAt) : new Date()
+  const version = `${d.getUTCFullYear() % 100}.${d.getUTCMonth() + 1}.${d.getUTCDate()}.0`
+  return {
+    version,
+    sha,
+    branch: SHOP_VERSION_BRANCH,
+    updatedAt,
+  }
+}
+
+/** Probe connectivity — do not treat a missing version file as “offline”. */
+export async function probeShopConnectivity(
+  signal?: AbortSignal
+): Promise<ShopConnectivity> {
+  const browserOnline = browserIsOnline()
+  // #region agent log
+  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': '46eadb',
+    },
+    body: JSON.stringify({
+      sessionId: '46eadb',
+      runId: 'post-fix',
+      hypothesisId: 'H1',
+      location: 'shopVersionService.ts:probeShopConnectivity',
+      message: 'probe start',
+      data: { browserOnline, url: SHOP_VERSION_REMOTE_URL },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
+
+  if (!browserOnline) {
+    return {
+      browserOnline: false,
+      githubReachable: false,
+      versionStatus: null,
+      commitsStatus: null,
+    }
+  }
+
+  let versionStatus: number | null = null
+  let commitsStatus: number | null = null
+  let githubReachable = false
+
   try {
     const res = await fetch(SHOP_VERSION_REMOTE_URL, {
       method: 'GET',
       cache: 'no-store',
       signal,
     })
-    return res.ok
+    versionStatus = res.status
+    if (res.ok) githubReachable = true
   } catch {
-    return false
+    versionStatus = null
   }
+
+  if (!githubReachable) {
+    try {
+      const res = await fetch(SHOP_COMMITS_API_URL, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Accept: 'application/vnd.github+json' },
+        signal,
+      })
+      commitsStatus = res.status
+      if (res.ok) githubReachable = true
+    } catch {
+      commitsStatus = null
+    }
+  }
+
+  // #region agent log
+  fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Debug-Session-Id': '46eadb',
+    },
+    body: JSON.stringify({
+      sessionId: '46eadb',
+      runId: 'post-fix',
+      hypothesisId: 'H2',
+      location: 'shopVersionService.ts:probeShopConnectivity',
+      message: 'probe result',
+      data: {
+        browserOnline,
+        githubReachable,
+        versionStatus,
+        commitsStatus,
+        wouldHaveShownOfflineBefore: !githubReachable,
+      },
+      timestamp: Date.now(),
+    }),
+  }).catch(() => {})
+  // #endregion
+
+  return {
+    browserOnline,
+    githubReachable,
+    versionStatus,
+    commitsStatus,
+  }
+}
+
+/** @deprecated use probeShopConnectivity — kept for any external callers */
+export async function probeShopVersionOnline(
+  signal?: AbortSignal
+): Promise<boolean> {
+  const c = await probeShopConnectivity(signal)
+  return c.browserOnline && c.githubReachable
 }
 
 export async function fetchRemoteShopVersion(
   signal?: AbortSignal
 ): Promise<ShopVersionCheckResult> {
   const local = await resolveLocalShopVersion(signal)
-  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+  if (!browserIsOnline()) {
     return { ok: false, local, error: 'offline' }
   }
   try {
@@ -153,18 +288,84 @@ export async function fetchRemoteShopVersion(
       cache: 'no-store',
       signal,
     })
-    if (!res.ok) return { ok: false, local, error: 'fetch_failed' }
-    const remote = asInfo(await res.json())
-    if (!remote) return { ok: false, local, error: 'invalid' }
-    return {
-      ok: true,
-      local,
-      remote,
-      updateAvailable: isShopUpdateAvailable(local, remote),
+    // #region agent log
+    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '46eadb',
+      },
+      body: JSON.stringify({
+        sessionId: '46eadb',
+        runId: 'post-fix',
+        hypothesisId: 'H2',
+        location: 'shopVersionService.ts:fetchRemoteShopVersion',
+        message: 'version file fetch',
+        data: { status: res.status, ok: res.ok },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    if (res.ok) {
+      const remote = asInfo(await res.json())
+      if (!remote) return { ok: false, local, error: 'invalid' }
+      return {
+        ok: true,
+        local,
+        remote,
+        updateAvailable: isShopUpdateAvailable(local, remote),
+      }
     }
+
+    // File missing on branch (common before Action/push) — fall back to tip commit.
+    const fromCommit = await fetchRemoteFromCommitsApi(signal)
+    // #region agent log
+    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '46eadb',
+      },
+      body: JSON.stringify({
+        sessionId: '46eadb',
+        runId: 'post-fix',
+        hypothesisId: 'H5',
+        location: 'shopVersionService.ts:fetchRemoteShopVersion',
+        message: 'commits API fallback',
+        data: {
+          versionFileStatus: res.status,
+          fallbackOk: Boolean(fromCommit),
+          fallbackSha: fromCommit ? fromCommit.sha.slice(0, 7) : null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+    if (fromCommit) {
+      return {
+        ok: true,
+        local,
+        remote: fromCommit,
+        updateAvailable: isShopUpdateAvailable(local, fromCommit),
+      }
+    }
+    return { ok: false, local, error: 'fetch_failed' }
   } catch {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (!browserIsOnline()) {
       return { ok: false, local, error: 'offline' }
+    }
+    try {
+      const fromCommit = await fetchRemoteFromCommitsApi(signal)
+      if (fromCommit) {
+        return {
+          ok: true,
+          local,
+          remote: fromCommit,
+          updateAvailable: isShopUpdateAvailable(local, fromCommit),
+        }
+      }
+    } catch {
+      /* ignore */
     }
     return { ok: false, local, error: 'fetch_failed' }
   }

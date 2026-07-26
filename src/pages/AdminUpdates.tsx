@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import {
   SHOP_DEVELOP_ZIP_URL,
   fetchRemoteShopVersion,
-  probeShopVersionOnline,
+  probeShopConnectivity,
   resolveLocalShopVersion,
   setLocalShopVersion,
   shortSha,
@@ -27,19 +27,36 @@ export function AdminUpdates() {
   const [checking, setChecking] = useState(false)
   const [errorKey, setErrorKey] = useState<string | null>(null)
 
-  const refreshNetwork = useCallback(async () => {
-    setNet('checking')
-    const online = await probeShopVersionOnline()
-    setNet(online ? 'online' : 'offline')
-    return online
-  }, [])
-
   const checkForUpdates = useCallback(async () => {
     setChecking(true)
     setErrorKey(null)
+    setNet('checking')
 
-    const online = await refreshNetwork()
-    if (!online) {
+    const connectivity = await probeShopConnectivity()
+    // #region agent log
+    fetch('http://127.0.0.1:7796/ingest/14f778e7-fc98-4a87-aecd-cf2580e450df', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Debug-Session-Id': '46eadb',
+      },
+      body: JSON.stringify({
+        sessionId: '46eadb',
+        runId: 'post-fix',
+        hypothesisId: 'H4',
+        location: 'AdminUpdates.tsx:checkForUpdates',
+        message: 'UI mapped connectivity',
+        data: {
+          ...connectivity,
+          showOfflineBanner: !connectivity.browserOnline,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {})
+    // #endregion
+
+    if (!connectivity.browserOnline) {
+      setNet('offline')
       setLocal(await resolveLocalShopVersion())
       setRemote(null)
       setUpdateAvailable(false)
@@ -47,6 +64,8 @@ export function AdminUpdates() {
       setChecking(false)
       return
     }
+
+    setNet('online')
 
     const result = await fetchRemoteShopVersion()
     setLocal(result.local)
@@ -65,11 +84,10 @@ export function AdminUpdates() {
       return
     }
 
-    setNet('online')
     setRemote(result.remote)
     setUpdateAvailable(result.updateAvailable)
     setChecking(false)
-  }, [refreshNetwork])
+  }, [])
 
   useEffect(() => {
     document.title = `${t('adminUpdates.title')} | StockPilot`
