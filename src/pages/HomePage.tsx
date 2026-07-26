@@ -249,6 +249,14 @@ export function HomePage() {
                 <p className="mt-3 text-sm text-teal-100/55">
                   {t('home.setupStep3Options')}
                 </p>
+                <p className="mt-4 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                  {t('home.setupStep3FreshHint')}
+                </p>
+                <CommandBlock
+                  command={t('home.cmdFresh')}
+                  copyLabel={t('home.copy')}
+                  copiedLabel={t('home.copied')}
+                />
               </li>
 
               <li>
