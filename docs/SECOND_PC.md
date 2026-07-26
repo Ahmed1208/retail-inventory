@@ -124,6 +124,27 @@ Sign in to the local app with a mirrored operator, open **Admin → Data sync**,
 
 ---
 
+## Port already allocated (8000 / 5432 / …)
+
+Another Docker stack (often `npx supabase start`) is using those host ports. Setup should pick free ports automatically. If compose still fails:
+
+1. Copy the latest `scripts/generate-docker-env.mjs`, `scripts/second-pc-setup.mjs`, and `docker-compose.yml` from this repo (or re-download develop after they are merged).
+2. From the shop folder: `npm run generate:docker-env` then `docker compose up -d --force-recreate`
+3. Confirm `.env` has non-default ports when needed (`KONG_HTTP_PORT`, `POSTGRES_HOST_PORT`, …) and `docker compose ps` shows host bindings like `0.0.0.0:8001->8000`.
+
+## Login shows “Unauthorized”
+
+Usually the SPA is talking to the **wrong** API on port **8000** (another Docker Supabase / `npx supabase start`), while this folder’s Kong failed to bind that port.
+
+1. From this folder: `npm run generate:docker-env` — reassigns free host ports if 8000 (etc.) are taken, and updates `.env.production.local`.
+2. Recreate the stack: `docker compose up -d --force-recreate`
+3. Rebuild the UI so it picks up the new Kong URL: `npm run build` (or `npm run second-pc:setup -- --no-seed`)
+4. Serve `dist` and sign in with **admin** / **devpass123**
+
+Confirm Kong is published: `docker compose ps` should show something like `0.0.0.0:NNNN->8000` for `kong`, and `.env` / `.env.production.local` must use that same `NNNN`.
+
+---
+
 ## Updates (Admin → Updates)
 
 Shop code tracks the **`develop`** branch (not tags).

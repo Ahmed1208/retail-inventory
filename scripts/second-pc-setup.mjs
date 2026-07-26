@@ -32,6 +32,15 @@ function run(cmd, argv, opts = {}) {
   if (r.status !== 0) {
     process.exit(r.status ?? 1)
   }
+  return r
+}
+
+function runAllowFail(cmd, argv) {
+  return spawnSync(cmd, argv, {
+    cwd: root,
+    stdio: 'inherit',
+    shell: false,
+  })
 }
 
 function needFile(rel, hint) {
@@ -87,7 +96,30 @@ if (!existsSync(join(root, '.env.cloud.local'))) {
 console.log(`\n[info] Isolated Compose project: ${projectName}\n`)
 
 console.log('\n=== 1/5 Docker Compose up ===\n')
-run('docker', ['compose', 'up', '-d'])
+{
+  let up = runAllowFail('docker', ['compose', 'up', '-d'])
+  if (up.status !== 0) {
+    console.warn(
+      '\n[warn] Compose up failed (often a host port conflict). Reassigning free ports and retrying once.\n',
+    )
+    run('npm', ['run', 'generate:docker-env'])
+    up = runAllowFail('docker', [
+      'compose',
+      'up',
+      '-d',
+      '--force-recreate',
+    ])
+  }
+  if (up.status !== 0) process.exit(up.status ?? 1)
+}
+
+// Re-read after possible port reassignment
+const dockerEnvAfter = parseEnv(readFileSync(join(root, '.env'), 'utf8'))
+const uiPortFinal = (dockerEnvAfter.STOCKPILOT_UI_PORT || uiPort).trim() || uiPort
+const kongPortFinal =
+  (dockerEnvAfter.KONG_HTTP_PORT || kongPort).trim() || kongPort
+const projectNameFinal =
+  (dockerEnvAfter.COMPOSE_PROJECT_NAME || projectName).trim() || projectName
 
 console.log('\n=== 2/5 npm install ===\n')
 run('npm', ['install'])
@@ -177,14 +209,14 @@ if (!noBuild) {
 console.log(`
 === Done (standalone, isolated stack) ===
 
-Compose project: ${projectName}
+Compose project: ${projectNameFinal}
 (Do not copy .env between folders — each download gets its own project name, ports, and DB.)
 
 Open the app:
-  npx serve -s dist -l ${uiPort}
-Then browser: http://localhost:${uiPort}  (or http://THIS-PC-LAN-IP:${uiPort} from other devices)
+  npx serve -s dist -l ${uiPortFinal}
+Then browser: http://localhost:${uiPortFinal}  (or http://THIS-PC-LAN-IP:${uiPortFinal} from other devices)
 
-API (Kong): http://127.0.0.1:${kongPort}
+API (Kong): http://127.0.0.1:${kongPortFinal}
 
 Sign in as username admin · password devpass123
 (That admin account unlocks Control, Admin, Notifications, and Data sync in the sidebar.
@@ -195,5 +227,5 @@ Optional — connect this PC to hosted cloud later (mirror Auth + Data sync):
 
 Stop only this stack (from this folder): docker compose down
 
-Firewall: allow ports ${uiPort} (UI) and ${kongPort} (API) if needed.
+Firewall: allow ports ${uiPortFinal} (UI) and ${kongPortFinal} (API) if needed.
 `)

@@ -4,12 +4,14 @@
  * Usage (from repo root):
  *   npm run generate:docker-env
  *
- * Never overwrites an existing `.env` or `.env.production.local`.
- * Assigns a unique COMPOSE_PROJECT_NAME + free host ports so multiple folders
- * can run side-by-side without sharing containers or databases.
+ * Creates `.env` / `.env.production.local` when missing.
+ * If `.env` already exists but host ports are taken (common when another
+ * Supabase/Docker stack uses 8000), reassigns free host ports and updates
+ * Kong URLs — secrets and COMPOSE_PROJECT_NAME are kept.
  * Does not create cloud / mirror-auth env files.
  */
 import { createHash, createHmac, randomBytes } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -19,6 +21,14 @@ const root = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'))
 const envPath = join(root, '.env')
 const templatePath = join(root, '.env.docker.example')
 const productionLocalPath = join(root, '.env.production.local')
+
+const HOST_PORT_KEYS = [
+  'KONG_HTTP_PORT',
+  'KONG_HTTPS_PORT',
+  'POSTGRES_HOST_PORT',
+  'POOLER_HOST_PORT_TRANSACTION',
+  'STOCKPILOT_UI_PORT',
+]
 
 function b64url(input) {
   const buf = Buffer.isBuffer(input) ? input : Buffer.from(input)
@@ -81,21 +91,46 @@ function composeProjectNameForRoot() {
   return `sp-${base}-${hash}`
 }
 
-function isPortFree(port) {
+/**
+ * Probe like Docker host binds (`0.0.0.0`). Checking only 127.0.0.1 misses
+ * ports already taken by other containers (e.g. supabase-kong on :8000).
+ */
+function canBindPort(port) {
   return new Promise((resolvePromise) => {
     const server = createServer()
     server.unref()
     server.on('error', () => resolvePromise(false))
-    server.listen(port, '127.0.0.1', () => {
+    server.listen(port, '0.0.0.0', () => {
       server.close(() => resolvePromise(true))
     })
   })
 }
 
-async function findFreePort(preferred, used) {
+/** Ports already published by any Docker container on this host. */
+function dockerPublishedHostPorts() {
+  /** @type {Set<number>} */
+  const taken = new Set()
+  const r = spawnSync('docker', ['ps', '--format', '{{.Ports}}'], {
+    encoding: 'utf8',
+  })
+  if (r.status !== 0 || !r.stdout) return taken
+  for (const line of r.stdout.split('\n')) {
+    for (const m of line.matchAll(/(?:0\.0\.0\.0|\[::\]):(\d+)->/g)) {
+      taken.add(Number(m[1]))
+    }
+  }
+  return taken
+}
+
+async function isPortFree(port, dockerTaken) {
+  if (dockerTaken.has(port)) return false
+  return canBindPort(port)
+}
+
+async function findFreePort(preferred, used, dockerTaken) {
   for (let p = preferred; p < preferred + 200; p++) {
     if (used.has(p)) continue
-    if (await isPortFree(p)) {
+    if (await isPortFree(p, dockerTaken)) {
       used.add(p)
       return p
     }
@@ -105,11 +140,12 @@ async function findFreePort(preferred, used) {
 
 async function allocatePorts() {
   const used = new Set()
-  const kongHttp = await findFreePort(8000, used)
-  const kongHttps = await findFreePort(8443, used)
-  const postgresHost = await findFreePort(5432, used)
-  const poolerTxnHost = await findFreePort(6543, used)
-  const ui = await findFreePort(8080, used)
+  const dockerTaken = dockerPublishedHostPorts()
+  const kongHttp = await findFreePort(8000, used, dockerTaken)
+  const kongHttps = await findFreePort(8443, used, dockerTaken)
+  const postgresHost = await findFreePort(5432, used, dockerTaken)
+  const poolerTxnHost = await findFreePort(6543, used, dockerTaken)
+  const ui = await findFreePort(8080, used, dockerTaken)
   return {
     KONG_HTTP_PORT: kongHttp,
     KONG_HTTPS_PORT: kongHttps,
@@ -134,10 +170,118 @@ function logIsolation(env) {
   console.log(`[generate:docker-env] API URL: ${kongUrl(kong)}`)
 }
 
+/** Host ports already published by this Compose project (safe to keep). */
+function publishedHostPortsForProject(projectName) {
+  /** @type {Set<number>} */
+  const owned = new Set()
+  if (!projectName) return owned
+  const r = spawnSync(
+    'docker',
+    [
+      'ps',
+      '--filter',
+      `label=com.docker.compose.project=${projectName}`,
+      '--format',
+      '{{.Ports}}',
+    ],
+    { encoding: 'utf8' },
+  )
+  if (r.status !== 0 || !r.stdout) return owned
+  for (const line of r.stdout.split('\n')) {
+    for (const m of line.matchAll(/(?:0\.0\.0\.0|\[::\]):(\d+)->/g)) {
+      owned.add(Number(m[1]))
+    }
+  }
+  return owned
+}
+
+async function hostPortsNeedRealloc(env) {
+  const project = (env.COMPOSE_PROJECT_NAME || '').trim()
+  const owned = publishedHostPortsForProject(project)
+  const dockerTaken = dockerPublishedHostPorts()
+  for (const key of HOST_PORT_KEYS) {
+    const raw = (env[key] || '').trim()
+    if (!raw) continue
+    const port = Number(raw)
+    if (!Number.isFinite(port) || port <= 0) continue
+    if (owned.has(port)) continue
+    if (!(await isPortFree(port, dockerTaken))) return true
+  }
+  return false
+}
+
+function writeProductionLocal(dockerEnv, { force = false } = {}) {
+  const anon = (dockerEnv.ANON_KEY || '').trim()
+  if (!anon) {
+    console.error(
+      '[generate:docker-env] .env has no ANON_KEY — cannot write .env.production.local.',
+    )
+    process.exit(1)
+  }
+
+  const kongPort = (dockerEnv.KONG_HTTP_PORT || '8000').trim()
+  const localKong = kongUrl(kongPort)
+
+  if (existsSync(productionLocalPath) && !force) {
+    const existing = parseEnv(readFileSync(productionLocalPath, 'utf8'))
+    const url = (existing.VITE_SUPABASE_URL || '').trim()
+    if (url === localKong && (existing.VITE_SUPABASE_ANON_KEY || '').trim()) {
+      console.log(
+        '[generate:docker-env] .env.production.local already exists — leaving unchanged.',
+      )
+      return
+    }
+    // URL drifted from Kong port (or empty) — refresh SPA env.
+  }
+
+  const body = `# Auto-generated for standalone second PC / shop build.
+# Points the SPA at this folder's Docker Kong. Do not commit.
+# Do not copy this file between project folders — each stack has its own ports/keys.
+VITE_SUPABASE_URL=${localKong}
+VITE_SUPABASE_ANON_KEY=${anon}
+`
+  const existed = existsSync(productionLocalPath)
+  writeFileSync(productionLocalPath, body)
+  console.log(
+    `[generate:docker-env] ${existed || force ? 'Updated' : 'Created'} .env.production.local (VITE_SUPABASE_* → ${localKong}).`,
+  )
+}
+
+async function reallocateHostPorts(existing) {
+  const ports = await allocatePorts()
+  let text = readFileSync(envPath, 'utf8')
+  const localKong = kongUrl(ports.KONG_HTTP_PORT)
+
+  const updates = {
+    KONG_HTTP_PORT: String(ports.KONG_HTTP_PORT),
+    KONG_HTTPS_PORT: String(ports.KONG_HTTPS_PORT),
+    POSTGRES_HOST_PORT: String(ports.POSTGRES_HOST_PORT),
+    POOLER_HOST_PORT_TRANSACTION: String(ports.POOLER_HOST_PORT_TRANSACTION),
+    STOCKPILOT_UI_PORT: String(ports.STOCKPILOT_UI_PORT),
+    SUPABASE_PUBLIC_URL: localKong,
+    API_EXTERNAL_URL: localKong,
+    SITE_URL: localKong,
+  }
+
+  console.log(
+    '[generate:docker-env] Host ports in .env are in use — assigning free ports (secrets kept).',
+  )
+  for (const [key, value] of Object.entries(updates)) {
+    text = setEnvValue(text, key, value)
+  }
+  writeFileSync(envPath, text)
+  const next = { ...existing, ...updates }
+  logIsolation(next)
+  return next
+}
+
 async function ensureDockerEnv() {
   if (existsSync(envPath)) {
-    console.log('[generate:docker-env] .env already exists — leaving unchanged.')
     const existing = parseEnv(readFileSync(envPath, 'utf8'))
+    if (await hostPortsNeedRealloc(existing)) {
+      return reallocateHostPorts(existing)
+    }
+    console.log('[generate:docker-env] .env already exists — leaving unchanged.')
     logIsolation(existing)
     return existing
   }
@@ -207,40 +351,14 @@ async function ensureDockerEnv() {
   return dockerEnv
 }
 
-function ensureProductionLocal(dockerEnv) {
-  if (existsSync(productionLocalPath)) {
-    console.log(
-      '[generate:docker-env] .env.production.local already exists — leaving unchanged.',
-    )
-    return
-  }
-
-  const anon = (dockerEnv.ANON_KEY || '').trim()
-  if (!anon) {
-    console.error(
-      '[generate:docker-env] .env has no ANON_KEY — cannot write .env.production.local.',
-    )
-    process.exit(1)
-  }
-
-  const kongPort = (dockerEnv.KONG_HTTP_PORT || '8000').trim()
-  const localKong = kongUrl(kongPort)
-
-  const body = `# Auto-generated for standalone second PC / shop build.
-# Points the SPA at this folder's Docker Kong. Do not commit.
-# Do not copy this file between project folders — each stack has its own ports/keys.
-VITE_SUPABASE_URL=${localKong}
-VITE_SUPABASE_ANON_KEY=${anon}
-`
-  writeFileSync(productionLocalPath, body)
-  console.log(
-    `[generate:docker-env] Created .env.production.local (VITE_SUPABASE_* → ${localKong}).`,
-  )
-}
-
 process.chdir(root)
 const dockerEnv = await ensureDockerEnv()
-ensureProductionLocal(dockerEnv)
+const kongPort = (dockerEnv.KONG_HTTP_PORT || '8000').trim()
+const forceProd =
+  existsSync(productionLocalPath) &&
+  parseEnv(readFileSync(productionLocalPath, 'utf8')).VITE_SUPABASE_URL?.trim() !==
+    kongUrl(kongPort)
+writeProductionLocal(dockerEnv, { force: forceProd })
 console.log(
   '[generate:docker-env] Done. This folder is an isolated stack; cloud env files were not created (optional later).',
 )
