@@ -124,13 +124,17 @@ Sign in to the local app with a mirrored operator, open **Admin → Data sync**,
 
 ---
 
-## Port already allocated (8000 / 5432 / …)
+## Port already allocated / container name already in use
 
-Another Docker stack (often `npx supabase start`) is using those host ports. Setup should pick free ports automatically. If compose still fails:
+Another Docker stack (often `npx supabase start`) may be using the same **host ports** or fixed names like `supabase-imgproxy`.
 
-1. Copy the latest `scripts/generate-docker-env.mjs`, `scripts/second-pc-setup.mjs`, and `docker-compose.yml` from this repo (or re-download develop after they are merged).
-2. From the shop folder: `npm run generate:docker-env` then `docker compose up -d --force-recreate`
-3. Confirm `.env` has non-default ports when needed (`KONG_HTTP_PORT`, `POSTGRES_HOST_PORT`, …) and `docker compose ps` shows host bindings like `0.0.0.0:8001->8000`.
+This repo’s `docker-compose.yml` must use `name: ${COMPOSE_PROJECT_NAME:-stockpilot}` and must **not** hardcode `container_name: supabase-*` (except the project-scoped realtime name). Setup also picks free host ports automatically.
+
+If compose still fails on an old zip:
+
+1. Copy the latest `docker-compose.yml`, `scripts/generate-docker-env.mjs`, and `scripts/second-pc-setup.mjs` from this repo (or re-download develop after merge).
+2. From the shop folder: `docker compose down` then `npm run second-pc:setup`
+3. Confirm `docker compose ps` shows project-prefixed names (e.g. `sp-retail-inventory-…-kong-1`) and host bindings like `0.0.0.0:8002->8000`.
 
 ## Login shows “Unauthorized”
 

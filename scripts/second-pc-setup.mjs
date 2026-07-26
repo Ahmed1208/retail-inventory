@@ -100,7 +100,9 @@ console.log('\n=== 1/5 Docker Compose up ===\n')
   let up = runAllowFail('docker', ['compose', 'up', '-d'])
   if (up.status !== 0) {
     console.warn(
-      '\n[warn] Compose up failed (often a host port conflict). Reassigning free ports and retrying once.\n',
+      '\n[warn] Compose up failed (host port or container-name conflict). Reassigning free ports and retrying once.\n' +
+        'If this persists, ensure docker-compose.yml has no fixed container_name values like supabase-imgproxy,\n' +
+        'and that name: uses COMPOSE_PROJECT_NAME (see docs/SECOND_PC.md).\n',
     )
     run('npm', ['run', 'generate:docker-env'])
     up = runAllowFail('docker', [
