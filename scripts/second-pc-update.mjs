@@ -199,6 +199,6 @@ if (setupStatus !== 0) process.exit(setupStatus)
 console.log(`
 === Update finished ===
 
-Next: double-click Start StockPilot (or serve dist) and sign in as usual.
+Next: run Start StockPilot (.bat / .command / .sh) or serve dist, then sign in as usual.
 Your local data was kept.
 `)

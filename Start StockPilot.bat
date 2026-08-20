@@ -32,6 +32,7 @@ for /f "usebackq tokens=1,* delims==" %%A in (`findstr /B /C:"STOCKPILOT_UI_PORT
 echo.
 echo Serving app on http://localhost:%UI_PORT%
 echo Sign in: admin / devpass123
+echo This PC is a standalone program — cloud is not required for daily work.
 echo.
 call npx --yes serve -s dist -l %UI_PORT%
 pause

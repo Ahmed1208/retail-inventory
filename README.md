@@ -228,7 +228,7 @@ Multi-table sync is best-effort across HTTP (not one giant SQL transaction).
 
 #### Mirror hosted Auth onto local (optional — shop ↔ cloud operator parity)
 
-To **replace all local Auth users** with the same ids as on the hosted project (so **members/operators** and **`profiles`** line up with cloud), use the **service role** script (run on your machine only; keys stay in a gitignored env file). On a **second PC**, standalone install does **not** require this — only when you choose to connect to hosted cloud. See [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) Part B.
+To **replace all local Auth users** with the same ids as on the hosted project (so **members/operators** and **`profiles`** line up with cloud), use the **service role** script (run on your machine only; keys stay in a gitignored env file). On a **second PC**, standalone install does **not** require this — only when you share data via hosted cloud. See [`docs/SECOND_PC.md`](./docs/SECOND_PC.md) Part B.
 
 1. Copy [`.env.mirror-auth.example`](./.env.mirror-auth.example) → **`.env.mirror-auth.local`** and set `MIRROR_CLOUD_*`, `MIRROR_LOCAL_*` (for self-hosted Docker use **`http://127.0.0.1:8000`** and **`SERVICE_ROLE_KEY`** from root **`.env`**), and optionally `MIRROR_LOCAL_PASSWORD` (default `devpass123`).
 2. `npm run mirror:cloud-auth-to-local -- --dry-run` — lists counts only.
@@ -270,7 +270,7 @@ The compose **`functions`** service mounts **`./volumes/functions`** and runs th
 
 **Note:** `ensure-local-operator-auth` is intended for the **CLI local** stack (`supabase start`); on self-hosted it may still run if you sync it, but behavior is only needed where that flow is used.
 
-**Second PC / shop:** download or clone into its **own folder**, then run **`npm run second-pc:setup`** (auto-generates Docker `.env` + `.env.production.local` with a unique Compose project name and free ports, seeds local admin). Multiple folders on one machine stay isolated (separate DBs/containers). Cloud sync is optional — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md). Build env template: [`.env.shop.example`](./.env.shop.example).
+**Second PC / shop (standalone program):** download or clone into its **own folder** on Windows, macOS, or Linux, then run **Start StockPilot** (`.bat` / `.command` / `.sh`) or **`npm run second-pc:setup`**. That auto-generates Docker `.env` + `.env.production.local` (unique Compose project name and free ports) and seeds a local admin. Daily work is offline on this PC; cloud is only for sharing with other PCs. Multiple folders on one machine stay isolated. See [`docs/SECOND_PC.md`](./docs/SECOND_PC.md). Build env template: [`.env.shop.example`](./.env.shop.example).
 
 ### First time setup (hosted Supabase)
 

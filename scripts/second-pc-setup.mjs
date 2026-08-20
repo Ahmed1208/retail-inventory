@@ -1,5 +1,6 @@
 /**
  * Second PC / shop — standalone setup (no cloud env required).
+ * Windows / macOS / Linux: Start StockPilot (.bat / .command / .sh) calls this.
  *
  * Usage (from repo root):
  *   npm run second-pc:setup

@@ -11,6 +11,48 @@ import { cn } from '@/lib/utils'
 const DOWNLOAD_ZIP_URL =
   'https://github.com/Ahmed1208/retail-inventory/archive/refs/heads/develop.zip'
 
+type ShopOs = 'windows' | 'mac' | 'linux'
+
+function detectShopOs(): ShopOs {
+  if (typeof navigator === 'undefined') return 'windows'
+  const ua = navigator.userAgent.toLowerCase()
+  const plat = (navigator.platform || '').toLowerCase()
+  if (ua.includes('win') || plat.includes('win')) return 'windows'
+  if (ua.includes('mac') || plat.includes('mac')) return 'mac'
+  return 'linux'
+}
+
+const OS_TABS: { id: ShopOs; labelKey: 'osWindows' | 'osMac' | 'osLinux' }[] = [
+  { id: 'windows', labelKey: 'osWindows' },
+  { id: 'mac', labelKey: 'osMac' },
+  { id: 'linux', labelKey: 'osLinux' },
+]
+
+const OS_COPY: Record<
+  ShopOs,
+  {
+    step1: 'setupStep1BodyWindows' | 'setupStep1BodyMac' | 'setupStep1BodyLinux'
+    start: 'cmdStartWindows' | 'cmdStartMac' | 'cmdStartLinux'
+    update: 'cmdUpdateWindows' | 'cmdUpdateMac' | 'cmdUpdateLinux'
+  }
+> = {
+  windows: {
+    step1: 'setupStep1BodyWindows',
+    start: 'cmdStartWindows',
+    update: 'cmdUpdateWindows',
+  },
+  mac: {
+    step1: 'setupStep1BodyMac',
+    start: 'cmdStartMac',
+    update: 'cmdUpdateMac',
+  },
+  linux: {
+    step1: 'setupStep1BodyLinux',
+    start: 'cmdStartLinux',
+    update: 'cmdUpdateLinux',
+  },
+}
+
 function CommandBlock({
   label,
   command,
@@ -72,6 +114,8 @@ export function HomePage() {
   const { t } = useTranslation()
   const { session, loading } = useAuth()
   const { toggleLanguage, isRTL } = useLanguage()
+  const [shopOs, setShopOs] = useState<ShopOs>(detectShopOs)
+  const osCopy = OS_COPY[shopOs]
 
   useEffect(() => {
     document.title = t('home.pageTitle')
@@ -206,6 +250,30 @@ export function HomePage() {
             <p className="mt-4 text-base leading-relaxed text-teal-100/75 sm:text-lg">
               {t('home.setupIntro')}
             </p>
+            <p className="mt-3 text-sm text-teal-100/55">{t('home.osHint')}</p>
+            <div
+              className="mt-4 flex flex-wrap gap-2"
+              role="tablist"
+              aria-label={t('home.osHint')}
+            >
+              {OS_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={shopOs === tab.id}
+                  onClick={() => setShopOs(tab.id)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-sm transition',
+                    shopOs === tab.id
+                      ? 'bg-teal-500 text-[#04201c]'
+                      : 'border border-white/20 text-teal-100/80 hover:bg-white/10 hover:text-white',
+                  )}
+                >
+                  {t(`home.${tab.labelKey}`)}
+                </button>
+              ))}
+            </div>
 
             <h3 className="mt-12 text-xl font-semibold tracking-tight text-teal-50">
               {t('home.standaloneHeading')}
@@ -216,7 +284,7 @@ export function HomePage() {
                   {t('home.setupStep1Title')}
                 </h4>
                 <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                  {t('home.setupStep1Body')}
+                  {t(`home.${osCopy.step1}`)}
                 </p>
                 <CommandBlock
                   command={t('home.cmdDockerCheck')}
@@ -241,14 +309,35 @@ export function HomePage() {
                 <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
                   {t('home.setupStep3Body')}
                 </p>
+                {shopOs === 'linux' ? (
+                  <>
+                    <p className="mt-3 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                      {t('home.setupStep3LinuxHint')}
+                    </p>
+                    <CommandBlock
+                      command={t('home.cmdChmodLinux')}
+                      copyLabel={t('home.copy')}
+                      copiedLabel={t('home.copied')}
+                    />
+                  </>
+                ) : (
+                  <CommandBlock
+                    command={t(`home.${osCopy.start}`)}
+                    copyLabel={t('home.copy')}
+                    copiedLabel={t('home.copied')}
+                  />
+                )}
+                <p className="mt-3 text-sm text-teal-100/55">
+                  {t('home.setupStep3Options')}
+                </p>
+                <p className="mt-2 text-sm text-teal-100/55">
+                  {t('home.setupStep3NpmHint')}
+                </p>
                 <CommandBlock
                   command={t('home.cmdSetup')}
                   copyLabel={t('home.copy')}
                   copiedLabel={t('home.copied')}
                 />
-                <p className="mt-3 text-sm text-teal-100/55">
-                  {t('home.setupStep3Options')}
-                </p>
                 <p className="mt-4 text-sm leading-relaxed text-teal-100/70 sm:text-base">
                   {t('home.setupStep3FreshHint')}
                 </p>
@@ -266,14 +355,14 @@ export function HomePage() {
                 <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
                   {t('home.setupStep4Body')}
                 </p>
+                <p className="mt-3 text-sm text-teal-100/55">
+                  {t('home.setupStep4ServeHint')}
+                </p>
                 <CommandBlock
                   command={t('home.cmdServe')}
                   copyLabel={t('home.copy')}
                   copiedLabel={t('home.copied')}
                 />
-                <p className="mt-3 text-sm text-teal-100/55">
-                  {t('home.setupStep4ServeHint')}
-                </p>
               </li>
             </ol>
 
@@ -356,6 +445,11 @@ export function HomePage() {
               <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
                 {t('home.setupAfterBody')}
               </p>
+              <CommandBlock
+                command={t(`home.${osCopy.update}`)}
+                copyLabel={t('home.copy')}
+                copiedLabel={t('home.copied')}
+              />
             </div>
           </div>
         </section>

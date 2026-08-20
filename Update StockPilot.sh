@@ -1,5 +1,6 @@
 #!/bin/bash
-# Double-click on Mac. Downloads latest app into THIS folder; keeps your data.
+# Linux: chmod +x once, then double-click or run from a terminal.
+# Downloads the latest app into THIS folder; keeps your data.
 set -e
 cd "$(dirname "$0")"
 chmod +x "$0" 2>/dev/null || true
@@ -10,12 +11,20 @@ echo "Downloads the latest app into THIS folder and keeps your data."
 echo ""
 
 if ! command -v docker >/dev/null 2>&1; then
-  echo "Docker is not installed or not on PATH. Install Docker Desktop, start it, then try again."
+  echo "Docker is not installed or not on PATH."
+  echo "Install Docker Engine + the Compose plugin (or Docker Desktop), start it, then try again."
+  echo "Docs: https://docs.docker.com/engine/install/"
+  read -n 1 -s -r -p "Press any key to close…"
+  exit 1
+fi
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose plugin is missing. Install it, then try again."
+  echo "Docs: https://docs.docker.com/compose/install/linux/"
   read -n 1 -s -r -p "Press any key to close…"
   exit 1
 fi
 if ! command -v node >/dev/null 2>&1; then
-  echo "Node.js is not installed or not on PATH. Install Node LTS, then try again."
+  echo "Node.js is not installed or not on PATH. Install Node LTS (≥ 20), then try again."
   read -n 1 -s -r -p "Press any key to close…"
   exit 1
 fi
