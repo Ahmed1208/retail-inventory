@@ -42,6 +42,7 @@ import { useAuth } from '@/context/AuthContext'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { PersonFormDialog } from '@/components/people/PersonFormDialog'
 import { PersonCsvImportDialog } from '@/components/people/PersonCsvImportDialog'
+import { PersonPasteImportDialog } from '@/components/people/PersonPasteImportDialog'
 import { downloadCsv } from '@/utils/csvDownload'
 
 const DEBOUNCE_MS = 300
@@ -78,6 +79,7 @@ export function People() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [importCsvOpen, setImportCsvOpen] = useState(false)
+  const [importPasteOpen, setImportPasteOpen] = useState(false)
   const [editing, setEditing] = useState<Person | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Person | null>(null)
 
@@ -86,7 +88,7 @@ export function People() {
   const canDeletePerson = useFeatureEnabled('people.deletePerson')
   const canAddPerson = useFeatureEnabled('people.addPerson')
 
-  useMigrationImportDialog(setImportCsvOpen, true, canAddPerson)
+  useMigrationImportDialog(setImportPasteOpen, true, canAddPerson)
 
   useEffect(() => {
     document.title = 'People | StockPilot'
@@ -183,6 +185,7 @@ export function People() {
     const rows = people.map((p) => ({
       name: p.name,
       phone: p.phone ?? '',
+      external_code: p.external_code ?? '',
       roles: p.roles.join(','),
       address: p.address ?? '',
       notes: p.notes ?? '',
@@ -292,11 +295,18 @@ export function People() {
         {canAddPerson && (
           <>
             <Button
+              className="gap-2"
+              variant="secondary"
+              onClick={() => setImportPasteOpen(true)}
+            >
+              <FileUp className="h-4 w-4 shrink-0" />
+              {t('people.importPaste.button')}
+            </Button>
+            <Button
               variant="outline"
               className="gap-2"
               onClick={() => setImportCsvOpen(true)}
             >
-              <FileUp className="h-4 w-4 shrink-0" />
               {t('people.importCsv.button')}
             </Button>
             <Button
@@ -320,6 +330,11 @@ export function People() {
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Users className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">{t('people.emptyPeople')}</p>
+            {canAddPerson && (
+              <Button className="mt-4" onClick={() => setImportPasteOpen(true)}>
+                {t('people.importPaste.emptyCta')}
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -328,6 +343,9 @@ export function People() {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-4 py-3 text-start font-medium text-muted-foreground">
                     {t('people.name')}
+                  </th>
+                  <th className="px-4 py-3 text-start font-medium text-muted-foreground">
+                    {t('people.externalCode')}
                   </th>
                   <th className="px-4 py-3 text-start font-medium text-muted-foreground">
                     {t('people.phone')}
@@ -378,6 +396,9 @@ export function People() {
                     }}
                   >
                     <td className="px-4 py-3 font-medium">{p.name}</td>
+                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                      {p.external_code ?? t('people.emDash')}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {p.phone ?? t('people.emDash')}
                     </td>
@@ -486,6 +507,17 @@ export function People() {
         )}
       </div>
 
+      <PersonPasteImportDialog
+        open={importPasteOpen}
+        onOpenChange={setImportPasteOpen}
+        existingPeople={rawPeople}
+        lang={lang}
+        onComplete={() => {
+          invalidate()
+        }}
+        onGoNextMigration={() => navigate('/warehouses')}
+      />
+
       <PersonCsvImportDialog
         open={importCsvOpen}
         onOpenChange={setImportCsvOpen}
@@ -503,6 +535,7 @@ export function People() {
           if (!o) setEditing(null)
         }}
         person={editing}
+        existingPeople={rawPeople}
         t={t}
         formatCurrency={formatCurrencyDisplay}
         onSaved={() => {

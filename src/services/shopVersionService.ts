@@ -1,9 +1,30 @@
+export type ShopLocaleText = {
+  en: string
+  ar: string
+}
+
+export type ShopLocaleLines = {
+  en: string[]
+  ar: string[]
+}
+
+export type ShopReleaseNotes = {
+  title?: ShopLocaleText
+  body?: ShopLocaleText
+  beforeUpdate?: ShopLocaleLines
+  afterUpdate?: ShopLocaleLines
+}
+
 export type ShopVersionInfo = {
   version: string
   sha: string
   branch: string
   updatedAt: string
+  notes?: ShopReleaseNotes
 }
+
+export const SHOP_VERSION_QUERY_KEY = ['shopVersionCheck'] as const
+const WHATS_NEW_DISMISSED_KEY = 'stockpilot.shopReleaseNotes.dismissedVersion'
 
 export const SHOP_VERSION_REPO = 'Ahmed1208/retail-inventory'
 export const SHOP_VERSION_BRANCH = 'develop'
@@ -23,6 +44,43 @@ const FALLBACK_LOCAL: ShopVersionInfo = {
   updatedAt: '',
 }
 
+function asLocaleText(raw: unknown): ShopLocaleText | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const o = raw as Record<string, unknown>
+  const en = typeof o.en === 'string' ? o.en.trim() : ''
+  const ar = typeof o.ar === 'string' ? o.ar.trim() : ''
+  if (!en && !ar) return undefined
+  return { en: en || ar, ar: ar || en }
+}
+
+function asLocaleLines(raw: unknown): ShopLocaleLines | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const o = raw as Record<string, unknown>
+  const en = Array.isArray(o.en)
+    ? o.en.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : []
+  const ar = Array.isArray(o.ar)
+    ? o.ar.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : []
+  if (en.length === 0 && ar.length === 0) return undefined
+  return { en: en.length ? en : ar, ar: ar.length ? ar : en }
+}
+
+function asNotes(raw: unknown): ShopReleaseNotes | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const o = raw as Record<string, unknown>
+  const notes: ShopReleaseNotes = {
+    title: asLocaleText(o.title),
+    body: asLocaleText(o.body),
+    beforeUpdate: asLocaleLines(o.beforeUpdate),
+    afterUpdate: asLocaleLines(o.afterUpdate),
+  }
+  if (!notes.title && !notes.body && !notes.beforeUpdate && !notes.afterUpdate) {
+    return undefined
+  }
+  return notes
+}
+
 function asInfo(raw: unknown): ShopVersionInfo | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
@@ -33,6 +91,39 @@ function asInfo(raw: unknown): ShopVersionInfo | null {
     sha: typeof o.sha === 'string' ? o.sha : '',
     branch: typeof o.branch === 'string' ? o.branch : SHOP_VERSION_BRANCH,
     updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : '',
+    notes: asNotes(o.notes),
+  }
+}
+
+export function shopNotesText(
+  text: ShopLocaleText | undefined,
+  lang: string
+): string {
+  if (!text) return ''
+  return lang.startsWith('ar') ? text.ar || text.en : text.en || text.ar
+}
+
+export function shopNotesLines(
+  lines: ShopLocaleLines | undefined,
+  lang: string
+): string[] {
+  if (!lines) return []
+  return lang.startsWith('ar') ? lines.ar || lines.en : lines.en || lines.ar
+}
+
+export function readDismissedWhatsNewVersion(): string | null {
+  try {
+    return localStorage.getItem(WHATS_NEW_DISMISSED_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function dismissWhatsNew(version: string): void {
+  try {
+    localStorage.setItem(WHATS_NEW_DISMISSED_KEY, version)
+  } catch {
+    /* ignore */
   }
 }
 

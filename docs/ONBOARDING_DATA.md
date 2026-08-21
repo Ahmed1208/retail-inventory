@@ -2,23 +2,26 @@
 
 This guide is for **end users** and admins who want a smooth first setup or a one-time bulk load. Developers may use the Supabase SQL editor or CLI for migrations; day-to-day catalog and document loading is meant to happen **in the app** with CSV where available.
 
-**Interactive checklist:** In the app, open **Admin** → **Migration checklist** (or go to `/admin/migration`) for the same import order as step-by-step checkboxes; progress is saved in your browser so you can stop and continue later.
+**Interactive checklist:** In the app, open **Admin** → **Migration checklist** (or go to `/admin/migration`). **Step 1 is customers & sellers** — a guided paste wizard. Progress is saved in your browser so you can stop and continue later.
 
 ## Recommended order
 
-1. **Warehouses and registers**  
+1. **Customers and sellers (start here)**  
+   Open **People → Import customers & sellers** (or the first card on the Migration guide). Paste a range from Excel. You can start with **names + old IDs** only; add **balances** and **phones** in later pastes. The wizard maps columns, warns when someone is already on the system (saved old ID / phone / name), and lets you skip, update, merge (net one signed balance), or separate. Role column is optional (default both). Phone is not required on the first pass.
+
+2. **Warehouses and registers**  
    Define locations (codes, names) and which sites have a cash register. Orders and POs attach to a warehouse; payments and register activity need a register where applicable.
 
-2. **People (customers and suppliers)**  
-   Import or add **customers** and **suppliers** first (People → Import CSV if you use it). Orders and purchase orders resolve parties by **phone** (preferred) and sometimes by name. Phone is required to **create** a new person from CSV.
+3. **People tidy-up (optional)**  
+   After the guided import, edit roles or add anyone missing. The old CSV importer remains as a fallback.
 
-3. **Products**  
+4. **Products**  
    Import or add products (Inventory → Products → Import CSV). You can include opening stock per warehouse on the product import when you want **live** stock from day one.
 
-4. **Payments (optional)**  
+5. **Payments (optional)**  
    Standalone balance payments can be imported from the Payments area when your process needs it. Split tenders on old orders are easier to fix in the UI than in CSV.
 
-5. **Sales orders and purchase orders (last)**  
+6. **Sales orders and purchase orders (last)**  
    Use **Orders** and **Purchase orders** list pages → **Import CSV** only after warehouses, people, and products exist (or map columns so missing products/brands/categories can be created during import).
 
 ## Live vs Historical import (orders & POs)

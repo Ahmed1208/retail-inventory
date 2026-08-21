@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/context/AuthContext'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
 import { Badge } from '@/components/ui/badge'
+import { useShopUpdateCheck } from '@/hooks/useShopUpdateCheck'
 import {
   ADMIN_NOTIFICATIONS_UNREAD_QUERY_KEY,
   countUnreadAdminNotifications,
@@ -99,6 +100,9 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
     enabled: showAdminNav,
     staleTime: 15_000,
   })
+  const shopUpdate = useShopUpdateCheck(showAdminNav)
+  const shopUpdateAvailable =
+    shopUpdate.data?.ok === true && shopUpdate.data.updateAvailable
 
   const content = (
     <>
@@ -121,10 +125,18 @@ export function Sidebar({ isRTL, onNavigate, inline }: SidebarProps) {
             to="/admin"
             end
             onClick={onNavigate}
-            className={linkClass}
+            className={(opts) => cn(linkClass(opts), 'min-w-0')}
           >
             <Shield className="h-5 w-5 shrink-0" aria-hidden />
-            <span>{t('nav.admin')}</span>
+            <span className="flex-1 truncate">{t('nav.admin')}</span>
+            {shopUpdateAvailable ? (
+              <Badge
+                variant="destructive"
+                className="h-5 min-w-5 shrink-0 justify-center px-1.5 py-0 text-[10px] tabular-nums"
+              >
+                1
+              </Badge>
+            ) : null}
           </NavLink>
         )}
 

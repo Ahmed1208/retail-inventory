@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,12 +10,32 @@ import {
   countCustomerOrdersForPerson,
   countSupplierPOsForPerson,
   DuplicatePhoneError,
+  DuplicateExternalCodeError,
   DUPLICATE_PHONE_ERROR,
+  DUPLICATE_EXTERNAL_CODE_ERROR,
   PHONE_REQUIRED_ERROR,
   roundMoney,
   supabaseErrorMessage,
   updatePerson,
 } from '@/services/peopleService'
+import {
+  fillEmptyProfilePatch,
+  matchDraftToPeople,
+  proposedMergeBalance,
+  unionRoles,
+  type PersonPasteDraft,
+  type RowMatch,
+} from '@/utils/personPasteImport'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import type { Person, PersonRole } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,6 +53,7 @@ import {
 const personFormObjectSchema = z.object({
   name: z.string().min(2),
   phone: z.string().optional(),
+  external_code: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
   roles: z.array(z.enum(['customer', 'supplier'])).min(1),
@@ -51,6 +72,7 @@ export type PersonFormDialogProps = {
   formatCurrency: (n: number) => string
   onSaved: () => void
   onError: (m?: string) => void
+  existingPeople?: Person[]
 }
 
 export function PersonFormDialog({
@@ -61,7 +83,15 @@ export function PersonFormDialog({
   formatCurrency,
   onSaved,
   onError,
+  existingPeople = [],
 }: PersonFormDialogProps) {
+  const [conflict, setConflict] = useState<RowMatch | null>(null)
+  const [pendingCreate, setPendingCreate] = useState<
+    Parameters<typeof createPerson>[0] | null
+  >(null)
+  const [overwriteFilled, setOverwriteFilled] = useState(false)
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false)
+
   const { data: linkedOrderCount = 0 } = useQuery({
     queryKey: ['personOrderCount', person?.id],
     queryFn: () => countCustomerOrdersForPerson(person!.id),
@@ -87,13 +117,6 @@ export function PersonFormDialog({
             message: 'required',
           })
         }
-        if (!isEditRef.current && !val.phone?.trim()) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['phone'],
-            message: 'required',
-          })
-        }
       }),
     []
   )
@@ -105,6 +128,7 @@ export function PersonFormDialog({
     defaultValues: {
       name: '',
       phone: '',
+      external_code: '',
       address: '',
       notes: '',
       roles: ['customer'],
@@ -123,6 +147,7 @@ export function PersonFormDialog({
       form.reset({
         name: person.name,
         phone: person.phone ?? '',
+        external_code: person.external_code ?? '',
         address: person.address ?? '',
         notes: person.notes ?? '',
         roles: [...person.roles],
@@ -134,6 +159,7 @@ export function PersonFormDialog({
       form.reset({
         name: '',
         phone: '',
+        external_code: '',
         address: '',
         notes: '',
         roles: ['customer'],
@@ -154,6 +180,7 @@ export function PersonFormDialog({
       const payload = {
         name: values.name.trim(),
         phone: values.phone?.trim() || null,
+        external_code: values.external_code?.trim() || null,
         address: values.address?.trim() || null,
         notes: values.notes?.trim() || null,
         roles: values.roles as PersonRole[],
@@ -173,6 +200,29 @@ export function PersonFormDialog({
           sourceEntityId: person.id,
         })
       } else {
+        const draft: PersonPasteDraft = {
+          rowId: 'form',
+          external_code: payload.external_code ?? '',
+          name: payload.name,
+          phone: payload.phone ?? '',
+          roles: payload.roles,
+          rolesRaw: '',
+          rolesUnrecognized: false,
+          address: payload.address ?? '',
+          notes: payload.notes ?? '',
+          discount_rate: payload.discount_rate,
+          credit_limit: payload.credit_limit,
+          initial_balance: null,
+          discarded: false,
+        }
+        const hit = matchDraftToPeople(draft, existingPeople)
+        if (hit) {
+          setPendingCreate(payload)
+          setConflict(hit)
+          setOverwriteFilled(false)
+          setMergeConfirmOpen(false)
+          return
+        }
         const created = await createPerson(payload)
         await createAdminMentionNotificationIfNeeded({
           noteText: notesText,
@@ -186,6 +236,16 @@ export function PersonFormDialog({
       }
       onSaved()
     } catch (e) {
+      if (e instanceof DuplicateExternalCodeError) {
+        onError(
+          e.otherPersonName.trim()
+            ? t('people.validationExternalCodeDuplicateNamed', {
+                name: e.otherPersonName.trim(),
+              })
+            : t('people.validationExternalCodeDuplicate')
+        )
+        return
+      }
       if (e instanceof DuplicatePhoneError) {
         const n = e.otherPersonName.trim()
         onError(
@@ -196,6 +256,10 @@ export function PersonFormDialog({
         return
       }
       const msg = supabaseErrorMessage(e)
+      if (msg === DUPLICATE_EXTERNAL_CODE_ERROR) {
+        onError(t('people.validationExternalCodeDuplicate'))
+        return
+      }
       if (msg === DUPLICATE_PHONE_ERROR) {
         onError(t('people.validationPhoneDuplicate'))
         return
@@ -220,7 +284,42 @@ export function PersonFormDialog({
     !rolesWatch.includes('supplier') &&
     linkedPOCount > 0
 
+  const pendingDraft: PersonPasteDraft | null = pendingCreate
+    ? {
+        rowId: 'form',
+        external_code: pendingCreate.external_code ?? '',
+        name: pendingCreate.name,
+        phone: pendingCreate.phone ?? '',
+        roles: pendingCreate.roles,
+        rolesRaw: '',
+        rolesUnrecognized: false,
+        address: pendingCreate.address ?? '',
+        notes: pendingCreate.notes ?? '',
+        discount_rate: pendingCreate.discount_rate,
+        credit_limit: pendingCreate.credit_limit,
+        initial_balance: null,
+        discarded: false,
+      }
+    : null
+
+  const mergeMath = conflict
+    ? proposedMergeBalance(conflict.person.balance, null, pendingCreate?.roles ?? [], true)
+    : null
+
+  const separateBlocked =
+    !!conflict &&
+    !!pendingCreate &&
+    ((!!pendingCreate.phone &&
+      !!conflict.person.phone &&
+      pendingCreate.phone.trim().toLowerCase() ===
+        conflict.person.phone.trim().toLowerCase()) ||
+      (!!pendingCreate.external_code &&
+        !!conflict.person.external_code &&
+        pendingCreate.external_code.trim().toLowerCase() ===
+          conflict.person.external_code.trim().toLowerCase()))
+
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -267,27 +366,21 @@ export function PersonFormDialog({
             )}
           </div>
           <div>
-            <Label>
-              {t('people.phone')}
-              {!person && (
-                <span className="text-destructive" aria-hidden>
-                  {' '}
-                  *
-                </span>
-              )}
-            </Label>
+            <Label>{t('people.phone')}</Label>
             <Input
               className="mt-1"
               {...form.register('phone')}
               type="tel"
               autoComplete="tel"
-              aria-required={!person}
             />
-            {form.formState.errors.phone && (
-              <p className="text-sm text-destructive mt-1">
-                {t('people.validationPhoneRequired')}
-              </p>
-            )}
+          </div>
+          <div>
+            <Label>{t('people.externalCode')}</Label>
+            <Input
+              className="mt-1"
+              {...form.register('external_code')}
+              autoComplete="off"
+            />
           </div>
           <div>
             <Label>{t('people.address')}</Label>
@@ -408,5 +501,208 @@ export function PersonFormDialog({
         </form>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog
+      open={!!conflict && !mergeConfirmOpen}
+      onOpenChange={(o) => {
+        if (!o) {
+          setConflict(null)
+          setPendingCreate(null)
+          setMergeConfirmOpen(false)
+        }
+      }}
+    >
+      <AlertDialogContent className="max-w-lg">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('people.importPaste.reviewTitle')}</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-3 text-sm text-foreground">
+              {conflict && pendingCreate ? (
+                <>
+                  <p className="text-muted-foreground">
+                    {t('people.importPaste.matchedBecause', {
+                      reason: conflict.reasons
+                        .map((r) => t(`people.importPaste.reason.${r}`))
+                        .join(', '),
+                    })}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-md border p-2">
+                      <p className="mb-1 font-semibold">
+                        {t('people.importPaste.existingCol')}
+                      </p>
+                      <p>{conflict.person.external_code ?? '—'}</p>
+                      <p>{conflict.person.name}</p>
+                      <p>{conflict.person.phone ?? '—'}</p>
+                      <p>
+                        {conflict.person.roles
+                          .map((r) =>
+                            r === 'customer'
+                              ? t('people.customer')
+                              : t('people.supplier')
+                          )
+                          .join(' · ')}
+                      </p>
+                      <p className="tabular-nums">
+                        {formatCurrency(conflict.person.balance)}
+                      </p>
+                    </div>
+                    <div className="rounded-md border p-2">
+                      <p className="mb-1 font-semibold">
+                        {t('people.importPaste.incomingCol')}
+                      </p>
+                      <p>{pendingCreate.external_code ?? '—'}</p>
+                      <p>{pendingCreate.name}</p>
+                      <p>{pendingCreate.phone ?? '—'}</p>
+                      <p>
+                        {pendingCreate.roles
+                          .map((r) =>
+                            r === 'customer'
+                              ? t('people.customer')
+                              : t('people.supplier')
+                          )
+                          .join(' · ')}
+                      </p>
+                      <p className="tabular-nums">{formatCurrency(0)}</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={overwriteFilled}
+                      onChange={(e) => setOverwriteFilled(e.target.checked)}
+                    />
+                    {t('people.importPaste.overwriteFilled')}
+                  </label>
+                </>
+              ) : null}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter className="flex-wrap">
+          <AlertDialogCancel>{t('people.importPaste.action.skip')}</AlertDialogCancel>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            title={t('people.importPaste.actionHint.update')}
+            onClick={async () => {
+              if (!conflict || !pendingDraft || !pendingCreate) return
+              try {
+                const patch = fillEmptyProfilePatch(
+                  conflict.person,
+                  pendingDraft,
+                  overwriteFilled
+                )
+                patch.roles = pendingCreate.roles
+                await updatePerson(conflict.person.id, patch)
+                setConflict(null)
+                setPendingCreate(null)
+                onSaved()
+              } catch (e) {
+                onError(supabaseErrorMessage(e) || undefined)
+              }
+            }}
+          >
+            {t('people.importPaste.action.update')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            title={t('people.importPaste.actionHint.merge')}
+            onClick={() => setMergeConfirmOpen(true)}
+          >
+            {t('people.importPaste.action.merge')}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            title={t('people.importPaste.actionHint.separate')}
+            disabled={separateBlocked}
+            onClick={async () => {
+              if (!pendingCreate) return
+              if (separateBlocked) {
+                onError(t('people.importPaste.separateBlocked'))
+                return
+              }
+              try {
+                await createPerson(pendingCreate)
+                setConflict(null)
+                setPendingCreate(null)
+                onSaved()
+              } catch (e) {
+                onError(supabaseErrorMessage(e) || undefined)
+              }
+            }}
+          >
+            {t('people.importPaste.action.separate')}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog
+      open={mergeConfirmOpen}
+      onOpenChange={(o) => {
+        if (!o) setMergeConfirmOpen(false)
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('people.importPaste.mergeTitle')}</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm text-foreground">
+              <p>{t('people.importPaste.mergeBody')}</p>
+              {conflict && mergeMath ? (
+                <ul className="list-disc ps-4">
+                  <li>
+                    {t('people.importPaste.mergeExisting', {
+                      amount: formatCurrency(conflict.person.balance),
+                    })}
+                  </li>
+                  <li>
+                    {t('people.importPaste.mergeIncoming', {
+                      amount: formatCurrency(mergeMath.delta),
+                    })}
+                  </li>
+                  <li className="font-semibold">
+                    {t('people.importPaste.mergeFinal', {
+                      amount: formatCurrency(mergeMath.final),
+                    })}
+                  </li>
+                </ul>
+              ) : null}
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async (e) => {
+              e.preventDefault()
+              if (!conflict || !pendingCreate) return
+              try {
+                await updatePerson(conflict.person.id, {
+                  roles: unionRoles(conflict.person.roles, pendingCreate.roles),
+                  external_code:
+                    conflict.person.external_code || pendingCreate.external_code,
+                  phone: conflict.person.phone || pendingCreate.phone,
+                })
+                setMergeConfirmOpen(false)
+                setConflict(null)
+                setPendingCreate(null)
+                onSaved()
+              } catch (err) {
+                onError(supabaseErrorMessage(err) || undefined)
+              }
+            }}
+          >
+            {t('people.importPaste.confirmMerge')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

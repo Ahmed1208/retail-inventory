@@ -222,7 +222,12 @@
     "updateHow": "You do not need to copy files by hand. Use the Update app in this same folder — it downloads the new version and keeps your data.",
     "updateStep1": "Close this browser tab, then run Update StockPilot in the StockPilot folder (Windows: .bat · Mac: .command · Linux: .sh).",
     "updateStep2": "Wait until it finishes and the app opens again. Sign in as usual.",
-    "markApplied": "I finished updating"
+    "markApplied": "I finished updating",
+    "whatsNewTitle": "After this update — do these next",
+    "openPeopleImport": "Import customers & sellers",
+    "openMigration": "Open migration guide",
+    "dismissWhatsNew": "I did this",
+    "hubUpdateBanner": "A shop update is available. Open Updates for what to run on this PC."
   },
   "adminSync": {
     "title": "Data sync",
@@ -311,6 +316,7 @@
     "noResults": "No results found",
     "confirm": "Confirm",
     "back": "Back",
+    "next": "Next",
     "submit": "Submit",
     "close": "Close",
     "yes": "Yes",
@@ -1505,7 +1511,7 @@
   },
   "people": {
     "title": "People",
-    "searchPlaceholder": "Search by name or phone...",
+    "searchPlaceholder": "Search by name, phone, or old ID...",
     "filterRoleAll": "All",
     "filterRoleCustomers": "Customers",
     "filterRoleSuppliers": "Suppliers",
@@ -1567,6 +1573,94 @@
         "duplicate_in_db": "Phone already in system"
       }
     },
+    "importPaste": {
+      "button": "Import customers & sellers",
+      "title": "Import customers & sellers",
+      "stepProgress": "Step {{current}} of {{total}}",
+      "welcomeBody": "Bring customers and sellers from your old sheet. You can add names and old IDs now; phones and balances later. One sheet is enough — map a role column if you have it, otherwise everyone is both customer and supplier.",
+      "welcomeTip": "Paste from Excel. Cloud is not required. You can import the same people again later to fill missing fields.",
+      "whatToCopy": "What to copy",
+      "whatToCopyBody": "In Excel, select the header row plus data rows, then Copy.\nInclude a header row when you can (Name, ID, Phone…).\nYou do not need every column this time — name is enough to create. Old ID is strongly recommended so a later paste can add phones or balances.",
+      "start": "Start",
+      "pasteHint": "Paste the range you copied from Excel.",
+      "pasteTip": "Copy a rectangle in Excel (Ctrl+C / Cmd+C), then paste here. Tabs between columns work best.",
+      "pastePlaceholder": "Name\tID\nAhmed\tC-104\n…",
+      "hasHeader": "First row is column headers",
+      "pasteClipboard": "Paste from clipboard",
+      "uploadCsv": "Upload CSV",
+      "clear": "Clear",
+      "clipboardDenied": "Could not read the clipboard. Paste into the box with Ctrl+V / Cmd+V.",
+      "emptyPaste": "No rows found. Copy a range that includes at least one data row.",
+      "unmappedOk": "Unmapped columns are OK. Only Name is required this pass. Old ID is recommended.",
+      "nameRequiredMap": "Map a column to Name before continuing.",
+      "needNamedRow": "At least one row needs a name (2+ characters).",
+      "previewHint": "{{count}} row(s) will be reviewed. Blank cells will not wipe data already saved.",
+      "previewTip": "Discard rows you do not want. You can edit names before matching.",
+      "conflictsHint": "Rows that match someone already in StockPilot need an action. New rows default to Create.",
+      "alreadyOnSystem": "Already on the system",
+      "fileDuplicate": "Duplicate in this paste",
+      "newRow": "New",
+      "review": "Review",
+      "reviewTitle": "Existing vs this row",
+      "existingCol": "Already on the system",
+      "incomingCol": "This sheet",
+      "matchedBecause": "Matched: {{reason}}",
+      "overwriteFilled": "Overwrite fields that already have a value",
+      "separateBlocked": "To keep them separate, change the colliding old ID or phone first.",
+      "apply": "Apply import",
+      "applyTitle": "Apply this import?",
+      "applyBody": "Create {{created}}, update {{updated}}, skip {{skipped}}. New people start at balance 0. Opening amounts on matched rows apply only if you chose Update or Merge.",
+      "balancesHint": "Set opening balances for people just created, or skip and paste balances later using the same old IDs.",
+      "balancesTip": "Positive = they owe you (customer). For a seller-only row, a positive number means you owe them.",
+      "noNewForBalances": "No new people were created in this pass.",
+      "setBalances": "Set balances",
+      "skipBalances": "Skip for now",
+      "doneBody": "You can sell. Come back to add phones or balances with the same old IDs.",
+      "importMore": "Import more",
+      "goToPeople": "Go to People",
+      "nextMigration": "Next migration step",
+      "toastApplied": "Created {{created}}, updated {{updated}}, skipped {{skipped}}.",
+      "toastPartial": "Created {{created}}, updated {{updated}}, skipped {{skipped}}, {{failed}} failed.",
+      "toastBalances": "Saved {{count}} opening balance(s).",
+      "mergeTitle": "Merge and net the balance",
+      "mergeBody": "One person will keep both roles. Confirm the signed balance (positive = they owe you, negative = you owe them).",
+      "mergeExisting": "Existing: {{amount}}",
+      "mergeIncoming": "Incoming: {{amount}}",
+      "mergeFinal": "Final: {{amount}}",
+      "sellerMeansPayable": "Treat a positive seller amount as money you owe them",
+      "confirmMerge": "Confirm merge",
+      "emptyCta": "Start by importing customers and sellers from your old sheet.",
+      "action": {
+        "skip": "Skip",
+        "update": "Update profile",
+        "merge": "Merge",
+        "separate": "Separate",
+        "create": "Create"
+      },
+      "actionHint": {
+        "skip": "Leave the existing person unchanged.",
+        "update": "Fill empty fields from this row. Balance only if you mapped a balance column.",
+        "merge": "One person, combined roles, net the balance if this row has an amount.",
+        "separate": "Create a new person. Change colliding ID or phone first."
+      },
+      "reason": {
+        "external_code": "same old ID",
+        "phone": "same phone",
+        "name": "same name"
+      },
+      "tip": {
+        "external_code": "Save this so a later paste of the same people can add phones or balances.",
+        "name": "Required to create a person.",
+        "phone": "Optional now. You can add phones in a later paste.",
+        "roles": "Optional. Customer, supplier, or both. Empty means both.",
+        "address": "Optional.",
+        "notes": "Optional.",
+        "discount_rate": "Optional customer discount %.",
+        "credit_limit": "Optional.",
+        "initial_balance": "Optional. Applied on Update/Merge, or in the balances step for new people — not on create."
+      }
+    },
+    "externalCode": "Old ID",
     "exportCsvHint": "Download all people in the current list as CSV (same columns as import).",
     "reconcileWallets": "Reconcile wallets",
     "reconcileWalletsHint": "Replay every balance transaction to refresh each person's running balance.",
@@ -1624,9 +1718,11 @@
     "toastError": "Something went wrong",
     "validationNameMin": "Name must be at least 2 characters",
     "validationPhoneRequired": "Phone number is required.",
-    "formCreateRequiredHint": "Name and phone are required.",
+    "formCreateRequiredHint": "Name is required. Phone and old ID are optional — you can add them later.",
     "validationPhoneDuplicate": "This phone number is already used by another person.",
     "validationPhoneDuplicateNamed": "This phone number is already used by {{name}}.",
+    "validationExternalCodeDuplicate": "This old ID is already used by another person.",
+    "validationExternalCodeDuplicateNamed": "This old ID is already used by {{name}}.",
     "validationRoles": "Select at least one role",
     "paymentAmount": "Amount",
     "paymentNote": "Note (optional)",
@@ -2105,7 +2201,7 @@
     "title": "Migration & setup guide",
     "browserTitle": "Migration guide | StockPilot",
     "subtitle": "End-to-end path to adopt StockPilot: Auth, members, warehouses, catalog, transfers, optional hosted/local sync, CSV loads, register, and go-live checks.",
-    "intro": "Use this page as your master checklist. Order matters: locations and registers before document CSV, people before orders, suppliers before purchase orders. Create operators under Admin → Members and use Control to match what each role should see. Progress saves in this browser only (localStorage). The Platform guide (/admin/documentation) explains each area in more detail.",
+    "intro": "Start here: import customers and sellers (paste from Excel). Then locations, catalog, and optional document CSV. Create operators under Admin → Members. Progress saves in this browser only. The Platform guide (/admin/documentation) explains each area in more detail.",
     "savedLocallyHint": "Progress is stored only on this device (localStorage). It is not synced to your account or other browsers.",
     "progressLabel": "{{done}} of {{total}} steps complete",
     "markAllComplete": "Mark all complete",
@@ -2119,34 +2215,41 @@
     "markAllConfirm": "Mark all",
     "documentationCallout": "Migrating from another system?",
     "documentationLink": "Open the migration & setup guide",
+    "phaseStart": {
+      "title": "1. Customers & sellers (start here)"
+    },
     "phasePrepare": {
-      "title": "1. Prepare"
+      "title": "2. Prepare"
     },
     "phaseTeam": {
-      "title": "2. Operators & access"
+      "title": "3. Operators & access"
     },
     "phaseFoundation": {
-      "title": "3. Locations & registers"
+      "title": "4. Locations & registers"
     },
     "phaseMaster": {
-      "title": "4. Master data & internal transfers"
+      "title": "5. Master data & internal transfers"
     },
     "phaseSync": {
-      "title": "5. Data sync (optional)"
+      "title": "6. Data sync (optional)"
     },
     "phaseOptional": {
-      "title": "6. Optional: opening balances"
+      "title": "7. Optional: opening balances"
     },
     "phaseTransactions": {
-      "title": "7. Purchase orders & sales orders (CSV)"
+      "title": "8. Purchase orders & sales orders (CSV)"
     },
     "phaseMoney": {
-      "title": "8. Register & cash"
+      "title": "9. Register & cash"
     },
     "phaseCutover": {
-      "title": "9. Go live & documentation"
+      "title": "10. Go live & documentation"
     },
     "steps": {
+      "people_wizard": {
+        "title": "Import customers and sellers (guided)",
+        "body": "Open People and run Import customers & sellers. Paste from Excel in passes: names and old IDs first, then balances, then phones. The wizard maps columns, warns when someone is already on the system, and lets you skip, update, merge (net balance), or separate. Phone is optional on the first pass."
+      },
       "plan_exports": {
         "title": "Export and clean data from the old system",
         "body": "Pull customer/supplier lists with consistent phone numbers (used for matching), product codes/SKUs, units, and any opening stock figures. Normalize dates and currencies to match how you will import. Decide what is truly “historical only” vs what you will operate going forward."
@@ -2168,8 +2271,8 @@
         "body": "Create categories and brands before or during product import. Product CSV can create missing brand/category names on the fly; pre-creating them keeps naming tidy."
       },
       "people": {
-        "title": "Import or add customers and suppliers",
-        "body": "Load People before order and PO CSV. Phone is the primary match key and is required when creating a new person from CSV. Suppliers must exist (with supplier role) before purchase order import creates linked POs."
+        "title": "Review people after the guided import",
+        "body": "Use the guided paste wizard first (step 1). Then tidy roles, add anyone missing, and confirm old IDs are saved so a later sheet can fill phones or balances. Suppliers must exist before purchase-order CSV."
       },
       "products": {
         "title": "Import products and opening stock",
@@ -2214,6 +2317,7 @@
     },
     "importShortcut": {
       "people": "Import people (CSV)",
+      "peoplePaste": "Import customers & sellers (guided)",
       "products": "Import products (CSV)",
       "payments": "Import payments (CSV)",
       "orders": "Import orders (CSV)",

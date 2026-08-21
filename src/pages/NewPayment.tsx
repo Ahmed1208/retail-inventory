@@ -44,6 +44,7 @@ export function NewPayment() {
         id: preloaded.id,
         name: preloaded.name,
         phone: preloaded.phone,
+        external_code: preloaded.external_code,
         address: preloaded.address,
         notes: preloaded.notes,
         roles: preloaded.roles,

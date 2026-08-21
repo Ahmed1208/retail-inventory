@@ -1,6 +1,8 @@
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { ShopUpdateNotice } from '@/components/admin/ShopUpdateNotice'
+import { useShopUpdateCheck } from '@/hooks/useShopUpdateCheck'
 import {
   ArrowLeftRight,
   BookOpen,
@@ -88,6 +90,10 @@ export function AdminHub() {
   } as const
 
   const visibleSections = sections.filter((s) => flags[s.feature])
+  const shopUpdate = useShopUpdateCheck(true)
+  const updateAvailable =
+    shopUpdate.data?.ok === true && shopUpdate.data.updateAvailable
+  const remote = shopUpdate.data?.ok === true ? shopUpdate.data.remote : null
 
   useEffect(() => {
     document.title = `${t('nav.admin')} | StockPilot`
@@ -107,6 +113,19 @@ export function AdminHub() {
         </p>
       </div>
 
+      {updateAvailable && remote ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">{t('adminUpdates.hubUpdateBanner')}</p>
+          <ShopUpdateNotice remote={remote} updateAvailable compact />
+          <Link
+            to="/admin/updates"
+            className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t('nav.updates')}
+          </Link>
+        </div>
+      ) : null}
+
       {visibleSections.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t('control.disabled.adminHubAllOff')}
@@ -119,13 +138,21 @@ export function AdminHub() {
                 to={to}
                 className={cn(
                   'flex items-center gap-4 rounded-xl border border-border bg-card p-5 shadow-sm',
-                  'transition-colors hover:border-primary/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  'transition-colors hover:border-primary/20 hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  to === '/admin/updates' &&
+                    updateAvailable &&
+                    'border-primary/40 bg-primary/5'
                 )}
               >
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="h-6 w-6" aria-hidden />
                 </span>
-                <span className="text-base font-medium">{t(key)}</span>
+                <span className="text-base font-medium">
+                  {t(key)}
+                  {to === '/admin/updates' && updateAvailable
+                    ? ` · ${t('adminUpdates.updateAvailable', { version: remote?.version ?? '' })}`
+                    : ''}
+                </span>
               </Link>
             </li>
           ))}

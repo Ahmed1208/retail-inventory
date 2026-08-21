@@ -135,6 +135,8 @@ export interface Person {
   id: string
   name: string
   phone: string | null
+  /** Old-system ID/code from import; unique when non-empty. */
+  external_code: string | null
   address: string | null
   notes: string | null
   roles: PersonRole[]

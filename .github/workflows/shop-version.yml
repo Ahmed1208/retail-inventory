@@ -35,12 +35,22 @@ jobs:
           VERSION="$(date -u +%-y.%-m.%-d).${RUN}"
           UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           SHORT_SHA="$(printf '%s' "$SHA" | cut -c1-7)"
-          PAYLOAD="$(jq -n \
-            --arg version "$VERSION" \
-            --arg sha "$SHA" \
-            --arg branch "develop" \
-            --arg updatedAt "$UPDATED_AT" \
-            '{version:$version,sha:$sha,branch:$branch,updatedAt:$updatedAt}')"
+          if [ -f shop-release-notes.json ]; then
+            PAYLOAD="$(jq -n \
+              --arg version "$VERSION" \
+              --arg sha "$SHA" \
+              --arg branch "develop" \
+              --arg updatedAt "$UPDATED_AT" \
+              --slurpfile notes shop-release-notes.json \
+              '{version:$version,sha:$sha,branch:$branch,updatedAt:$updatedAt} + (if ($notes|length)>0 then {notes:$notes[0]} else {} end)')"
+          else
+            PAYLOAD="$(jq -n \
+              --arg version "$VERSION" \
+              --arg sha "$SHA" \
+              --arg branch "develop" \
+              --arg updatedAt "$UPDATED_AT" \
+              '{version:$version,sha:$sha,branch:$branch,updatedAt:$updatedAt}')"
+          fi
           printf '%s\n' "$PAYLOAD" > shop-version.json
           printf '%s\n' "$PAYLOAD" > public/shop-version.json
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"

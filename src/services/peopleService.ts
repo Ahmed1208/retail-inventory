@@ -25,8 +25,21 @@ export function roundMoney(n: number): number {
 /** Thrown when phone matches another person (trimmed, case-insensitive). */
 export const DUPLICATE_PHONE_ERROR = 'PHONE_DUPLICATE'
 
-/** Thrown when create payload has no phone (app validation). */
+/** Thrown when create payload has no phone (app validation). Kept for older callers. */
 export const PHONE_REQUIRED_ERROR = 'PHONE_REQUIRED'
+
+/** Thrown when external_code matches another person. */
+export const DUPLICATE_EXTERNAL_CODE_ERROR = 'EXTERNAL_CODE_DUPLICATE'
+
+export class DuplicateExternalCodeError extends Error {
+  otherPersonName: string
+
+  constructor(otherPersonName: string) {
+    super(DUPLICATE_EXTERNAL_CODE_ERROR)
+    this.name = 'DuplicateExternalCodeError'
+    this.otherPersonName = otherPersonName
+  }
+}
 
 export class DuplicatePhoneError extends Error {
   otherPersonName: string
@@ -40,6 +53,11 @@ export class DuplicatePhoneError extends Error {
 
 /** Same rule as DB unique index on people.phone (trim + lowercase). */
 export function normalizePhoneKey(s: string): string {
+  return s.trim().toLowerCase()
+}
+
+/** Same rule as DB unique index on people.external_code (trim + lowercase). */
+export function normalizeExternalCode(s: string): string {
   return s.trim().toLowerCase()
 }
 
@@ -109,6 +127,43 @@ export async function findConflictingPersonByPhone(
   return null
 }
 
+export async function findConflictingPersonByExternalCode(
+  code: string,
+  excludePersonId?: string
+): Promise<{ id: string; name: string } | null> {
+  const key = normalizeExternalCode(code)
+  if (!key) return null
+
+  const { data: all, error } = await supabase
+    .from(PEOPLE)
+    .select('id,name,external_code')
+
+  if (error) {
+    if (isMissingColumnError(error, 'external_code')) return null
+    throw error
+  }
+  for (const r of all ?? []) {
+    const pr = r as { id: string; name: string; external_code?: string | null }
+    if (!pr.external_code?.trim()) continue
+    if (normalizeExternalCode(pr.external_code) !== key) continue
+    if (excludePersonId && pr.id === excludePersonId) continue
+    return { id: pr.id, name: pr.name }
+  }
+  return null
+}
+
+async function assertExternalCodeNotDuplicate(
+  code: string | null | undefined,
+  excludePersonId?: string
+): Promise<void> {
+  const raw = code?.trim() ?? ''
+  if (raw === '') return
+  const conflict = await findConflictingPersonByExternalCode(raw, excludePersonId)
+  if (conflict) {
+    throw new DuplicateExternalCodeError(conflict.name)
+  }
+}
+
 function isPostgresUniqueViolation(e: unknown): boolean {
   return typeof e === 'object' && e !== null && (e as { code?: string }).code === '23505'
 }
@@ -150,6 +205,11 @@ export function throwHistoricalSnapshotMigrationError(err: unknown): never {
 function isPeoplePhoneUniqueViolation(e: unknown): boolean {
   const s = supabaseErrorMessage(e).toLowerCase()
   return s.includes('people_phone_lower_trim_unique')
+}
+
+function isPeopleExternalCodeUniqueViolation(e: unknown): boolean {
+  const s = supabaseErrorMessage(e).toLowerCase()
+  return s.includes('people_external_code_lower_trim_unique')
 }
 
 async function assertPhoneNotDuplicate(
@@ -231,6 +291,10 @@ export function mapPersonRow(row: Record<string, unknown>): Person {
     id: String(row.id),
     name: String(row.name),
     phone: row.phone != null ? String(row.phone) : null,
+    external_code:
+      row.external_code != null && String(row.external_code).trim() !== ''
+        ? String(row.external_code).trim()
+        : null,
     address: row.address != null ? String(row.address) : null,
     notes: row.notes != null ? String(row.notes) : null,
     roles: mapRoles(row.roles),
@@ -304,7 +368,8 @@ export async function getAllPeople(filters?: PeopleFilters): Promise<Person[]> {
     rows = rows.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        (p.phone && p.phone.toLowerCase().includes(q))
+        (p.phone && p.phone.toLowerCase().includes(q)) ||
+        (p.external_code && p.external_code.toLowerCase().includes(q))
     )
   }
   if (filters?.minBalance !== undefined) {
@@ -348,20 +413,21 @@ export async function getPersonById(id: string): Promise<PersonWithTransactions>
 }
 
 export async function createPerson(
-  data: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'balance'>
+  data: Omit<Person, 'id' | 'created_at' | 'updated_at' | 'balance' | 'external_code'> & {
+    external_code?: string | null
+  }
 ): Promise<Person> {
   if (!data.roles?.length) {
     throw new Error('At least one role is required')
   }
 
   const trimmedPhone = data.phone?.trim() ?? ''
-  if (trimmedPhone === '') {
-    throw new Error(PHONE_REQUIRED_ERROR)
-  }
+  const trimmedCode = data.external_code?.trim() ?? ''
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     name: data.name.trim(),
-    phone: trimmedPhone,
+    phone: trimmedPhone || null,
+    external_code: trimmedCode || null,
     address: data.address?.trim() || null,
     notes: data.notes?.trim() || null,
     roles: data.roles,
@@ -369,18 +435,30 @@ export async function createPerson(
     credit_limit: data.credit_limit,
   }
 
-  await assertPhoneNotDuplicate(payload.phone)
+  await assertPhoneNotDuplicate(trimmedPhone || null)
+  await assertExternalCodeNotDuplicate(trimmedCode || null)
 
+  let insertPayload = { ...payload }
   const { data: inserted, error } = await supabase
     .from(PEOPLE)
-    .insert(payload)
+    .insert(insertPayload)
     .select()
     .single()
 
   if (error) {
+    if (isMissingColumnError(error, 'external_code')) {
+      delete insertPayload.external_code
+      const retry = await supabase.from(PEOPLE).insert(insertPayload).select().single()
+      if (retry.error) throw retry.error
+      return mapPersonRow(retry.data as Record<string, unknown>)
+    }
     if (isPostgresUniqueViolation(error) && isPeoplePhoneUniqueViolation(error)) {
       const again = await findConflictingPersonByPhone(trimmedPhone)
       throw new DuplicatePhoneError(again?.name ?? '')
+    }
+    if (isPostgresUniqueViolation(error) && isPeopleExternalCodeUniqueViolation(error)) {
+      const again = await findConflictingPersonByExternalCode(trimmedCode)
+      throw new DuplicateExternalCodeError(again?.name ?? '')
     }
     throw error
   }
@@ -445,6 +523,9 @@ export async function updatePerson(
   }
   if (data.name !== undefined) patch.name = data.name.trim()
   if (data.phone !== undefined) patch.phone = data.phone?.trim() || null
+  if (data.external_code !== undefined) {
+    patch.external_code = data.external_code?.trim() || null
+  }
   if (data.address !== undefined) patch.address = data.address?.trim() || null
   if (data.notes !== undefined) patch.notes = data.notes?.trim() || null
   if (data.roles !== undefined) patch.roles = data.roles
@@ -455,6 +536,9 @@ export async function updatePerson(
   if (data.phone !== undefined) {
     const nextPhone = data.phone?.trim() || null
     await assertPhoneNotDuplicate(nextPhone, id)
+  }
+  if (data.external_code !== undefined) {
+    await assertExternalCodeNotDuplicate(data.external_code?.trim() || null, id)
   }
 
   const { data: updated, error } = await supabase
@@ -472,6 +556,14 @@ export async function updatePerson(
           : existing.phone?.trim() || ''
       const again = await findConflictingPersonByPhone(phoneForCheck, id)
       throw new DuplicatePhoneError(again?.name ?? '')
+    }
+    if (isPostgresUniqueViolation(error) && isPeopleExternalCodeUniqueViolation(error)) {
+      const codeForCheck =
+        data.external_code !== undefined
+          ? data.external_code?.trim() || ''
+          : existing.external_code?.trim() || ''
+      const again = await findConflictingPersonByExternalCode(codeForCheck, id)
+      throw new DuplicateExternalCodeError(again?.name ?? '')
     }
     throw error
   }

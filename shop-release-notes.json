@@ -1,0 +1,30 @@
+{
+  "title": {
+    "en": "Customers & sellers import",
+    "ar": "استيراد العملاء والموردين"
+  },
+  "body": {
+    "en": "Paste customers and sellers from Excel in passes (names and old IDs first, then balances and phones). The second PC applies the database change when you run Update StockPilot — you do not need to paste SQL.",
+    "ar": "الصق العملاء والموردين من إكسل على دفعات (الأسماء والمعرفات القديمة أولاً، ثم الأرصدة والهواتف). جهاز المتجر يطبّق تغيير قاعدة البيانات عند تشغيل Update StockPilot — لا حاجة للصق SQL."
+  },
+  "beforeUpdate": {
+    "en": [
+      "Close this browser tab, then run Update StockPilot in the StockPilot folder (Windows: .bat · Mac: .command · Linux: .sh).",
+      "Wait until it finishes and the app opens again. Your data stays. The old-ID database column is applied automatically."
+    ],
+    "ar": [
+      "أغلق علامة التبويب هذه، ثم شغّل Update StockPilot داخل مجلد StockPilot (ويندوز: .bat · ماك: .command · لينكس: .sh).",
+      "انتظر حتى ينتهي ويفتح التطبيق من جديد. بياناتك تبقى. عمود المعرف القديم يُطبَّق تلقائياً."
+    ]
+  },
+  "afterUpdate": {
+    "en": [
+      "Open People → Import customers & sellers (or Admin → Migration, first card).",
+      "Paste names and old IDs from Excel first. You can sell after that, then add phones and balances later with the same IDs."
+    ],
+    "ar": [
+      "افتح الأشخاص ← استيراد العملاء والموردين (أو الإدارة ← الترحيل، البطاقة الأولى).",
+      "الصق الأسماء والمعرفات القديمة من إكسل أولاً. يمكنك البيع بعد ذلك، ثم إضافة الهواتف والأرصدة لاحقاً بنفس المعرفات."
+    ]
+  }
+}

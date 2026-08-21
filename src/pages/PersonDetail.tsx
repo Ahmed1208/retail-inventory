@@ -561,9 +561,9 @@ export function PersonDetail() {
               </span>
             )}
           </div>
-          {person.phone ? (
+          {(person.external_code || person.phone) ? (
             <p className="mt-2 font-mono text-sm text-muted-foreground">
-              {person.phone}
+              {[person.external_code, person.phone].filter(Boolean).join(' · ')}
             </p>
           ) : null}
         </div>

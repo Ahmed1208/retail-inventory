@@ -25,6 +25,7 @@ import {
 } from '@/utils/migrationChecklistStorage'
 
 export const MIGRATION_STEP_IDS = [
+  'people_wizard',
   'plan_exports',
   'env_schema',
   'operators_members',
@@ -127,6 +128,22 @@ type PhaseConfig = {
 }
 
 const PHASES: PhaseConfig[] = [
+  {
+    id: 'phaseStart',
+    steps: [
+      {
+        id: 'people_wizard',
+        linkKeys: [
+          {
+            to: `/people?${qsImport()}`,
+            labelKey: 'migrationGuide.importShortcut.peoplePaste',
+            gatedBy: 'people.addPerson',
+          },
+          { to: '/people', labelKey: 'migrationGuide.link.people' },
+        ],
+      },
+    ],
+  },
   {
     id: 'phasePrepare',
     steps: [

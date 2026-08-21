@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { Loader2, RefreshCw } from 'lucide-react'
 
+import { ShopUpdateNotice } from '@/components/admin/ShopUpdateNotice'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
+  SHOP_VERSION_QUERY_KEY,
   fetchRemoteShopVersion,
   probeShopConnectivity,
+  readDismissedWhatsNewVersion,
   resolveLocalShopVersion,
   setLocalShopVersion,
   shortSha,
@@ -25,6 +29,8 @@ export function AdminUpdates() {
   const [updateAvailable, setUpdateAvailable] = useState(false)
   const [checking, setChecking] = useState(false)
   const [errorKey, setErrorKey] = useState<string | null>(null)
+  const [whatsNewOpen, setWhatsNewOpen] = useState(true)
+  const queryClient = useQueryClient()
 
   const checkForUpdates = useCallback(async () => {
     setChecking(true)
@@ -64,8 +70,12 @@ export function AdminUpdates() {
 
     setRemote(result.remote)
     setUpdateAvailable(result.updateAvailable)
+    setWhatsNewOpen(
+      readDismissedWhatsNewVersion() !== result.remote.version
+    )
     setChecking(false)
-  }, [])
+    void queryClient.invalidateQueries({ queryKey: SHOP_VERSION_QUERY_KEY })
+  }, [queryClient])
 
   useEffect(() => {
     document.title = `${t('adminUpdates.title')} | StockPilot`
@@ -101,6 +111,7 @@ export function AdminUpdates() {
     setLocalShopVersion(remote)
     setLocal(remote)
     setUpdateAvailable(false)
+    void queryClient.invalidateQueries({ queryKey: SHOP_VERSION_QUERY_KEY })
   }
 
   return (
@@ -201,29 +212,29 @@ export function AdminUpdates() {
 
           {updateAvailable ? (
             <div className="space-y-4 border-t border-border pt-4">
-              <p className="text-sm font-medium text-primary">
-                {t('adminUpdates.updateAvailable', { version: remote.version })}
+              <ShopUpdateNotice remote={remote} updateAvailable />
+              <p className="text-sm text-muted-foreground">
+                {t('adminUpdates.updateHow')}
               </p>
-              <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm">
-                <p className="font-medium">{t('adminUpdates.updateHowTitle')}</p>
-                <p className="mt-2 text-muted-foreground">
-                  {t('adminUpdates.updateHow')}
-                </p>
-                <ol className="mt-3 list-decimal space-y-1 ps-5 text-muted-foreground">
-                  <li>{t('adminUpdates.updateStep1')}</li>
-                  <li>{t('adminUpdates.updateStep2')}</li>
-                </ol>
-              </div>
               <Button type="button" variant="outline" onClick={markApplied}>
                 {t('adminUpdates.markApplied')}
               </Button>
             </div>
           ) : (
-            <p className="border-t border-border pt-4 text-sm text-muted-foreground">
-              {t('adminUpdates.upToDate', {
-                version: local?.version ?? remote.version,
-              })}
-            </p>
+            <div className="space-y-4 border-t border-border pt-4">
+              <p className="text-sm text-muted-foreground">
+                {t('adminUpdates.upToDate', {
+                  version: local?.version ?? remote.version,
+                })}
+              </p>
+              {whatsNewOpen && remote.notes ? (
+                <ShopUpdateNotice
+                  remote={remote}
+                  updateAvailable={false}
+                  onDismissWhatsNew={() => setWhatsNewOpen(false)}
+                />
+              ) : null}
+            </div>
           )}
         </section>
       ) : null}

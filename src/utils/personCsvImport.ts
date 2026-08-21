@@ -133,7 +133,7 @@ export function guessFieldToColumnMapping(
 
 export function parseRolesCell(raw: string): PersonRole[] {
   const parts = raw
-    .split(/[,;|/]+/)
+    .split(/[,;|/+]+/)
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean)
   const roles: PersonRole[] = []
@@ -146,18 +146,32 @@ export function parseRolesCell(raw: string): PersonRole[] {
       p === 'client' ||
       p === 'buyer' ||
       p === 'c' ||
-      p === 'cust'
+      p === 'cust' ||
+      p === 'عميل' ||
+      p === 'زبون' ||
+      p === 'مشتري'
     ) {
       add('customer')
     } else if (
       p === 'supplier' ||
       p === 'vendor' ||
+      p === 'seller' ||
       p === 's' ||
       p === 'supp' ||
-      p === 'vend'
+      p === 'vend' ||
+      p === 'مورد' ||
+      p === 'بائع' ||
+      p === 'موردين'
     ) {
       add('supplier')
-    } else if (p === 'both' || p === 'customer supplier' || p === 'supplier customer') {
+    } else if (
+      p === 'both' ||
+      p === 'customer supplier' ||
+      p === 'supplier customer' ||
+      p === 'الاثنين' ||
+      p === 'كلاهما' ||
+      p === 'عميل ومورد'
+    ) {
       add('customer')
       add('supplier')
     }

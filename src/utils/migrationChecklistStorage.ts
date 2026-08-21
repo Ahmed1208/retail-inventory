@@ -34,6 +34,11 @@ export function readMigrationChecklist(): MigrationChecklistPersisted | null {
   }
 }
 
+export function markMigrationStepDone(id: string): void {
+  const prev = readMigrationChecklist()
+  writeMigrationChecklist({ ...(prev?.checked ?? {}), [id]: true })
+}
+
 export function writeMigrationChecklist(
   checked: Record<string, boolean>
 ): void {
