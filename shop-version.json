@@ -1,8 +1,8 @@
 {
-  "version": "26.8.21.9",
-  "sha": "8811bf35ba6db20bdb306ce9e2b2f6eafd2ce621",
+  "version": "26.8.31.10",
+  "sha": "05ecebf4c0dc8c08e1533f08e435128bc8f811dd",
   "branch": "develop",
-  "updatedAt": "2026-08-21T00:26:00Z",
+  "updatedAt": "2026-08-31T14:11:07Z",
   "notes": {
     "title": {
       "en": "Customers & sellers import",
