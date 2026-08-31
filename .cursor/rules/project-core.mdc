@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+---
+description: Core development rules for this application.
+alwaysApply: true
+---
+
+# Project Core
+
+## Before changing code
+
+- Understand the existing implementation before proposing changes.
+- Search for existing functionality before creating new functionality.
+- Reuse existing components, hooks, utilities, types, queries, and services.
+- Follow the existing project architecture and conventions.
+- Make the smallest change that completely solves the requested problem.
+- Do not modify unrelated files.
+
+## Decision making
+
+- Do not introduce a dependency if the project already has a suitable solution.
+- Do not create abstractions for a single use case.
+- Do not refactor code unless it is required for the requested change.
+- Prefer fixing the root cause over adding patches.
+- Preserve existing behavior unless the task explicitly requires changing it.
+
+## Quality
+
+- Never sacrifice security, authorization, validation, data integrity, accessibility, or error handling to reduce code.
+- Before finishing, verify the changed behavior with the smallest relevant test, build, type-check, lint, or migration validation.
+- Report what was changed and what was verified.

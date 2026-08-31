@@ -17,6 +17,7 @@
     "second-pc:fresh": "node scripts/second-pc-fresh.mjs",
     "second-pc:cleanup": "node scripts/second-pc-cleanup.mjs",
     "generate:docker-env": "node scripts/generate-docker-env.mjs",
+    "check:app-target": "node scripts/check-app-target.mjs",
     "db:reset": "npx supabase db reset",
     "verify:local-login": "node scripts/verify-local-supabase-login.mjs",
     "mirror:cloud-auth-to-local": "node scripts/mirror-cloud-auth-to-local.mjs",

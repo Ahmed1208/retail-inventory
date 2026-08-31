@@ -21,6 +21,7 @@ const root = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'))
 const envPath = join(root, '.env')
 const templatePath = join(root, '.env.docker.example')
 const productionLocalPath = join(root, '.env.production.local')
+const APP_TARGET_LINE = 'VITE_APP_TARGET=shop'
 
 const HOST_PORT_KEYS = [
   'KONG_HTTP_PORT',
@@ -223,12 +224,25 @@ function writeProductionLocal(dockerEnv, { force = false } = {}) {
   const localKong = kongUrl(kongPort)
 
   if (existsSync(productionLocalPath) && !force) {
-    const existing = parseEnv(readFileSync(productionLocalPath, 'utf8'))
+    const text = readFileSync(productionLocalPath, 'utf8')
+    const existing = parseEnv(text)
     const url = (existing.VITE_SUPABASE_URL || '').trim()
     if (url === localKong && (existing.VITE_SUPABASE_ANON_KEY || '').trim()) {
-      console.log(
-        '[generate:docker-env] .env.production.local already exists — leaving unchanged.',
-      )
+      if ((existing.VITE_APP_TARGET || '').trim() === 'shop') {
+        console.log(
+          '[generate:docker-env] .env.production.local already exists — leaving unchanged.',
+        )
+      } else {
+        // Installs created before VITE_APP_TARGET existed: append rather than
+        // rewrite, so hand-added keys (e.g. VITE_SYNC_CLOUD_*) survive.
+        writeFileSync(
+          productionLocalPath,
+          `${text.endsWith('\n') ? text : `${text}\n`}${APP_TARGET_LINE}\n`,
+        )
+        console.log(
+          '[generate:docker-env] Added VITE_APP_TARGET=shop to .env.production.local.',
+        )
+      }
       return
     }
     // URL drifted from Kong port (or empty) — refresh SPA env.
@@ -239,6 +253,9 @@ function writeProductionLocal(dockerEnv, { force = false } = {}) {
 # Do not copy this file between project folders — each stack has its own ports/keys.
 VITE_SUPABASE_URL=${localKong}
 VITE_SUPABASE_ANON_KEY=${anon}
+# Marks this as a shop build: "/" goes straight to sign-in instead of the
+# public landing page. The hosted (Vercel) build leaves this unset.
+${APP_TARGET_LINE}
 `
   const existed = existsSync(productionLocalPath)
   writeFileSync(productionLocalPath, body)

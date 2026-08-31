@@ -49,10 +49,20 @@ import { NotFound } from '@/pages/NotFound'
 import { Login } from '@/pages/Login'
 import { HomePage } from '@/pages/HomePage'
 
+/**
+ * Shop builds (`.env.production.local` from `npm run generate:docker-env`) serve
+ * the app to one shop, so the public landing page has nothing to offer them.
+ * The hosted marketing build leaves VITE_APP_TARGET unset and keeps it.
+ */
+const isShopBuild = import.meta.env.VITE_APP_TARGET === 'shop'
+
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route
+        path="/"
+        element={isShopBuild ? <Navigate to="/app" replace /> : <HomePage />}
+      />
       <Route path="/login" element={<Login />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>

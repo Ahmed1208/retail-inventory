@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Check, Copy } from 'lucide-react'
@@ -6,6 +6,7 @@ import { Check, Copy } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { useLanguage } from '@/hooks/useLanguage'
 import { buttonVariants } from '@/components/ui/button'
+import { CloudRequestForm } from '@/components/home/CloudRequestForm'
 import { cn } from '@/lib/utils'
 
 const DOWNLOAD_ZIP_URL =
@@ -32,22 +33,29 @@ const OS_COPY: Record<
   ShopOs,
   {
     step1: 'setupStep1BodyWindows' | 'setupStep1BodyMac' | 'setupStep1BodyLinux'
+    afterStep1:
+      | 'setupAfterStep1BodyWindows'
+      | 'setupAfterStep1BodyMac'
+      | 'setupAfterStep1BodyLinux'
     start: 'cmdStartWindows' | 'cmdStartMac' | 'cmdStartLinux'
     update: 'cmdUpdateWindows' | 'cmdUpdateMac' | 'cmdUpdateLinux'
   }
 > = {
   windows: {
     step1: 'setupStep1BodyWindows',
+    afterStep1: 'setupAfterStep1BodyWindows',
     start: 'cmdStartWindows',
     update: 'cmdUpdateWindows',
   },
   mac: {
     step1: 'setupStep1BodyMac',
+    afterStep1: 'setupAfterStep1BodyMac',
     start: 'cmdStartMac',
     update: 'cmdUpdateMac',
   },
   linux: {
     step1: 'setupStep1BodyLinux',
+    afterStep1: 'setupAfterStep1BodyLinux',
     start: 'cmdStartLinux',
     update: 'cmdUpdateLinux',
   },
@@ -105,6 +113,59 @@ function CommandBlock({
             </>
           )}
         </button>
+      </div>
+    </div>
+  )
+}
+
+function PlanCard({
+  badge,
+  title,
+  body,
+  points,
+  featured,
+  children,
+}: {
+  badge: string
+  title: string
+  body: string
+  points: string[]
+  featured?: boolean
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col rounded-2xl border p-6 sm:p-8',
+        featured
+          ? 'border-teal-400/40 bg-teal-500/[0.07]'
+          : 'border-white/10 bg-white/[0.03]',
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex w-fit rounded-full px-3 py-1 text-xs font-medium uppercase tracking-wide',
+          featured
+            ? 'bg-teal-500 text-[#04201c]'
+            : 'bg-white/10 text-teal-100/80',
+        )}
+      >
+        {badge}
+      </span>
+      <h3 className="mt-4 text-xl font-semibold tracking-tight text-white sm:text-2xl">
+        {title}
+      </h3>
+      <p className="mt-3 text-base leading-relaxed text-teal-100/75">{body}</p>
+      <ul className="mt-6 space-y-3">
+        {points.map((point) => (
+          <li key={point} className="flex gap-3 text-sm text-teal-100/70">
+            <Check className="mt-0.5 size-4 shrink-0 text-teal-400" aria-hidden />
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-auto flex flex-col gap-3 pt-8 sm:flex-row sm:items-center">
+        {children}
       </div>
     </div>
   )
@@ -217,6 +278,9 @@ export function HomePage() {
             <a href={DOWNLOAD_ZIP_URL} className={downloadClassLg} download>
               {t('home.downloadNow')}
             </a>
+            <a href="#services" className={downloadClassLg}>
+              {t('home.seePlans')}
+            </a>
           </div>
         </div>
       </section>
@@ -242,9 +306,73 @@ export function HomePage() {
           </div>
         </section>
 
-        <section className="home-section border-t border-white/10">
-          <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
+        <section
+          id="services"
+          className="home-section scroll-mt-8 border-t border-white/10"
+        >
+          <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8 sm:py-20">
             <h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              {t('home.servicesTitle')}
+            </h2>
+            <p className="mt-4 max-w-3xl text-base leading-relaxed text-teal-100/75 sm:text-lg">
+              {t('home.servicesIntro')}
+            </p>
+
+            <div className="mt-10 grid gap-6 md:grid-cols-2">
+              <PlanCard
+                badge={t('home.freePlanBadge')}
+                title={t('home.freePlanTitle')}
+                body={t('home.freePlanBody')}
+                points={[
+                  t('home.freePoint1'),
+                  t('home.freePoint2'),
+                  t('home.freePoint3'),
+                  t('home.freePoint4'),
+                ]}
+              >
+                <a href={DOWNLOAD_ZIP_URL} className={downloadClass} download>
+                  {t('home.downloadNow')}
+                </a>
+                <a
+                  href="#setup"
+                  className={cn(
+                    buttonVariants({ variant: 'outline' }),
+                    'border-white/20 bg-transparent text-teal-50 hover:bg-white/10 hover:text-white',
+                  )}
+                >
+                  {t('home.freePlanCta')}
+                </a>
+              </PlanCard>
+
+              <PlanCard
+                featured
+                badge={t('home.cloudPlanBadge')}
+                title={t('home.cloudPlanTitle')}
+                body={t('home.cloudPlanBody')}
+                points={[
+                  t('home.cloudPoint1'),
+                  t('home.cloudPoint2'),
+                  t('home.cloudPoint3'),
+                  t('home.cloudPoint4'),
+                ]}
+              >
+                <a href="#cloud-request" className={downloadClass}>
+                  {t('home.cloudPlanCta')}
+                </a>
+              </PlanCard>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="setup"
+          className="home-section scroll-mt-8 border-t border-white/10 bg-[#081215]"
+        >
+          <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-24">
+            <span className="inline-flex w-fit rounded-full bg-white/10 px-3 py-1 text-xs font-medium uppercase tracking-wide text-teal-100/80">
+              {t('home.freePlanBadge')}
+            </span>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               {t('home.setupTitle')}
             </h2>
             <p className="mt-4 text-base leading-relaxed text-teal-100/75 sm:text-lg">
@@ -439,18 +567,72 @@ export function HomePage() {
             </ol>
 
             <div className="mt-16 border-t border-white/10 pt-10">
-              <h3 className="text-lg font-semibold text-teal-50">
+              <h3 className="text-xl font-semibold tracking-tight text-teal-50">
                 {t('home.setupAfterTitle')}
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                {t('home.setupAfterBody')}
-              </p>
-              <CommandBlock
-                command={t(`home.${osCopy.update}`)}
-                copyLabel={t('home.copy')}
-                copiedLabel={t('home.copied')}
-              />
+              <ol className="mt-8 space-y-12">
+                <li>
+                  <h4 className="text-lg font-semibold text-teal-50">
+                    {t('home.setupAfterStep1Title')}
+                  </h4>
+                  <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                    {t(`home.${osCopy.afterStep1}`)}
+                  </p>
+                </li>
+                <li>
+                  <h4 className="text-lg font-semibold text-teal-50">
+                    {t('home.setupAfterStep2Title')}
+                  </h4>
+                  <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                    {t('home.setupAfterStep2Body')}
+                  </p>
+                </li>
+                <li>
+                  <h4 className="text-lg font-semibold text-teal-50">
+                    {t('home.setupAfterStep3Title')}
+                  </h4>
+                  <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                    {t('home.setupAfterStep3Body')}
+                  </p>
+                  <CommandBlock
+                    command={t(`home.${osCopy.start}`)}
+                    copyLabel={t('home.copy')}
+                    copiedLabel={t('home.copied')}
+                  />
+                </li>
+                <li>
+                  <h4 className="text-lg font-semibold text-teal-50">
+                    {t('home.setupAfterStep4Title')}
+                  </h4>
+                  <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                    {t('home.setupAfterStep4Body')}
+                  </p>
+                  <CommandBlock
+                    command={t(`home.${osCopy.update}`)}
+                    copyLabel={t('home.copy')}
+                    copiedLabel={t('home.copied')}
+                  />
+                </li>
+              </ol>
             </div>
+          </div>
+        </section>
+
+        <section
+          id="cloud-request"
+          className="home-section scroll-mt-8 border-t border-white/10"
+        >
+          <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8 sm:py-20">
+            <span className="inline-flex w-fit rounded-full bg-teal-500 px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#04201c]">
+              {t('home.cloudPlanBadge')}
+            </span>
+            <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+              {t('home.requestTitle')}
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-teal-100/75 sm:text-lg">
+              {t('home.requestIntro')}
+            </p>
+            <CloudRequestForm />
           </div>
         </section>
       </main>
