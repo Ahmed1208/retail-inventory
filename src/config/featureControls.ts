@@ -83,6 +83,16 @@ export const FEATURE_CONTROL_IDS = [
   'orders.editNote',
   'orders.importCsv',
   'orders.exportCsv',
+  // Orders / Returns
+  'orders.returnsHubList',
+  'orders.returnsHubNew',
+  'orders.returnCreate',
+  'orders.returnConfirm',
+  'orders.returnCancel',
+  'orders.returnPrint',
+  'orders.returnEditNote',
+  'orders.returnImportCsv',
+  'orders.returnExportCsv',
   // Reports
   'reports.exportCsv',
   // Admin hub
@@ -674,6 +684,65 @@ export const FEATURE_CONTROL_REGISTRY: FeatureAreaDef[] = [
             defaultEnabled: true,
             titleKey: 'control.orders.exportCsv.title',
             descriptionKey: 'control.orders.exportCsv.desc',
+          },
+        ],
+      },
+      {
+        titleKey: 'control.orders.groupReturns',
+        items: [
+          {
+            id: 'orders.returnsHubList',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnsHubList.title',
+            descriptionKey: 'control.orders.returnsHubList.desc',
+          },
+          {
+            id: 'orders.returnsHubNew',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnsHubNew.title',
+            descriptionKey: 'control.orders.returnsHubNew.desc',
+          },
+          {
+            id: 'orders.returnCreate',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnCreate.title',
+            descriptionKey: 'control.orders.returnCreate.desc',
+          },
+          {
+            id: 'orders.returnConfirm',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnConfirm.title',
+            descriptionKey: 'control.orders.returnConfirm.desc',
+          },
+          {
+            id: 'orders.returnCancel',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnCancel.title',
+            descriptionKey: 'control.orders.returnCancel.desc',
+          },
+          {
+            id: 'orders.returnPrint',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnPrint.title',
+            descriptionKey: 'control.orders.returnPrint.desc',
+          },
+          {
+            id: 'orders.returnEditNote',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnEditNote.title',
+            descriptionKey: 'control.orders.returnEditNote.desc',
+          },
+          {
+            id: 'orders.returnImportCsv',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnImportCsv.title',
+            descriptionKey: 'control.orders.returnImportCsv.desc',
+          },
+          {
+            id: 'orders.returnExportCsv',
+            defaultEnabled: true,
+            titleKey: 'control.orders.returnExportCsv.title',
+            descriptionKey: 'control.orders.returnExportCsv.desc',
           },
         ],
       },

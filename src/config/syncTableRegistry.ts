@@ -72,6 +72,8 @@ export const SYNC_TABLES: SyncTableDef[] = [
   },
   { name: 'orders', primaryKey: 'id', timestampColumn: 'updated_at', preferNewer: true },
   { name: 'order_items', primaryKey: 'id', timestampColumn: 'created_at', preferNewer: true },
+  { name: 'returns', primaryKey: 'id', timestampColumn: 'updated_at', preferNewer: true },
+  { name: 'return_items', primaryKey: 'id', timestampColumn: 'created_at', preferNewer: true },
   {
     name: 'payment_installments',
     primaryKey: 'id',

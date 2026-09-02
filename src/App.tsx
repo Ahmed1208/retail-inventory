@@ -14,6 +14,9 @@ import { Orders } from '@/pages/Orders'
 import { OrdersHome } from '@/pages/OrdersHome'
 import { NewOrder } from '@/pages/NewOrder'
 import { OrderDetail } from '@/pages/OrderDetail'
+import { Returns } from '@/pages/Returns'
+import { NewReturn } from '@/pages/NewReturn'
+import { ReturnDetail } from '@/pages/ReturnDetail'
 import { People } from '@/pages/People'
 import { PersonDetail } from '@/pages/PersonDetail'
 import { Categories } from '@/pages/Categories'
@@ -81,6 +84,9 @@ function App() {
           />
           <Route path="/orders/list" element={<Orders />} />
           <Route path="/orders/new" element={<NewOrder />} />
+          <Route path="/orders/returns/new" element={<NewReturn />} />
+          <Route path="/orders/returns/:id" element={<ReturnDetail />} />
+          <Route path="/orders/returns" element={<Returns />} />
           <Route path="/orders/:id" element={<OrderDetail />} />
           <Route path="/orders" element={<OrdersHome />} />
           <Route path="/people/:id" element={<PersonDetail />} />

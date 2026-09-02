@@ -241,6 +241,64 @@ export interface OrderWithItemsAndPayments extends OrderWithItems {
   payment_installments: PaymentInstallment[]
 }
 
+// ============ Sales Return types ============
+
+/** Mirror of an order: stock comes back in and money goes out. No `completed` state — a return settles at confirm. */
+export type ReturnStatusFlow = 'draft' | 'confirmed' | 'cancelled'
+
+/** Where the refunded money goes when a return is confirmed. */
+export type ReturnSettlement = 'refund_to_register' | 'credit_to_account'
+
+export interface SalesReturn {
+  id: string
+  return_number: number
+  /** Every return is raised against an order; its lines cap what can be returned. */
+  source_order_id: string
+  person_id: string | null
+  warehouse_id: number
+  status_flow: ReturnStatusFlow
+  /** Chosen at confirm; null while still a draft. */
+  settlement: ReturnSettlement | null
+  /** Tender the refund left the register as; only set for `refund_to_register`. */
+  refund_method: PaymentMethod | null
+  total_amount: number
+  note: string | null
+  /** True when imported as historical snapshot: analytics only, no stock/register effects. */
+  is_historical_snapshot: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ReturnItem {
+  id: string
+  return_id: string
+  source_order_item_id: string
+  product_id: string
+  quantity: number
+  unit_price: number
+  total_price: number
+  created_at: string
+}
+
+export interface ReturnItemWithProduct extends ReturnItem {
+  product: Product
+}
+
+export interface ReturnWithItems extends SalesReturn {
+  items: ReturnItemWithProduct[]
+}
+
+/** One source order line plus how much of it is still returnable. */
+export interface ReturnableLine {
+  source_order_item_id: string
+  product_id: string
+  product: Product
+  unit_price: number
+  sold_quantity: number
+  already_returned: number
+  returnable_quantity: number
+}
+
 // ============ Purchase Order types ============
 
 export type PurchaseOrderStatus = 'draft' | 'received' | 'cancelled'

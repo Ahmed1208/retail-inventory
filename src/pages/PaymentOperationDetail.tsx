@@ -170,7 +170,9 @@ export function PaymentOperationDetail() {
     op.walletLines.reduce((s, l) => s + Math.abs(l.amount), 0)
   )
   const relatedHref = ledgerPaymentRelatedDocumentHref(op)
-  const relatedIsPo = op.type === 'payment_out' && relatedHref
+  const relatedIsReturn = /^R-/.test(op.reference_number ?? '')
+  const relatedIsPo =
+    op.type === 'payment_out' && relatedHref && !relatedIsReturn
   const noteLocked = op.reversed || !canEditNote
   const isRegisterOp =
     op.type === 'register_deposit' || op.type === 'register_withdraw'
@@ -304,9 +306,11 @@ export function PaymentOperationDetail() {
               to={relatedHref}
               className="mt-2 inline-block font-medium text-primary underline-offset-4 hover:underline"
             >
-              {relatedIsPo
-                ? t('payments.relatedPurchaseOrder')
-                : t('payments.relatedSalesOrder')}
+              {relatedIsReturn
+                ? t('payments.relatedSalesReturn')
+                : relatedIsPo
+                  ? t('payments.relatedPurchaseOrder')
+                  : t('payments.relatedSalesOrder')}
             </Link>
           </div>
         )}

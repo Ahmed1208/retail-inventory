@@ -2242,6 +2242,40 @@ export async function voidWalkInOrderCancelLedgerInPlace(
   await applyReversalAdjustmentsMarkAndBalance(txs)
 }
 
+/**
+ * Return cancel: void the `order` credit line and any `payment_out` refund rows booked for the
+ * return in place (same pattern as order cancel). Handles both customer and walk-in returns.
+ */
+export async function voidReturnCancelLedgerInPlace(
+  returnId: string,
+  returnNumber: number,
+  personId: string | null
+): Promise<void> {
+  const ref = `R-${returnNumber}`
+  const routes = await listActiveLedgerPaymentOperationRouteIdsForDocument(
+    returnId,
+    ref,
+    'payment_out',
+    personId
+  )
+  await voidLedgerPaymentOperationsForDocumentCancel(routes)
+
+  let q = supabase
+    .from(BALANCE_TX)
+    .select('*')
+    .eq('reference_id', returnId)
+    .eq('reference_number', ref)
+    .eq('type', 'order')
+    .is('reversed_at', null)
+  q = personId ? q.eq('person_id', personId) : q.is('person_id', null)
+  const { data, error } = await q
+  if (error) throw error
+  const rows = data ?? []
+  if (rows.length === 0) return
+  const txs = rows.map((r) => mapTxRow(r as Record<string, unknown>))
+  await applyReversalAdjustmentsMarkAndBalance(txs)
+}
+
 /** Earliest active ledger row time for a document line (confirm-time), for retained-payment copies. */
 export async function getLedgerDocumentLineCreatedAt(
   referenceId: string,

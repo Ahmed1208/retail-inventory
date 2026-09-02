@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { List, Plus } from 'lucide-react'
+import { List, Plus, RotateCcw, Undo2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -10,6 +10,8 @@ export function OrdersHome() {
   const { t } = useTranslation()
   const hubList = useFeatureEnabled('orders.hubList')
   const hubNew = useFeatureEnabled('orders.hubNew')
+  const returnsHubList = useFeatureEnabled('orders.returnsHubList')
+  const returnsHubNew = useFeatureEnabled('orders.returnsHubNew')
 
   const cards = useMemo(
     () =>
@@ -30,13 +32,29 @@ export function OrdersHome() {
               subtitleKey: 'orders.newOrderSubtitle' as const,
             }
           : null,
+        returnsHubList
+          ? {
+              to: '/orders/returns' as const,
+              icon: RotateCcw,
+              titleKey: 'returns.allReturns' as const,
+              subtitleKey: 'returns.allReturnsSubtitle' as const,
+            }
+          : null,
+        returnsHubNew
+          ? {
+              to: '/orders/returns/new' as const,
+              icon: Undo2,
+              titleKey: 'returns.newReturn' as const,
+              subtitleKey: 'returns.newReturnSubtitle' as const,
+            }
+          : null,
       ].filter(Boolean) as {
-        to: '/orders/list' | '/orders/new'
+        to: string
         icon: typeof List
         titleKey: string
         subtitleKey: string
       }[],
-    [hubList, hubNew]
+    [hubList, hubNew, returnsHubList, returnsHubNew]
   )
 
   useEffect(() => {
