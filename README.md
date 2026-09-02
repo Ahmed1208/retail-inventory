@@ -71,6 +71,8 @@ There is **one** environment — the dev stack — with **two modes**: `developm
 | **`.env.local`** | The **only** SPA environment — `VITE_SUPABASE_*` for this folder's Kong, plus CLI secrets. Kept in step with `.env` by the generator | Loaded in **every** Vite mode, so `npm run dev` and `npm run build` share one backend |
 | [`.env.docker.example`](.env.docker.example) | Committed template the generator fills in to produce `.env` / `.env.docker.shop` | `npm run generate:docker-env` |
 
+**Deleting `.env` does not start you over.** Its `POSTGRES_PASSWORD` built the roles inside `volumes/db/data`, and a regenerated file would not match, so the generator refuses rather than leave you with a database nothing can connect to. Restore the file from a backup, or wipe both together with **`npm run fresh`**.
+
 **Shop mode generates its own environment.** `npm run shop:up` writes `.env.docker.shop` (a second Compose stack with its own ports and its own `volumes-shop/` database) and `.env.shop.local` (the SPA env `npm run build:shop` reads). Neither is hand-maintained; delete them and the next `shop:up` recreates them. A standalone shop PC gets `.env` + `.env.production.local` from `second-pc:setup` instead — see [`docs/SECOND_PC.md`](./docs/SECOND_PC.md).
 
 ### Variables by file
@@ -233,10 +235,12 @@ Both read this folder's stack. Preview with `npm run preview`.
 | `npm run dev` | **The one command.** Creates the env if missing, starts the stack, migrates and seeds a new database, then starts Vite |
 | `npm run dev:local` | Same as `dev` |
 | `npm run shop:up` | Same, for the shop-mode stack (`--shop`) |
+| `npm run fresh` | **Destructive.** Deletes this stack's containers, database and env files, then rebuilds it from nothing. Asks first; `-- --yes` skips the prompt |
+| `npm run shop:fresh` | Same, for the shop-mode stack |
 | `npm run generate:docker-env` | Recreate missing env files, or relocate the stack to free ports |
 | `npm run db:push:docker-compose` | Apply pending migrations (needed after pulling new ones) |
 | `npm run functions:sync:docker` | Copy `supabase/functions/` into `volumes/functions/` |
-| `npm run check:app-target` | Self-test for the env generator (13 cases) |
+| `npm run check:app-target` | Self-test for the env generator (14 cases) |
 | `npm run db:reset` | `npx supabase db reset` — **CLI stack only**; this checkout does not use it |
 | Admin **Data sync** | `/admin/sync` — **disabled**; no hosted credentials in this checkout |
 | `npm run build` / `build:shop` | TypeScript check + production build |

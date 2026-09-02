@@ -13,6 +13,8 @@
     "docker:shop": "docker compose --env-file .env.docker.shop up -d",
     "docker:shop:down": "docker compose --env-file .env.docker.shop down",
     "shop:up": "node scripts/stack-up.mjs --shop",
+    "fresh": "node scripts/stack-up.mjs --fresh",
+    "shop:fresh": "node scripts/stack-up.mjs --shop --fresh",
     "db:push": "npx supabase db push --yes",
     "db:push:local": "node scripts/db-push-from-env.mjs",
     "db:push:docker-compose": "node scripts/db-push-docker-compose.mjs",

@@ -26,7 +26,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isDevCheckout } from './lib/secondPcDocker.mjs'
+import { hasLocalDbData, isDevCheckout } from './lib/secondPcDocker.mjs'
 
 const root = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'))
 const templatePath = join(root, '.env.docker.example')
@@ -437,6 +437,21 @@ async function ensureDockerEnv() {
 
   if (!existsSync(templatePath)) {
     console.error(`Missing ${templatePath}`)
+    process.exit(1)
+  }
+
+  // Minting fresh secrets next to a database that already exists locks it away:
+  // its roles were created from the old POSTGRES_PASSWORD, which is gone with
+  // the env file, and Postgres never re-reads it from PGDATA.
+  const dataDir = join(root, shopEnv ? 'volumes-shop' : 'volumes', 'db', 'data')
+  if (hasLocalDbData(root, dataDir)) {
+    console.error(
+      `\n${envName} is missing, but this stack's database directory still holds data:` +
+        `\n  ${dataDir}` +
+        `\n\nNew secrets would not match it, so nothing could connect. Either restore` +
+        `\n${envName} from a backup, or delete the database and start over with:` +
+        `\n  npm run ${shopEnv ? 'shop:fresh' : 'fresh'}\n`,
+    )
     process.exit(1)
   }
 

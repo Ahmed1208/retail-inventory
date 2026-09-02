@@ -4,6 +4,7 @@
  *
  *   node scripts/stack-up.mjs           # development mode (`npm run dev`)
  *   node scripts/stack-up.mjs --shop    # shop mode        (`npm run shop:up`)
+ *   node scripts/stack-up.mjs --fresh   # delete this stack first (`npm run fresh`)
  *
  * Both modes are the same flow against a different env file, so a fresh clone on
  * any machine becomes a working app with one command and nothing to fill in by
@@ -14,15 +15,19 @@
  * only when the database has no schema yet, so a normal start stays fast.
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { parseEnv } from './lib/secondPcDocker.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 process.chdir(root)
 
-const shop = process.argv.slice(2).includes('--shop')
+const argv = process.argv.slice(2)
+const shop = argv.includes('--shop')
+const fresh = argv.includes('--fresh')
+const assumeYes = argv.includes('--yes') || argv.includes('-y')
 const label = shop ? 'shop:up' : 'dev:up'
 const envFile = shop ? '.env.docker.shop' : '.env'
 /** Every `docker compose` call must name the stack's env file, or it reads `.env`. */
@@ -46,6 +51,42 @@ if (capture('docker', ['info']).status !== 0) {
     `\n[${label}] Docker is not running. Start Docker Desktop, then run this again.\n`,
   )
   process.exit(1)
+}
+
+if (fresh) {
+  const doomed = shop
+    ? ['.env.docker.shop', '.env.shop.local', 'volumes-shop']
+    : ['.env', '.env.local', 'volumes/db/data', 'volumes/storage']
+  console.log(
+    `\n[${label}] --fresh removes this stack's containers, database and env files:`,
+  )
+  for (const p of doomed) {
+    console.log(`  - ${p}${existsSync(join(root, p)) ? '' : '  (already gone)'}`)
+  }
+
+  if (!assumeYes) {
+    if (!process.stdin.isTTY) {
+      console.error(
+        `\n[${label}] Nothing to prompt on, so refusing to delete. Re-run with --yes.\n`,
+      )
+      process.exit(1)
+    }
+    const rl = createInterface({ input: process.stdin, output: process.stdout })
+    const answer = await new Promise((res) => rl.question('\nType "wipe" to confirm: ', res))
+    rl.close()
+    if (answer.trim().toLowerCase() !== 'wipe') {
+      console.log(`\n[${label}] Cancelled — nothing was deleted.\n`)
+      process.exit(1)
+    }
+  }
+
+  // Compose reads the project name from the env file, so the teardown has to
+  // happen while that file still exists or it would target a different stack.
+  if (existsSync(join(root, envFile))) {
+    tryRun('docker', [...compose, 'down', '-v', '--remove-orphans'])
+  }
+  for (const p of doomed) rmSync(join(root, p), { recursive: true, force: true })
+  console.log(`\n[${label}] Wiped. Rebuilding from scratch…\n`)
 }
 
 // `--ensure` creates the env files when missing and otherwise leaves the ports

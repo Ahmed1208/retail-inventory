@@ -57,9 +57,11 @@ export function canonicalPath(p) {
   }
 }
 
-/** True when a folder holds a Postgres data directory with something in it. */
-export function hasLocalDbData(dir) {
-  const dataDir = join(dir, 'volumes', 'db', 'data')
+/**
+ * True when a folder holds a Postgres data directory with something in it.
+ * `dataDir` overrides the default for stacks that mount PGDATA elsewhere.
+ */
+export function hasLocalDbData(dir, dataDir = join(dir, 'volumes', 'db', 'data')) {
   try {
     return readdirSync(dataDir).length > 0
   } catch {

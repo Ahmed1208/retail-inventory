@@ -271,6 +271,25 @@ assert.notEqual(
 )
 await new Promise((res) => blocker.close(res))
 
+// 14. Losing the env file next to an existing database must not mint new
+//     secrets. The roles inside PGDATA were built from the old
+//     POSTGRES_PASSWORD, so a regenerated file could never connect to them.
+mkdirSync(join(sandbox, 'volumes', 'db', 'data'), { recursive: true })
+writeFileSync(join(sandbox, 'volumes', 'db', 'data', 'PG_VERSION'), '15\n')
+rmSync(join(sandbox, '.env'))
+const stranded = spawnSync(
+  process.execPath,
+  [join(sandbox, 'scripts', 'generate-docker-env.mjs'), '--ensure'],
+  { encoding: 'utf8' },
+)
+assert.notEqual(stranded.status, 0, 'a populated PGDATA must not be re-keyed')
+assert.match(stranded.stderr, /npm run fresh/, 'the error must name the way out')
+assert.equal(
+  existsSync(join(sandbox, '.env')),
+  false,
+  'refusing must not leave a half-written env behind',
+)
+
 // 12. `--shop-env` is only for checkouts; a real shop install already is one.
 rmSync(join(sandbox, '.git'), { recursive: true, force: true })
 const refused = spawnSync(
@@ -281,4 +300,4 @@ const refused = spawnSync(
 assert.notEqual(refused.status, 0, '--shop-env must refuse outside a checkout')
 
 rmSync(sandbox, { recursive: true, force: true })
-console.log('generate-docker-env VITE_APP_TARGET check OK (13 cases)')
+console.log('generate-docker-env VITE_APP_TARGET check OK (14 cases)')
