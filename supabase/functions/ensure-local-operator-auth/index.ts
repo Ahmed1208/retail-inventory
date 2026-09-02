@@ -221,8 +221,7 @@ Deno.serve(async (req) => {
         return json(409, {
           error:
             `Email ${email} is held by auth user ${conflictId} (wanted ${userId}); ` +
-            `could not delete conflict: ${delErr.message}. ` +
-            'On Windows PowerShell: $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local',
+            `could not delete conflict: ${delErr.message}.`,
         })
       }
       const retry = await adminClient.auth.admin.createUser(createPayload)
@@ -240,8 +239,7 @@ Deno.serve(async (req) => {
     }
     return json(409, {
       error:
-        `${createErr.message} (email=${email}, requested_id=${userId}). ` +
-        'On Windows PowerShell: $env:I_CONFIRM_WIPE_LOCAL_AUTH="YES"; npm run mirror:cloud-auth-to-local',
+        `${createErr.message} (email=${email}, requested_id=${userId}).`,
     })
   }
 

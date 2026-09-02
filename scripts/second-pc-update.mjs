@@ -23,6 +23,7 @@ import { dirname, join, resolve } from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { Readable } from 'node:stream'
+import { isDevCheckout } from './lib/secondPcDocker.mjs'
 
 const root = resolve(join(dirname(fileURLToPath(import.meta.url)), '..'))
 const ZIP_URL =
@@ -35,10 +36,9 @@ const PRESERVE_TOP = new Set([
   '.env',
   '.env.local',
   '.env.production.local',
-  '.env.development.local',
-  '.env.cloud.local',
-  '.env.mirror-auth.local',
   '.stockpilot-ready',
+  '.stockpilot-superseded',
+  '.stockpilot-migration',
   '.stockpilot-update-tmp',
   '.git',
 ])
@@ -171,6 +171,23 @@ This keeps your database (volumes/) and settings (.env files).
 
 if (!existsSync(join(root, 'package.json'))) {
   console.error('Run this from the StockPilot project folder (package.json missing).')
+  process.exit(1)
+}
+
+// Checked before any git command: on a developer checkout this would pull
+// `develop` over whatever branch is in progress.
+if (isDevCheckout(root)) {
+  console.error(`
+This folder is a developer checkout of the repo, not a shop install, so the
+shop updater will not run here — it would pull develop over your branch.
+
+Update the repo the normal way:
+  git pull
+
+If this really is a shop PC installed with \`git clone\`, set it up as a shop
+once, then updates work from then on:
+  npm run second-pc:setup -- --shop
+`)
   process.exit(1)
 }
 

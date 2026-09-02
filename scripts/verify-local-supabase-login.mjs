@@ -1,9 +1,9 @@
 /**
  * Checks that local GoTrue accepts the seeded operator (admin / devpass123).
- * Loads VITE_SUPABASE_* from `.env.development` and optional `.env.development.local`.
+ * Loads VITE_SUPABASE_* from `.env.local`, this checkout's single SPA environment.
  *
  * Usage: npm run verify:local-login
- * Requires: `npx supabase start` and (for the seeded user) `npm run db:reset` once.
+ * Requires: `npm run docker:dev` and (for the seeded user) `supabase/seed.sql` loaded once.
  */
 import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -37,7 +37,7 @@ function merge(a, b) {
 }
 
 const dev = loadDotEnv(join(root, '.env.development'))
-const local = loadDotEnv(join(root, '.env.development.local'))
+const local = loadDotEnv(join(root, '.env.local'))
 const env = merge(dev, local)
 
 const url = (env.VITE_SUPABASE_URL || '').trim().replace(/\/$/, '')
@@ -45,7 +45,7 @@ const anon = (env.VITE_SUPABASE_ANON_KEY || '').trim()
 
 if (!url || !anon) {
   console.error(
-    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.development (or .env.development.local).',
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env.local.',
   )
   process.exit(1)
 }
@@ -94,7 +94,7 @@ try {
 
   if (json?.access_token) {
     console.log('OK — local GoTrue accepted admin@members.stockpilot.local / devpass123.')
-    console.log('Use `npm run dev` (not dev:cloud) and username `admin` on the login screen.')
+    console.log('Use `npm run dev` and username `admin` on the login screen.')
     process.exit(0)
   }
 

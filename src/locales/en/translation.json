@@ -97,7 +97,7 @@
     "setupStep1BodyMac": "Install Docker Desktop and Node.js LTS (≥ 20). Start Docker Desktop and wait until it is running, then verify in a new Terminal:",
     "setupStep1BodyLinux": "Install Docker Engine and the Compose plugin (or Docker Desktop) and Node.js LTS (≥ 20). Add your user to the docker group if needed, then verify in a new terminal:",
     "setupStep2Title": "2. Download the program",
-    "setupStep2Body": "Use Download Now above (develop zip) or git clone. Unzip into its own folder (the directory with docker-compose.yml). Keep each download in its own folder if you run more than one. Do not copy .env from another PC.",
+    "setupStep2Body": "Use Download Now above (develop zip). Unzip into its own folder (the directory with docker-compose.yml). Keep each download in its own folder if you run more than one. Do not copy .env from another PC.",
     "setupStep3Title": "3. Start StockPilot",
     "setupStep3Body": "Use the Start file for your OS (or the npm command). It creates this folder’s environment, starts the local database, seeds admin, builds the app, and opens it. Cloud is not used.",
     "setupStep3LinuxHint": "If the file is not executable yet, run this once in the project folder, then start:",
@@ -107,17 +107,6 @@
     "setupStep4Title": "4. Open the app and sign in",
     "setupStep4Body": "Start StockPilot already serves the UI. Open the URL it prints (often http://localhost:8080). Sign in as username admin / password devpass123 — that admin unlocks Control, Admin, Notifications, and Data sync (members do not see those links). Unplug the internet: the app keeps working.",
     "setupStep4ServeHint": "If you ran only npm run second-pc:setup, serve with STOCKPILOT_UI_PORT from .env (often 8080). Stop only this stack with docker compose down from this folder.",
-    "cloudHeading": "Part B — Share between your own PCs (optional, self-managed)",
-    "cloudIntro": "Skip this for normal work. This is the do-it-yourself option where you bring your own hosted project — it is not the managed Cloud service above. Use it only to upload or import data so another standalone PC can share the same catalog, stock, and orders. This PC stays the local master.",
-    "cloudStep1Title": "1. Add hosted API keys",
-    "cloudStep1Body": "Copy .env.cloud.example → .env.cloud.local and set the hosted project URL and anon key.",
-    "cloudStep2Title": "2. Rebuild",
-    "cloudStep2Body": "Bake sync keys into the app, then serve again:",
-    "cloudStep3Title": "3. Mirror Auth from cloud",
-    "cloudStep3Body": "Copy .env.mirror-auth.example → .env.mirror-auth.local (local URL is http://127.0.0.1: plus this folder’s KONG_HTTP_PORT). Dry-run, then wipe and recreate local Auth:",
-    "cloudStep3Warning": "Mirroring deletes all local Auth users, then recreates them from hosted. Hosted passwords are not copied — everyone gets MIRROR_LOCAL_PASSWORD (default devpass123).",
-    "cloudStep4Title": "4. Upload or import",
-    "cloudStep4Body": "Sign in with a mirrored operator, open Admin → Data sync, connect to hosted cloud, and run sync once (upload from this PC or import onto another).",
     "setupAfterTitle": "After the first time",
     "setupAfterStep1Title": "1. Open Docker",
     "setupAfterStep1BodyWindows": "Open Docker Desktop and wait until it is running.",
@@ -129,6 +118,8 @@
     "setupAfterStep3Body": "Double-click (or run) Start StockPilot. Sign in and work as usual.",
     "setupAfterStep4Title": "4. When you want a newer version",
     "setupAfterStep4Body": "Run Update StockPilot in that same folder. Your data stays there.",
+    "setupAfterStep5Title": "5. Keep a backup",
+    "setupAfterStep5Body": "Your data lives only on this PC. Run this in the StockPilot folder before every update, and keep the file somewhere else — a USB drive or cloud storage. On Windows use cmd, not PowerShell.",
     "cmdDockerCheck": "docker --version\ndocker compose version\nnode --version\nnpm --version",
     "cmdStartWindows": "Start StockPilot.bat",
     "cmdStartMac": "./Start StockPilot.command",
@@ -139,13 +130,8 @@
     "cmdChmodLinux": "chmod +x \"./Start StockPilot.sh\" \"./Update StockPilot.sh\"\n\"./Start StockPilot.sh\"",
     "cmdSetup": "npm run second-pc:setup",
     "cmdFresh": "npm run second-pc:fresh",
-    "cmdBuild": "npm run build",
-    "cmdMirrorDryRun": "npm run mirror:cloud-auth-to-local -- --dry-run",
-    "cmdMirrorBash": "I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local",
-    "cmdMirrorPowerShell": "$env:I_CONFIRM_WIPE_LOCAL_AUTH=\"YES\"; npm run mirror:cloud-auth-to-local",
     "cmdServe": "npx serve -s dist -l 8080",
-    "labelBash": "bash / zsh / macOS / Linux",
-    "labelPowerShell": "Windows PowerShell",
+    "cmdBackup": "docker compose exec -T db pg_dump -U postgres --clean --if-exists -d postgres > stockpilot-backup.sql",
     "copy": "Copy",
     "copied": "Copied"
   },
@@ -277,14 +263,14 @@
   "adminSync": {
     "title": "Data sync",
     "subtitle": "Cloud is the master: push local rows to hosted Supabase (sales order and PO numbers are kept when that number is not already used on cloud), repair any remaining duplicate document numbers on the cloud, refresh product quantity totals, then pull the full cloud snapshot back to this device.",
-    "needLocalApp": "Data sync is available when the app uses local Supabase (e.g. http://127.0.0.1:54321). Run npm run dev with local URLs, not npm run dev:cloud only.",
+    "needLocalApp": "Data sync is available only when the app is pointed at a local Supabase instance.",
     "profilesNote": "When Auth is missing on the sync **target** (pull from host → local, or push from local → host), the app calls Edge Function `ensure-local-operator-auth` on that project (deploy it on local and hosted; admin-only). Mirrored users sign in with `username`@members.stockpilot.local and the temp password from `OPERATOR_MIRROR_TEMP_PASSWORD` on that function (default devpass123 locally; set the secret on hosted if needed). Passwords are not copied between environments.",
     "profilesSkippedToastTitle": "{{count}} hosted operator profiles not copied locally",
     "profilesSkippedToastDesc": "Local Supabase Auth has no row with those user ids, so profile rows cannot be created here. The rest of this sync succeeded. Operators who should sign in on local need matching Auth users (same ids as on the host—often via a dev seed or SQL on local only).",
     "rlsNote": "Uses your normal Supabase sessions only (no service role in the browser). The hosted user must be allowed by RLS to read and upsert the listed tables.",
     "envSection": "Hosted project (env)",
-    "envOk": "VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY are set (e.g. in .env.development).",
-    "envMissing": "Hosted project URL and anon key are not available for Data sync. Add VITE_SYNC_CLOUD_URL and VITE_SYNC_CLOUD_ANON_KEY to .env.development (or .env.development.local), or put your hosted VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.cloud.local (used for dev and for npm run build), then restart the dev server or rebuild. See .env.example and docs/SECOND_PC.md.",
+    "envOk": "Hosted project URL and anon key are set.",
+    "envMissing": "Cloud sync is disabled in this build. This installation runs against its local database only and has no hosted project configured.",
     "lastRun": "Last successful sync: {{at}}",
     "cloudSection": "Sign in to hosted Supabase",
     "cloudCredentialsHint": "Use the full email listed under Authentication → Users on your hosted project (e.g. admin@members.stockpilot.local if you created that user there). This is not the same as typing only the short username from the main login screen.",
@@ -416,7 +402,8 @@
     "mentionTitleRegister": "Register transaction",
     "mentionTitleInventoryTransfer": "Stock transfer",
     "mentionTitleStockAdjust": "Stock adjustment — {{name}}",
-    "mentionTitlePaymentOperation": "Payment operation note"
+    "mentionTitlePaymentOperation": "Payment operation note",
+    "mentionTitleReturnNote": "Mention in return R-{{number}} note"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -467,7 +454,9 @@
       "inventoryTransfersList": "The stock transfer list is turned off in Control settings.",
       "warehouses": "Warehouses are turned off in Control settings.",
       "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
-      "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here."
+      "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here.",
+      "newReturn": "Creating returns is turned off in Control.",
+      "returnsList": "The returns list is turned off in Control."
     },
     "area": {
       "sidebar": "Navigation",
@@ -815,6 +804,43 @@
       "exportCsv": {
         "title": "Export sales orders to CSV",
         "desc": "Shows Export CSV on the orders list (long format, one row per line)."
+      },
+      "groupReturns": "Returns",
+      "returnsHubList": {
+        "title": "Returns list",
+        "desc": "Show the \"All returns\" card and page under Orders."
+      },
+      "returnsHubNew": {
+        "title": "New return",
+        "desc": "Show the \"New return\" card and allow opening the return screen."
+      },
+      "returnCreate": {
+        "title": "Create returns",
+        "desc": "Allow building a return against an order."
+      },
+      "returnConfirm": {
+        "title": "Confirm returns",
+        "desc": "Allow editing a draft return and confirming it (stock back in, refund settled)."
+      },
+      "returnCancel": {
+        "title": "Cancel returns",
+        "desc": "Allow cancelling a return, which reverses its stock and refund."
+      },
+      "returnPrint": {
+        "title": "Print return receipt",
+        "desc": "Show the print button on a return."
+      },
+      "returnEditNote": {
+        "title": "Edit return note",
+        "desc": "Allow editing the note on a return."
+      },
+      "returnImportCsv": {
+        "title": "Import returns CSV",
+        "desc": "Allow importing historical returns from a CSV file."
+      },
+      "returnExportCsv": {
+        "title": "Export returns CSV",
+        "desc": "Allow exporting the returns list to CSV."
       }
     },
     "reports": {
@@ -1335,6 +1361,79 @@
         "inconsistent_headers_within_group": "Headers differ within group",
         "unknown_warehouse": "Unknown warehouse"
       }
+    }
+  },
+  "returns": {
+    "title": "Returns",
+    "subtitle": "Take stock back and refund or credit the customer.",
+    "allReturns": "All returns",
+    "allReturnsSubtitle": "Browse, filter and export sales returns",
+    "newReturn": "New return",
+    "newReturnSubtitle": "Return items against an existing order",
+    "returnDetailTitle": "Return R-{{number}}",
+    "backToReturns": "Back to returns",
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "searchPlaceholder": "Search by return number or customer",
+    "emptyReturns": "No returns yet",
+    "againstOrder": "Against order",
+    "viewSourceOrder": "View source order",
+    "restockTo": "Restock to",
+    "sourceOrderBrowser": "Choose the order being returned",
+    "searchSourceOrders": "Search by order number or customer",
+    "noReturnableOrders": "No confirmed or completed orders to return against",
+    "linesCount": "{{count}} line(s)",
+    "pickSourceOrder": "Choose order",
+    "changeSourceOrder": "Change order",
+    "pickSourceOrderHint": "Choose the order you are returning items from.",
+    "nothingLeftToReturn": "Every line on this order has already been returned",
+    "sold": "Sold",
+    "alreadyReturned": "Returned",
+    "returnable": "Returnable",
+    "returnQty": "Return qty",
+    "linesSelected": "{{count}} line(s) selected",
+    "refundAmount": "Refund amount",
+    "saveDraft": "Save draft",
+    "confirmReturn": "Confirm return",
+    "confirmTitle": "Confirm return",
+    "settlementLabel": "Settlement",
+    "refundToRegister": "Refund from register",
+    "refundToRegisterHint": "Cash leaves the drawer now and the customer keeps no credit.",
+    "creditToAccount": "Credit to account",
+    "creditToAccountHint": "Adds the refund to {{name}} as account credit; no cash leaves the drawer.",
+    "creditToAccountUnavailable": "Not available: the source order has no customer to credit.",
+    "refundMethod": "Refund method",
+    "note": "Note",
+    "printReceipt": "Print receipt",
+    "cancelReturn": "Cancel return",
+    "cancelConfirmTitle": "Cancel this return?",
+    "cancelConfirmMessage": "Return R-{{number}} will be marked cancelled.",
+    "cancelConfirmedHint": "The returned stock will be taken back out and the refund reversed.",
+    "toastDraftSaved": "Return draft saved",
+    "toastConfirmed": "Return confirmed",
+    "toastCancelled": "Return cancelled",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import returns from CSV",
+      "intro": "Each row is one returned line. Returns are imported as historical records: they do not move stock or post to the register.",
+      "chooseFile": "Choose a CSV file",
+      "emptyFile": "That file has no readable rows.",
+      "notMapped": "Not mapped",
+      "import": "Import",
+      "summary": "{{rows}} row(s), {{groups}} return(s), {{ready}} ready to import.",
+      "missingRequired": "Map these required fields first: {{fields}}",
+      "rowsWithIssues": "{{count}} row(s) have issues and will be skipped.",
+      "createdCount": "{{count}} return(s) imported.",
+      "failedCount": "{{count}} return(s) failed:",
+      "orderNotFound": "No order found with number {{number}}.",
+      "productNotInOrder": "Product {{code}} is not on order #{{number}} or is fully returned.",
+      "field_import_group_id": "Return group id",
+      "field_order_number": "Order number",
+      "field_product_code": "Product code",
+      "field_quantity": "Quantity",
+      "field_return_note": "Note",
+      "field_return_date": "Return date"
     }
   },
   "purchaseOrders": {
@@ -1942,7 +2041,8 @@
         "warehouse_missing": "Register warehouse required",
         "warehouse_not_found": "Warehouse not found"
       }
-    }
+    },
+    "relatedSalesReturn": "Related sales return"
   },
   "register": {
     "title": "Register",

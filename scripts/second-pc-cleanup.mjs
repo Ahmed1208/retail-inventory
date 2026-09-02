@@ -6,13 +6,16 @@
  *
  *   npm run second-pc:cleanup
  *   npm run second-pc:cleanup -- --wipe-db
- *   npm run second-pc:cleanup -- --all-stockpilot
+ *   npm run second-pc:cleanup -- --all-orphans        # downloads whose folder was deleted
  *   npm run second-pc:cleanup -- --purge-orphan-supabase
  */
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { cleanShopDocker } from './lib/secondPcDocker.mjs'
+import {
+  cleanShopDocker,
+  findStockpilotInstalls,
+} from './lib/secondPcDocker.mjs'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const args = new Set(process.argv.slice(2))
@@ -22,10 +25,16 @@ if (!existsSync(join(root, 'docker-compose.yml'))) {
   process.exit(1)
 }
 
+const orphanProjects = args.has('--all-orphans')
+  ? findStockpilotInstalls(root)
+      .filter((i) => i.kind === 'orphan')
+      .map((i) => i.project)
+  : []
+
 cleanShopDocker({
   root,
   wipeDb: args.has('--wipe-db'),
-  allStockpilot: args.has('--all-stockpilot'),
+  orphanProjects,
   purgeHashOrphans: true,
   purgeOrphanSupabase: args.has('--purge-orphan-supabase'),
 })

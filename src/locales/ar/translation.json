@@ -97,7 +97,7 @@
     "setupStep1BodyMac": "ثبّت Docker Desktop و Node.js LTS (≥ 20). شغّل Docker Desktop وانتظر حتى يصبح جاهزاً، ثم تحقق من Terminal جديد:",
     "setupStep1BodyLinux": "ثبّت Docker Engine وإضافة Compose (أو Docker Desktop) و Node.js LTS (≥ 20). أضف مستخدمك إلى مجموعة docker إن لزم، ثم تحقق من طرفية جديدة:",
     "setupStep2Title": "2. حمّل البرنامج",
-    "setupStep2Body": "استخدم «تحميل الآن» أعلاه (ملف develop المضغوط) أو git clone. فك الضغط في مجلد خاص (المجلد الذي يحتوي docker-compose.yml). احتفظ بكل تحميل في مجلد منفصل إذا شغّلت أكثر من نسخة. لا تنسخ .env من جهاز آخر.",
+    "setupStep2Body": "استخدم «تحميل الآن» أعلاه (ملف develop المضغوط). فك الضغط في مجلد خاص (المجلد الذي يحتوي docker-compose.yml). احتفظ بكل تحميل في مجلد منفصل إذا شغّلت أكثر من نسخة. لا تنسخ .env من جهاز آخر.",
     "setupStep3Title": "3. شغّل Start StockPilot",
     "setupStep3Body": "استخدم ملف Start لنظامك (أو أمر npm). ينشئ بيئة هذا المجلد، يشغّل قاعدة البيانات المحلية، يزرع المسؤول، يبني التطبيق، ويفتحه. السحابة غير مستخدمة.",
     "setupStep3LinuxHint": "إن لم يكن الملف قابلاً للتنفيذ بعد، نفّذ هذا مرة واحدة في مجلد المشروع ثم ابدأ:",
@@ -107,17 +107,6 @@
     "setupStep4Title": "4. افتح التطبيق وسجّل الدخول",
     "setupStep4Body": "Start StockPilot يقدّم الواجهة تلقائياً. افتح العنوان الذي يطبعه (غالباً http://localhost:8080). سجّل الدخول باسم المستخدم admin وكلمة المرور devpass123 — حساب المسؤول يفتح التحكم والإدارة والإشعارات ومزامنة البيانات (أعضاء آخرون لا يرون هذه الروابط). افصل الإنترنت: التطبيق يستمر في العمل.",
     "setupStep4ServeHint": "إذا نفّذت فقط npm run second-pc:setup، قدّم الواجهة بـ STOCKPILOT_UI_PORT من .env (غالباً 8080). أوقف هذا المكدس فقط بـ docker compose down من هذا المجلد.",
-    "cloudHeading": "الجزء ب — المشاركة بين أجهزتك (اختياري، بإدارتك)",
-    "cloudIntro": "تخطَّ هذا للعمل العادي. هذا هو الخيار الذي تنفّذه بنفسك باستخدام مشروع مستضاف خاص بك — وهو ليس خدمة السحابة المُدارة المذكورة أعلاه. استخدمه فقط لرفع أو استيراد البيانات حتى يتمكن جهاز مستقل آخر من مشاركة نفس الكتالوج والمخزون والطلبات. هذا الجهاز يبقى المصدر المحلي.",
-    "cloudStep1Title": "1. أضف مفاتيح واجهة الاستضافة",
-    "cloudStep1Body": "انسخ .env.cloud.example إلى .env.cloud.local واضبط عنوان المشروع المستضاف ومفتاح anon.",
-    "cloudStep2Title": "2. أعد البناء",
-    "cloudStep2Body": "ادمج مفاتيح المزامنة في التطبيق، ثم قدّمه من جديد:",
-    "cloudStep3Title": "3. طابق المصادقة من السحابة",
-    "cloudStep3Body": "انسخ .env.mirror-auth.example إلى .env.mirror-auth.local (العنوان المحلي هو http://127.0.0.1: مع KONG_HTTP_PORT لهذا المجلد). جرّب dry-run ثم امسح وأعد إنشاء Auth المحلي:",
-    "cloudStep3Warning": "المطابقة تحذف كل مستخدمي Auth المحليين ثم تعيد إنشاءهم من الاستضافة. كلمات مرور الاستضافة لا تُنسخ — الجميع يحصل على MIRROR_LOCAL_PASSWORD (الافتراضي devpass123).",
-    "cloudStep4Title": "4. ارفع أو استورد",
-    "cloudStep4Body": "سجّل الدخول بمشغّل مطابق، افتح الإدارة → مزامنة البيانات، اتصل بالسحابة المستضافة، وشغّل المزامنة مرة واحدة (رفع من هذا الجهاز أو استيراد إلى جهاز آخر).",
     "setupAfterTitle": "بعد المرة الأولى",
     "setupAfterStep1Title": "1. شغّل Docker",
     "setupAfterStep1BodyWindows": "افتح Docker Desktop وانتظر حتى يصبح جاهزاً.",
@@ -129,6 +118,8 @@
     "setupAfterStep3Body": "انقر نقراً مزدوجاً على Start StockPilot (أو شغّله). سجّل الدخول واعمل كالمعتاد.",
     "setupAfterStep4Title": "4. عندما تريد إصداراً أحدث",
     "setupAfterStep4Body": "شغّل Update StockPilot في نفس المجلد. بياناتك تبقى هناك.",
+    "setupAfterStep5Title": "5. احتفظ بنسخة احتياطية",
+    "setupAfterStep5Body": "بياناتك موجودة على هذا الجهاز فقط. شغّل هذا الأمر في مجلد StockPilot قبل كل تحديث، واحفظ الملف في مكان آخر مثل فلاشة USB أو تخزين سحابي. على ويندوز استخدم cmd وليس PowerShell.",
     "cmdDockerCheck": "docker --version\ndocker compose version\nnode --version\nnpm --version",
     "cmdStartWindows": "Start StockPilot.bat",
     "cmdStartMac": "./Start StockPilot.command",
@@ -139,13 +130,8 @@
     "cmdChmodLinux": "chmod +x \"./Start StockPilot.sh\" \"./Update StockPilot.sh\"\n\"./Start StockPilot.sh\"",
     "cmdSetup": "npm run second-pc:setup",
     "cmdFresh": "npm run second-pc:fresh",
-    "cmdBuild": "npm run build",
-    "cmdMirrorDryRun": "npm run mirror:cloud-auth-to-local -- --dry-run",
-    "cmdMirrorBash": "I_CONFIRM_WIPE_LOCAL_AUTH=YES npm run mirror:cloud-auth-to-local",
-    "cmdMirrorPowerShell": "$env:I_CONFIRM_WIPE_LOCAL_AUTH=\"YES\"; npm run mirror:cloud-auth-to-local",
     "cmdServe": "npx serve -s dist -l 8080",
-    "labelBash": "bash / zsh / macOS / Linux",
-    "labelPowerShell": "Windows PowerShell",
+    "cmdBackup": "docker compose exec -T db pg_dump -U postgres --clean --if-exists -d postgres > stockpilot-backup.sql",
     "copy": "نسخ",
     "copied": "تم النسخ"
   },
@@ -277,14 +263,14 @@
   "adminSync": {
     "title": "مزامنة البيانات",
     "subtitle": "السحابة هي المصدر الرسمي: ارفع السجلات المحلية إلى Supabase المستضاف (تُحفَظ أرقام طلبات المبيعات وأوامر الشراء إن لم يكن الرقم مستخدماً على السحابة)، أصلِح أي أرقام مستندات مكررة متبقية على السحابة، حدّث إجماليات كميات المنتجات، ثم اسحب لقطة السحابة كاملة إلى هذا الجهاز.",
-    "needLocalApp": "المزامنة متاحة عند استخدام Supabase محلياً (مثل http://127.0.0.1:54321). شغّل npm run dev بعناوين محلية، وليس npm run dev:cloud فقط.",
+    "needLocalApp": "المزامنة متاحة فقط عندما يشير التطبيق إلى Supabase محلي.",
     "profilesNote": "عند غياب مستخدم المصادقة على **وجهة** المزامنة (سحب من المستضاف → محلي، أو دفع من محلي → مستضاف)، يستدعي التطبيق الدالة `ensure-local-operator-auth` على ذلك المشروع (انشرها على المحلي والمستضاف؛ للمسؤولين فقط). يدخل المشغّلون المنعكسون ببريد username@members.stockpilot.local وكلمة المرور المؤقتة من `OPERATOR_MIRROR_TEMP_PASSWORD` على الدالة (افتراضياً devpass123 محلياً؛ اضبط السر على المستضاف عند الحاجة). لا تُنسَخ كلمات المرور بين البيئات.",
     "profilesSkippedToastTitle": "لم تُنسَخ {{count}} ملفات تعريف مشغّلين من المستضاف محلياً",
     "profilesSkippedToastDesc": "مصادقة Supabase المحلية لا تحتوي صفوفاً بتلك المعرفات، فلا يمكن إنشاء صفوف profiles هنا. بقية المزامنة نجحت. من يحتاجون الدخول محلياً يجب أن يكون لهم مستخدمون في المصادقة المحلية بنفس المعرفات كما على المستضاف (غالباً عبر seed للتطوير أو SQL على المحلي فقط).",
     "rlsNote": "يُستخدم جلسات Supabase العادية فقط (بدون مفتاح service role في المتصفح). يجب أن يسمح RLS للمستخدم المستضاف بقراءة و upsert الجداول المذكورة.",
     "envSection": "المشروع المستضاف (المتغيرات)",
-    "envOk": "تم ضبط VITE_SYNC_CLOUD_URL و VITE_SYNC_CLOUD_ANON_KEY (مثلاً في .env.development).",
-    "envMissing": "عنوان المشروع المستضاف ومفتاح anon غير متاحين لمزامنة البيانات. أضف VITE_SYNC_CLOUD_URL و VITE_SYNC_CLOUD_ANON_KEY إلى .env.development أو .env.development.local، أو ضع VITE_SUPABASE_URL و VITE_SUPABASE_ANON_KEY المستضافين في .env.cloud.local (للتطوير وبعد npm run build) ثم أعد تشغيل الخادم أو أعد البناء. راجع .env.example و docs/SECOND_PC.md.",
+    "envOk": "تم ضبط عنوان المشروع المستضاف ومفتاح anon.",
+    "envMissing": "مزامنة السحابة معطّلة في هذه النسخة. هذا التثبيت يعمل على قاعدة البيانات المحلية فقط ولا يوجد مشروع مستضاف مُهيّأ.",
     "lastRun": "آخر مزامنة ناجحة: {{at}}",
     "cloudSection": "تسجيل الدخول إلى Supabase المستضاف",
     "cloudCredentialsHint": "استخدم البريد الكامل كما في المصادقة → المستخدمون في مشروعك المستضاف (مثل admin@members.stockpilot.local إن أنشأت ذلك المستخدم هناك). هذا ليس نفس إدخال اسم المستخدم القصير فقط من شاشة الدخول الرئيسية.",
@@ -416,7 +402,8 @@
     "mentionTitleRegister": "حركة صندوق",
     "mentionTitleInventoryTransfer": "تحويل مخزون",
     "mentionTitleStockAdjust": "تعديل مخزون — {{name}}",
-    "mentionTitlePaymentOperation": "ملاحظة عملية دفع"
+    "mentionTitlePaymentOperation": "ملاحظة عملية دفع",
+    "mentionTitleReturnNote": "إشارة في ملاحظة المرتجع R-{{number}}"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -467,7 +454,9 @@
       "inventoryTransfersList": "قائمة تحويلات المخزون معطّلة من إعدادات التحكم.",
       "warehouses": "المستودعات معطّلة من إعدادات التحكم.",
       "dashboardAllOff": "تبويبا لوحة التحكم معطّلان في التحكم. فعّل «نظرة عامة» أو «التقارير» لعرض المحتوى.",
-      "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض."
+      "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض.",
+      "newReturn": "إنشاء المرتجعات معطل من لوحة التحكم.",
+      "returnsList": "قائمة المرتجعات معطلة من لوحة التحكم."
     },
     "area": {
       "sidebar": "التنقل",
@@ -815,6 +804,43 @@
       "exportCsv": {
         "title": "تصدير طلبات المبيعات إلى CSV",
         "desc": "إظهار «تصدير CSV» في قائمة الطلبات (تنسيق طويل، صف لكل بند)."
+      },
+      "groupReturns": "المرتجعات",
+      "returnsHubList": {
+        "title": "قائمة المرتجعات",
+        "desc": "إظهار بطاقة وصفحة \"كل المرتجعات\" ضمن الطلبات."
+      },
+      "returnsHubNew": {
+        "title": "مرتجع جديد",
+        "desc": "إظهار بطاقة \"مرتجع جديد\" والسماح بفتح شاشة المرتجع."
+      },
+      "returnCreate": {
+        "title": "إنشاء المرتجعات",
+        "desc": "السماح بإنشاء مرتجع مقابل طلب."
+      },
+      "returnConfirm": {
+        "title": "تأكيد المرتجعات",
+        "desc": "السماح بتعديل مسودة المرتجع وتأكيدها (إرجاع المخزون وتسوية المبلغ)."
+      },
+      "returnCancel": {
+        "title": "إلغاء المرتجعات",
+        "desc": "السماح بإلغاء المرتجع مع عكس المخزون وقيمة الرد."
+      },
+      "returnPrint": {
+        "title": "طباعة إشعار المرتجع",
+        "desc": "إظهار زر الطباعة في المرتجع."
+      },
+      "returnEditNote": {
+        "title": "تعديل ملاحظة المرتجع",
+        "desc": "السماح بتعديل الملاحظة على المرتجع."
+      },
+      "returnImportCsv": {
+        "title": "استيراد المرتجعات CSV",
+        "desc": "السماح باستيراد المرتجعات التاريخية من ملف CSV."
+      },
+      "returnExportCsv": {
+        "title": "تصدير المرتجعات CSV",
+        "desc": "السماح بتصدير قائمة المرتجعات إلى CSV."
       }
     },
     "reports": {
@@ -1335,6 +1361,79 @@
         "inconsistent_headers_within_group": "ترويسات مختلفة داخل المجموعة",
         "unknown_warehouse": "مستودع غير معروف"
       }
+    }
+  },
+  "returns": {
+    "title": "المرتجعات",
+    "subtitle": "استرجاع البضاعة ورد المبلغ أو إضافته لرصيد العميل.",
+    "allReturns": "كل المرتجعات",
+    "allReturnsSubtitle": "تصفح وفلترة وتصدير مرتجعات البيع",
+    "newReturn": "مرتجع جديد",
+    "newReturnSubtitle": "استرجاع أصناف من طلب قائم",
+    "returnDetailTitle": "مرتجع R-{{number}}",
+    "backToReturns": "العودة إلى المرتجعات",
+    "draft": "مسودة",
+    "confirmed": "مؤكد",
+    "cancelled": "ملغي",
+    "searchPlaceholder": "ابحث برقم المرتجع أو اسم العميل",
+    "emptyReturns": "لا توجد مرتجعات بعد",
+    "againstOrder": "عن الطلب",
+    "viewSourceOrder": "عرض الطلب الأصلي",
+    "restockTo": "إعادة التخزين في",
+    "sourceOrderBrowser": "اختر الطلب المراد الاسترجاع منه",
+    "searchSourceOrders": "ابحث برقم الطلب أو اسم العميل",
+    "noReturnableOrders": "لا توجد طلبات مؤكدة أو مكتملة للاسترجاع منها",
+    "linesCount": "{{count}} بند",
+    "pickSourceOrder": "اختر الطلب",
+    "changeSourceOrder": "تغيير الطلب",
+    "pickSourceOrderHint": "اختر الطلب الذي تريد استرجاع أصناف منه.",
+    "nothingLeftToReturn": "تم استرجاع كل بنود هذا الطلب بالفعل",
+    "sold": "المُباع",
+    "alreadyReturned": "المُرتجع",
+    "returnable": "المتاح للاسترجاع",
+    "returnQty": "كمية الاسترجاع",
+    "linesSelected": "تم اختيار {{count}} بند",
+    "refundAmount": "قيمة المرتجع",
+    "saveDraft": "حفظ كمسودة",
+    "confirmReturn": "تأكيد المرتجع",
+    "confirmTitle": "تأكيد المرتجع",
+    "settlementLabel": "طريقة التسوية",
+    "refundToRegister": "رد نقدي من الخزينة",
+    "refundToRegisterHint": "يخرج المبلغ من الخزينة الآن ولا يبقى رصيد للعميل.",
+    "creditToAccount": "إضافة إلى رصيد العميل",
+    "creditToAccountHint": "يضاف المبلغ إلى رصيد {{name}} ولا يخرج نقد من الخزينة.",
+    "creditToAccountUnavailable": "غير متاح: الطلب الأصلي بدون عميل مسجل.",
+    "refundMethod": "طريقة الرد",
+    "note": "ملاحظة",
+    "printReceipt": "طباعة الإشعار",
+    "cancelReturn": "إلغاء المرتجع",
+    "cancelConfirmTitle": "إلغاء هذا المرتجع؟",
+    "cancelConfirmMessage": "سيتم تعليم المرتجع R-{{number}} كملغي.",
+    "cancelConfirmedHint": "سيتم إخراج البضاعة المرتجعة مرة أخرى وعكس قيمة الرد.",
+    "toastDraftSaved": "تم حفظ مسودة المرتجع",
+    "toastConfirmed": "تم تأكيد المرتجع",
+    "toastCancelled": "تم إلغاء المرتجع",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد المرتجعات من CSV",
+      "intro": "كل صف يمثل بند مرتجع. تُستورد المرتجعات كسجلات تاريخية: لا تحرك المخزون ولا تؤثر على الخزينة.",
+      "chooseFile": "اختر ملف CSV",
+      "emptyFile": "هذا الملف لا يحتوي على صفوف قابلة للقراءة.",
+      "notMapped": "غير مربوط",
+      "import": "استيراد",
+      "summary": "{{rows}} صف، {{groups}} مرتجع، {{ready}} جاهز للاستيراد.",
+      "missingRequired": "اربط هذه الحقول المطلوبة أولاً: {{fields}}",
+      "rowsWithIssues": "{{count}} صف به مشاكل وسيتم تخطيه.",
+      "createdCount": "تم استيراد {{count}} مرتجع.",
+      "failedCount": "فشل {{count}} مرتجع:",
+      "orderNotFound": "لا يوجد طلب بالرقم {{number}}.",
+      "productNotInOrder": "المنتج {{code}} غير موجود في الطلب #{{number}} أو تم استرجاعه بالكامل.",
+      "field_import_group_id": "معرف مجموعة المرتجع",
+      "field_order_number": "رقم الطلب",
+      "field_product_code": "كود المنتج",
+      "field_quantity": "الكمية",
+      "field_return_note": "ملاحظة",
+      "field_return_date": "تاريخ المرتجع"
     }
   },
   "purchaseOrders": {
@@ -1942,7 +2041,8 @@
         "warehouse_missing": "مستودع الصندوق مطلوب",
         "warehouse_not_found": "المستودع غير موجود"
       }
-    }
+    },
+    "relatedSalesReturn": "مرتجع البيع المرتبط"
   },
   "register": {
     "title": "الصندوق",

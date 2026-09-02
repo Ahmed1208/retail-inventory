@@ -494,78 +494,6 @@ export function HomePage() {
               </li>
             </ol>
 
-            <h3 className="mt-16 text-xl font-semibold tracking-tight text-teal-50">
-              {t('home.cloudHeading')}
-            </h3>
-            <p className="mt-3 text-base leading-relaxed text-teal-100/75">
-              {t('home.cloudIntro')}
-            </p>
-            <ol className="mt-8 space-y-12">
-              <li>
-                <h4 className="text-lg font-semibold text-teal-50">
-                  {t('home.cloudStep1Title')}
-                </h4>
-                <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                  {t('home.cloudStep1Body')}
-                </p>
-              </li>
-
-              <li>
-                <h4 className="text-lg font-semibold text-teal-50">
-                  {t('home.cloudStep2Title')}
-                </h4>
-                <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                  {t('home.cloudStep2Body')}
-                </p>
-                <CommandBlock
-                  command={t('home.cmdBuild')}
-                  copyLabel={t('home.copy')}
-                  copiedLabel={t('home.copied')}
-                />
-              </li>
-
-              <li>
-                <h4 className="text-lg font-semibold text-teal-50">
-                  {t('home.cloudStep3Title')}
-                </h4>
-                <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                  {t('home.cloudStep3Body')}
-                </p>
-                <CommandBlock
-                  command={t('home.cmdMirrorDryRun')}
-                  copyLabel={t('home.copy')}
-                  copiedLabel={t('home.copied')}
-                />
-                <CommandBlock
-                  label={t('home.labelBash')}
-                  command={t('home.cmdMirrorBash')}
-                  copyLabel={t('home.copy')}
-                  copiedLabel={t('home.copied')}
-                />
-                <CommandBlock
-                  label={t('home.labelPowerShell')}
-                  command={t('home.cmdMirrorPowerShell')}
-                  copyLabel={t('home.copy')}
-                  copiedLabel={t('home.copied')}
-                />
-                <p
-                  className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-sm leading-relaxed text-amber-100/90"
-                  role="note"
-                >
-                  {t('home.cloudStep3Warning')}
-                </p>
-              </li>
-
-              <li>
-                <h4 className="text-lg font-semibold text-teal-50">
-                  {t('home.cloudStep4Title')}
-                </h4>
-                <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
-                  {t('home.cloudStep4Body')}
-                </p>
-              </li>
-            </ol>
-
             <div className="mt-16 border-t border-white/10 pt-10">
               <h3 className="text-xl font-semibold tracking-tight text-teal-50">
                 {t('home.setupAfterTitle')}
@@ -609,6 +537,19 @@ export function HomePage() {
                   </p>
                   <CommandBlock
                     command={t(`home.${osCopy.update}`)}
+                    copyLabel={t('home.copy')}
+                    copiedLabel={t('home.copied')}
+                  />
+                </li>
+                <li>
+                  <h4 className="text-lg font-semibold text-teal-50">
+                    {t('home.setupAfterStep5Title')}
+                  </h4>
+                  <p className="mt-2 text-sm leading-relaxed text-teal-100/70 sm:text-base">
+                    {t('home.setupAfterStep5Body')}
+                  </p>
+                  <CommandBlock
+                    command={t('home.cmdBackup')}
                     copyLabel={t('home.copy')}
                     copiedLabel={t('home.copied')}
                   />

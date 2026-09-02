@@ -5,6 +5,9 @@
 volumes/db/data
 volumes/storage
 
+# Second stack a developer checkout runs alongside the dev one
+volumes-shop/
+
 # Copied from supabase/functions by `npm run functions:sync:docker` (do not commit duplicates)
 volumes/functions/create-member
 volumes/functions/update-member
@@ -13,14 +16,18 @@ volumes/functions/ensure-local-operator-auth
 # Dependencies and build
 node_modules/
 dist/
+dist-shop/
 dist-ssr
 
 # Environment (never commit secrets)
 .env
+.env.docker.shop
 .env.local
 .env.*.local
 *.local
 .stockpilot-ready
+.stockpilot-superseded
+.stockpilot-migration/
 
 # Logs (root only — do not ignore `volumes/logs` for Docker)
 /logs
