@@ -171,8 +171,12 @@ export function PaymentOperationDetail() {
   )
   const relatedHref = ledgerPaymentRelatedDocumentHref(op)
   const relatedIsReturn = /^R-/.test(op.reference_number ?? '')
+  const relatedIsPurchaseReturn = /^PR-/.test(op.reference_number ?? '')
   const relatedIsPo =
-    op.type === 'payment_out' && relatedHref && !relatedIsReturn
+    op.type === 'payment_out' &&
+    relatedHref &&
+    !relatedIsReturn &&
+    !relatedIsPurchaseReturn
   const noteLocked = op.reversed || !canEditNote
   const isRegisterOp =
     op.type === 'register_deposit' || op.type === 'register_withdraw'
@@ -308,9 +312,11 @@ export function PaymentOperationDetail() {
             >
               {relatedIsReturn
                 ? t('payments.relatedSalesReturn')
-                : relatedIsPo
-                  ? t('payments.relatedPurchaseOrder')
-                  : t('payments.relatedSalesOrder')}
+                : relatedIsPurchaseReturn
+                  ? t('payments.relatedPurchaseReturn')
+                  : relatedIsPo
+                    ? t('payments.relatedPurchaseOrder')
+                    : t('payments.relatedSalesOrder')}
             </Link>
           </div>
         )}

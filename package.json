@@ -29,6 +29,7 @@
     "db:reset": "npx supabase db reset",
     "verify:local-login": "node scripts/verify-local-supabase-login.mjs",
     "verify:returns": "node scripts/verify-returns.mjs",
+    "verify:purchase-returns": "node scripts/verify-purchase-returns.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

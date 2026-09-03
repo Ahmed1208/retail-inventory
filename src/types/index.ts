@@ -299,6 +299,66 @@ export interface ReturnableLine {
   returnable_quantity: number
 }
 
+// ============ Purchase Return types ============
+
+/** Mirror of a purchase order: stock goes back out to the supplier and money comes in. */
+export type PurchaseReturnStatusFlow = 'draft' | 'confirmed' | 'cancelled'
+
+/** Where the money from a confirmed purchase return lands. */
+export type PurchaseReturnSettlement = 'refund_to_register' | 'debit_from_account'
+
+export interface PurchaseReturn {
+  id: string
+  return_number: number
+  /** Every purchase return is raised against a PO; its lines cap what can be returned. */
+  source_purchase_order_id: string
+  person_id: string | null
+  warehouse_id: number
+  status_flow: PurchaseReturnStatusFlow
+  /** Chosen at confirm; null while still a draft. */
+  settlement: PurchaseReturnSettlement | null
+  /** Tender the refund arrived as; only set for `refund_to_register`. */
+  refund_method: PaymentMethod | null
+  total_amount: number
+  note: string | null
+  /** True when imported as historical snapshot: analytics only, no stock/register effects. */
+  is_historical_snapshot: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PurchaseReturnItem {
+  id: string
+  purchase_return_id: string
+  source_purchase_order_item_id: string
+  product_id: string
+  quantity: number
+  cost_price: number
+  total_price: number
+  created_at: string
+}
+
+export interface PurchaseReturnItemWithProduct extends PurchaseReturnItem {
+  product: Product
+}
+
+export interface PurchaseReturnWithItems extends PurchaseReturn {
+  items: PurchaseReturnItemWithProduct[]
+}
+
+/** One source PO line plus how much of it is still returnable. */
+export interface PurchaseReturnableLine {
+  source_purchase_order_item_id: string
+  product_id: string
+  product: Product
+  cost_price: number
+  received_quantity: number
+  already_returned: number
+  returnable_quantity: number
+  /** On-hand in the return's warehouse, so the form can warn before stock goes negative. */
+  on_hand_quantity: number
+}
+
 // ============ Purchase Order types ============
 
 export type PurchaseOrderStatus = 'draft' | 'received' | 'cancelled'

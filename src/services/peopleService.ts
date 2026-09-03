@@ -2249,13 +2249,15 @@ export async function voidWalkInOrderCancelLedgerInPlace(
 export async function voidReturnCancelLedgerInPlace(
   returnId: string,
   returnNumber: number,
-  personId: string | null
+  personId: string | null,
+  kind: 'sales' | 'purchase' = 'sales'
 ): Promise<void> {
-  const ref = `R-${returnNumber}`
+  const purchase = kind === 'purchase'
+  const ref = `${purchase ? 'PR' : 'R'}-${returnNumber}`
   const routes = await listActiveLedgerPaymentOperationRouteIdsForDocument(
     returnId,
     ref,
-    'payment_out',
+    purchase ? 'payment_in' : 'payment_out',
     personId
   )
   await voidLedgerPaymentOperationsForDocumentCancel(routes)
@@ -2265,7 +2267,7 @@ export async function voidReturnCancelLedgerInPlace(
     .select('*')
     .eq('reference_id', returnId)
     .eq('reference_number', ref)
-    .eq('type', 'order')
+    .eq('type', purchase ? 'purchase_order' : 'order')
     .is('reversed_at', null)
   q = personId ? q.eq('person_id', personId) : q.is('person_id', null)
   const { data, error } = await q

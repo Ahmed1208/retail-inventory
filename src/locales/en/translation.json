@@ -403,7 +403,9 @@
     "mentionTitleInventoryTransfer": "Stock transfer",
     "mentionTitleStockAdjust": "Stock adjustment — {{name}}",
     "mentionTitlePaymentOperation": "Payment operation note",
-    "mentionTitleReturnNote": "Mention in return R-{{number}} note"
+    "mentionTitleReturnNote": "Mention in return R-{{number}} note",
+    "mentionTitlePurchaseReturnNote": "Mention in purchase return PR-{{number}} note",
+    "mentionTitlePurchaseReturnNegativeStock": "Negative stock after purchase return PR-{{number}}"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -456,7 +458,9 @@
       "dashboardAllOff": "Both dashboard tabs are turned off in Control. Turn on “Overview” or “Reports” to see content here.",
       "dashboardOverviewEmpty": "All overview sections are turned off in Control. Enable stats, financial snapshot, movements, or low stock to see widgets here.",
       "newReturn": "Creating returns is turned off in Control.",
-      "returnsList": "The returns list is turned off in Control."
+      "returnsList": "The returns list is turned off in Control.",
+      "newPurchaseReturn": "Creating purchase returns is turned off in Control.",
+      "purchaseReturnsList": "The purchase returns list is turned off in Control."
     },
     "area": {
       "sidebar": "Navigation",
@@ -740,6 +744,43 @@
       "exportCsv": {
         "title": "Export purchase orders to CSV",
         "desc": "Shows Export CSV on the purchase order list (one row per line, matches import shape)."
+      },
+      "groupReturns": "Purchase returns",
+      "returnsHubList": {
+        "title": "Purchase returns list",
+        "desc": "Show the \"All purchase returns\" card and page."
+      },
+      "returnsHubNew": {
+        "title": "New purchase return card",
+        "desc": "Show the \"New purchase return\" card on the purchase orders hub."
+      },
+      "returnCreate": {
+        "title": "Create purchase returns",
+        "desc": "Allow raising a return against a received purchase order."
+      },
+      "returnConfirm": {
+        "title": "Confirm purchase returns",
+        "desc": "Allow confirming a draft: stock out and money settled."
+      },
+      "returnCancel": {
+        "title": "Cancel purchase returns",
+        "desc": "Allow cancelling a purchase return and reversing its effects."
+      },
+      "returnPrint": {
+        "title": "Print purchase return receipt",
+        "desc": "Show the print button on a purchase return."
+      },
+      "returnEditNote": {
+        "title": "Edit purchase return note",
+        "desc": "Allow editing the note on a confirmed purchase return."
+      },
+      "returnImportCsv": {
+        "title": "Import purchase returns (CSV)",
+        "desc": "Allow importing historical purchase returns from a CSV file."
+      },
+      "returnExportCsv": {
+        "title": "Export purchase returns (CSV)",
+        "desc": "Allow exporting the purchase returns list to CSV."
       }
     },
     "inventoryTransfers": {
@@ -1436,6 +1477,85 @@
       "field_return_date": "Return date"
     }
   },
+  "purchaseReturns": {
+    "title": "Purchase returns",
+    "subtitle": "Send stock back to a supplier and take the money back.",
+    "allReturns": "All purchase returns",
+    "allReturnsSubtitle": "Browse, filter and export purchase returns",
+    "newReturn": "New purchase return",
+    "newReturnSubtitle": "Return items against an existing purchase order",
+    "returnDetailTitle": "Purchase return PR-{{number}}",
+    "backToReturns": "Back to purchase returns",
+    "draft": "Draft",
+    "confirmed": "Confirmed",
+    "cancelled": "Cancelled",
+    "searchPlaceholder": "Search by return number or supplier",
+    "emptyReturns": "No purchase returns yet",
+    "againstOrder": "Against purchase order",
+    "viewSourceOrder": "View source purchase order",
+    "shipFrom": "Ship back from",
+    "sourceOrderBrowser": "Choose the purchase order being returned",
+    "searchSourceOrders": "Search by order number or supplier",
+    "noReturnableOrders": "No received purchase orders to return against",
+    "linesCount": "{{count}} line(s)",
+    "pickSourceOrder": "Choose purchase order",
+    "changeSourceOrder": "Change purchase order",
+    "pickSourceOrderHint": "Choose the purchase order you are sending items back from.",
+    "nothingLeftToReturn": "Every line on this purchase order has already been returned",
+    "received": "Received",
+    "alreadyReturned": "Returned",
+    "returnable": "Returnable",
+    "onHand": "On hand",
+    "returnQty": "Return qty",
+    "linesSelected": "{{count}} line(s) selected",
+    "refundAmount": "Refund amount",
+    "saveDraft": "Save draft",
+    "confirmReturn": "Confirm purchase return",
+    "confirmTitle": "Confirm purchase return",
+    "settlementLabel": "Settlement",
+    "refundToRegister": "Refund to register",
+    "refundToRegisterHint": "Cash comes back into the drawer now and the supplier keeps no credit.",
+    "debitFromAccount": "Take off supplier balance",
+    "debitFromAccountHint": "Reduces what you owe {{name}}; no cash moves through the drawer.",
+    "debitFromAccountUnavailable": "Not available: the source purchase order has no linked supplier.",
+    "refundMethod": "Refund method",
+    "note": "Note",
+    "negativeStockWarning": "This return will push stock below zero",
+    "negativeStockLine": "{{name}}: {{onHand}} on hand, returning {{quantity}} leaves {{after}}",
+    "negativeStockNotice": "The return still goes through; the admin is notified with a note mention.",
+    "negativeStockCellHint": "On hand after this return: {{after}}",
+    "printReceipt": "Print receipt",
+    "cancelReturn": "Cancel purchase return",
+    "cancelConfirmTitle": "Cancel this purchase return?",
+    "cancelConfirmMessage": "Purchase return PR-{{number}} will be marked cancelled.",
+    "cancelConfirmedHint": "The returned stock will be put back in and the refund reversed.",
+    "toastDraftSaved": "Purchase return draft saved",
+    "toastConfirmed": "Purchase return confirmed",
+    "toastCancelled": "Purchase return cancelled",
+    "toastNegativeStock": "{{count}} product(s) are now below zero on hand. The admin was notified.",
+    "importCsv": {
+      "button": "Import CSV",
+      "title": "Import purchase returns from CSV",
+      "intro": "Each row is one returned line. Purchase returns are imported as historical records: they do not move stock or post to the register.",
+      "chooseFile": "Choose a CSV file",
+      "emptyFile": "That file has no readable rows.",
+      "notMapped": "Not mapped",
+      "import": "Import",
+      "summary": "{{rows}} row(s), {{groups}} return(s), {{ready}} ready to import.",
+      "missingRequired": "Map these required fields first: {{fields}}",
+      "rowsWithIssues": "{{count}} row(s) have issues and will be skipped.",
+      "createdCount": "{{count}} purchase return(s) imported.",
+      "failedCount": "{{count}} purchase return(s) failed:",
+      "orderNotFound": "No purchase order found with number {{number}}.",
+      "productNotInOrder": "Product {{code}} is not on purchase order #{{number}} or is fully returned.",
+      "field_import_group_id": "Return group id",
+      "field_order_number": "Purchase order number",
+      "field_product_code": "Product code",
+      "field_quantity": "Quantity",
+      "field_return_note": "Note",
+      "field_return_date": "Return date"
+    }
+  },
   "purchaseOrders": {
     "title": "Purchase Orders",
     "subtitle": "Receive stock from suppliers and track payables.",
@@ -2042,7 +2162,8 @@
         "warehouse_not_found": "Warehouse not found"
       }
     },
-    "relatedSalesReturn": "Related sales return"
+    "relatedSalesReturn": "Related sales return",
+    "relatedPurchaseReturn": "Related purchase return"
   },
   "register": {
     "title": "Register",

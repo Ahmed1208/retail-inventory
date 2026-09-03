@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { List, Plus } from 'lucide-react'
+import { List, Plus, RotateCcw, Undo2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { useFeatureEnabled } from '@/context/FeatureControlContext'
@@ -11,6 +11,8 @@ export function PurchaseOrdersHome() {
   const { t } = useTranslation()
   const hubList = useFeatureEnabled('purchaseOrders.hubList')
   const canCreate = useFeatureEnabled('purchaseOrders.create')
+  const returnsHubList = useFeatureEnabled('purchaseOrders.returnsHubList')
+  const returnsHubNew = useFeatureEnabled('purchaseOrders.returnsHubNew')
 
   const cards = useMemo(
     () =>
@@ -31,13 +33,29 @@ export function PurchaseOrdersHome() {
               subtitleKey: 'purchaseOrders.newPurchaseOrderSubtitle' as const,
             }
           : null,
+        returnsHubList
+          ? {
+              to: '/purchase-orders/returns' as const,
+              icon: RotateCcw,
+              titleKey: 'purchaseReturns.allReturns' as const,
+              subtitleKey: 'purchaseReturns.allReturnsSubtitle' as const,
+            }
+          : null,
+        returnsHubNew
+          ? {
+              to: '/purchase-orders/returns/new' as const,
+              icon: Undo2,
+              titleKey: 'purchaseReturns.newReturn' as const,
+              subtitleKey: 'purchaseReturns.newReturnSubtitle' as const,
+            }
+          : null,
       ].filter(Boolean) as {
-        to: '/purchase-orders/list' | '/purchase-orders/new'
+        to: string
         icon: typeof List
         titleKey: string
         subtitleKey: string
       }[],
-    [hubList, canCreate]
+    [hubList, canCreate, returnsHubList, returnsHubNew]
   )
 
   useEffect(() => {

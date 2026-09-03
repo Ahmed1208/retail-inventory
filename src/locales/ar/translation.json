@@ -403,7 +403,9 @@
     "mentionTitleInventoryTransfer": "تحويل مخزون",
     "mentionTitleStockAdjust": "تعديل مخزون — {{name}}",
     "mentionTitlePaymentOperation": "ملاحظة عملية دفع",
-    "mentionTitleReturnNote": "إشارة في ملاحظة المرتجع R-{{number}}"
+    "mentionTitleReturnNote": "إشارة في ملاحظة المرتجع R-{{number}}",
+    "mentionTitlePurchaseReturnNote": "إشارة في ملاحظة مرتجع المشتريات PR-{{number}}",
+    "mentionTitlePurchaseReturnNegativeStock": "مخزون بالسالب بعد مرتجع المشتريات PR-{{number}}"
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -456,7 +458,9 @@
       "dashboardAllOff": "تبويبا لوحة التحكم معطّلان في التحكم. فعّل «نظرة عامة» أو «التقارير» لعرض المحتوى.",
       "dashboardOverviewEmpty": "جميع أقسام النظرة العامة معطّلة في التحكم. فعّل الإحصاءات أو اللقطة المالية أو الحركات أو المخزون المنخفض.",
       "newReturn": "إنشاء المرتجعات معطل من لوحة التحكم.",
-      "returnsList": "قائمة المرتجعات معطلة من لوحة التحكم."
+      "returnsList": "قائمة المرتجعات معطلة من لوحة التحكم.",
+      "newPurchaseReturn": "إنشاء مرتجعات المشتريات معطل من لوحة التحكم.",
+      "purchaseReturnsList": "قائمة مرتجعات المشتريات معطلة من لوحة التحكم."
     },
     "area": {
       "sidebar": "التنقل",
@@ -740,6 +744,43 @@
       "exportCsv": {
         "title": "تصدير أوامر الشراء إلى CSV",
         "desc": "إظهار «تصدير CSV» في قائمة أوامر الشراء (صف لكل بند، نفس شكل الاستيراد)."
+      },
+      "groupReturns": "مرتجعات المشتريات",
+      "returnsHubList": {
+        "title": "قائمة مرتجعات المشتريات",
+        "desc": "إظهار بطاقة وصفحة \"كل مرتجعات المشتريات\"."
+      },
+      "returnsHubNew": {
+        "title": "بطاقة مرتجع مشتريات جديد",
+        "desc": "إظهار بطاقة \"مرتجع مشتريات جديد\" في مركز أوامر الشراء."
+      },
+      "returnCreate": {
+        "title": "إنشاء مرتجعات المشتريات",
+        "desc": "السماح بإنشاء مرتجع من أمر شراء مستلم."
+      },
+      "returnConfirm": {
+        "title": "تأكيد مرتجعات المشتريات",
+        "desc": "السماح بتأكيد المسودة: خروج المخزون وتسوية المبلغ."
+      },
+      "returnCancel": {
+        "title": "إلغاء مرتجعات المشتريات",
+        "desc": "السماح بإلغاء مرتجع المشتريات وعكس أثره."
+      },
+      "returnPrint": {
+        "title": "طباعة إشعار مرتجع المشتريات",
+        "desc": "إظهار زر الطباعة في مرتجع المشتريات."
+      },
+      "returnEditNote": {
+        "title": "تعديل ملاحظة مرتجع المشتريات",
+        "desc": "السماح بتعديل الملاحظة على مرتجع مؤكد."
+      },
+      "returnImportCsv": {
+        "title": "استيراد مرتجعات المشتريات (CSV)",
+        "desc": "السماح باستيراد مرتجعات مشتريات تاريخية من ملف CSV."
+      },
+      "returnExportCsv": {
+        "title": "تصدير مرتجعات المشتريات (CSV)",
+        "desc": "السماح بتصدير قائمة مرتجعات المشتريات إلى CSV."
       }
     },
     "inventoryTransfers": {
@@ -1436,6 +1477,85 @@
       "field_return_date": "تاريخ المرتجع"
     }
   },
+  "purchaseReturns": {
+    "title": "مرتجعات المشتريات",
+    "subtitle": "إرجاع البضاعة للمورد واسترداد المبلغ.",
+    "allReturns": "كل مرتجعات المشتريات",
+    "allReturnsSubtitle": "تصفح وفلترة وتصدير مرتجعات المشتريات",
+    "newReturn": "مرتجع مشتريات جديد",
+    "newReturnSubtitle": "إرجاع أصناف من أمر شراء قائم",
+    "returnDetailTitle": "مرتجع مشتريات PR-{{number}}",
+    "backToReturns": "رجوع لمرتجعات المشتريات",
+    "draft": "مسودة",
+    "confirmed": "مؤكد",
+    "cancelled": "ملغي",
+    "searchPlaceholder": "ابحث برقم المرتجع أو المورد",
+    "emptyReturns": "لا توجد مرتجعات مشتريات بعد",
+    "againstOrder": "عن أمر الشراء",
+    "viewSourceOrder": "عرض أمر الشراء الأصلي",
+    "shipFrom": "الإرجاع من مخزن",
+    "sourceOrderBrowser": "اختر أمر الشراء المرتجع منه",
+    "searchSourceOrders": "ابحث برقم الأمر أو المورد",
+    "noReturnableOrders": "لا توجد أوامر شراء مستلمة يمكن الإرجاع منها",
+    "linesCount": "{{count}} سطر",
+    "pickSourceOrder": "اختر أمر شراء",
+    "changeSourceOrder": "تغيير أمر الشراء",
+    "pickSourceOrderHint": "اختر أمر الشراء الذي ترجع منه الأصناف.",
+    "nothingLeftToReturn": "كل أسطر أمر الشراء تم إرجاعها بالفعل",
+    "received": "المستلم",
+    "alreadyReturned": "المرتجع",
+    "returnable": "المتاح للإرجاع",
+    "onHand": "المتوفر",
+    "returnQty": "كمية الإرجاع",
+    "linesSelected": "تم اختيار {{count}} سطر",
+    "refundAmount": "قيمة المرتجع",
+    "saveDraft": "حفظ كمسودة",
+    "confirmReturn": "تأكيد مرتجع المشتريات",
+    "confirmTitle": "تأكيد مرتجع المشتريات",
+    "settlementLabel": "طريقة التسوية",
+    "refundToRegister": "استرداد إلى الخزينة",
+    "refundToRegisterHint": "يدخل المبلغ الخزينة الآن ولا يبقى للمورد رصيد.",
+    "debitFromAccount": "خصم من رصيد المورد",
+    "debitFromAccountHint": "يقلل ما هو مستحق لـ {{name}} دون حركة نقدية.",
+    "debitFromAccountUnavailable": "غير متاح: أمر الشراء غير مرتبط بمورد.",
+    "refundMethod": "طريقة الاسترداد",
+    "note": "ملاحظة",
+    "negativeStockWarning": "هذا المرتجع سيجعل المخزون بالسالب",
+    "negativeStockLine": "{{name}}: المتوفر {{onHand}}، وإرجاع {{quantity}} يجعله {{after}}",
+    "negativeStockNotice": "سيتم تنفيذ المرتجع، ويتم إخطار المدير عبر إشارة في الملاحظات.",
+    "negativeStockCellHint": "المتوفر بعد المرتجع: {{after}}",
+    "printReceipt": "طباعة الإشعار",
+    "cancelReturn": "إلغاء مرتجع المشتريات",
+    "cancelConfirmTitle": "إلغاء مرتجع المشتريات؟",
+    "cancelConfirmMessage": "سيتم تعليم مرتجع المشتريات PR-{{number}} كملغي.",
+    "cancelConfirmedHint": "ستعود الكميات المرتجعة للمخزون ويتم عكس الاسترداد.",
+    "toastDraftSaved": "تم حفظ مسودة مرتجع المشتريات",
+    "toastConfirmed": "تم تأكيد مرتجع المشتريات",
+    "toastCancelled": "تم إلغاء مرتجع المشتريات",
+    "toastNegativeStock": "أصبح {{count}} صنف بالسالب. تم إخطار المدير.",
+    "importCsv": {
+      "button": "استيراد CSV",
+      "title": "استيراد مرتجعات المشتريات من CSV",
+      "intro": "كل صف يمثل سطر مرتجع. تُستورد المرتجعات كسجلات تاريخية: لا تحرك المخزون ولا الخزينة.",
+      "chooseFile": "اختر ملف CSV",
+      "emptyFile": "لا يحتوي الملف على صفوف قابلة للقراءة.",
+      "notMapped": "غير مربوط",
+      "import": "استيراد",
+      "summary": "{{rows}} صف، {{groups}} مرتجع، {{ready}} جاهز للاستيراد.",
+      "missingRequired": "اربط هذه الحقول المطلوبة أولاً: {{fields}}",
+      "rowsWithIssues": "{{count}} صف به مشاكل وسيتم تخطيه.",
+      "createdCount": "تم استيراد {{count}} مرتجع مشتريات.",
+      "failedCount": "فشل {{count}} مرتجع مشتريات:",
+      "orderNotFound": "لا يوجد أمر شراء بالرقم {{number}}.",
+      "productNotInOrder": "المنتج {{code}} غير موجود في أمر الشراء رقم {{number}} أو تم إرجاعه بالكامل.",
+      "field_import_group_id": "معرّف مجموعة المرتجع",
+      "field_order_number": "رقم أمر الشراء",
+      "field_product_code": "كود المنتج",
+      "field_quantity": "الكمية",
+      "field_return_note": "ملاحظة",
+      "field_return_date": "تاريخ المرتجع"
+    }
+  },
   "purchaseOrders": {
     "title": "أوامر الشراء",
     "subtitle": "استلام المخزون من الموردين وتتبع المستحقات.",
@@ -2042,7 +2162,8 @@
         "warehouse_not_found": "المستودع غير موجود"
       }
     },
-    "relatedSalesReturn": "مرتجع البيع المرتبط"
+    "relatedSalesReturn": "مرتجع البيع المرتبط",
+    "relatedPurchaseReturn": "مرتجع المشتريات المرتبط"
   },
   "register": {
     "title": "الصندوق",

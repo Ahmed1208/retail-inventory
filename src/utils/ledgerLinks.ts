@@ -71,6 +71,8 @@ export function ledgerReferenceHref(row: LedgerLinkRow): string | null {
     return `/orders/${id}`
   }
   if (row.type === 'purchase_order') {
+    /** Purchase returns reuse the `purchase_order` type with a `PR-` reference. */
+    if (/^PR-/.test(refNum)) return `/purchase-orders/returns/${id}`
     return `/purchase-orders/${id}`
   }
   if (row.type === 'wallet') {
@@ -80,6 +82,9 @@ export function ledgerReferenceHref(row: LedgerLinkRow): string | null {
   if (row.type === 'adjustment') {
     if (/^PI-|^PY-/.test(refNum)) {
       return `/payments/operations/${id}`
+    }
+    if (/^PR-/.test(refNum)) {
+      return `/purchase-orders/returns/${id}`
     }
     if (/^PO-/.test(refNum)) {
       return `/purchase-orders/${id}`
@@ -110,9 +115,12 @@ export function ledgerPaymentRelatedDocumentHref(row: {
     return null
   }
   if (row.reference_id) {
-    /** Return refunds are payment_out too, so the reference prefix decides, not the type. */
+    /** Return refunds reuse the payment types, so the reference prefix decides, not the type. */
     if (/^R-/.test(row.reference_number ?? '')) {
       return `/orders/returns/${row.reference_id}`
+    }
+    if (/^PR-/.test(row.reference_number ?? '')) {
+      return `/purchase-orders/returns/${row.reference_id}`
     }
     if (row.type === 'payment_out') return `/purchase-orders/${row.reference_id}`
     return `/orders/${row.reference_id}`

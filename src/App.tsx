@@ -25,6 +25,9 @@ import { PurchaseOrdersHome } from '@/pages/PurchaseOrdersHome'
 import { PurchaseOrdersList } from '@/pages/PurchaseOrdersList'
 import { NewPurchaseOrder } from '@/pages/NewPurchaseOrder'
 import { PurchaseOrderDetail } from '@/pages/PurchaseOrderDetail'
+import { PurchaseReturns } from '@/pages/PurchaseReturns'
+import { NewPurchaseReturn } from '@/pages/NewPurchaseReturn'
+import { PurchaseReturnDetail } from '@/pages/PurchaseReturnDetail'
 import { InventoryHub } from '@/pages/InventoryHub'
 import { Warehouses } from '@/pages/Warehouses'
 import { InventoryTransfersHome } from '@/pages/InventoryTransfersHome'
@@ -156,6 +159,15 @@ function App() {
           </Route>
           <Route path="/purchase-orders/list" element={<PurchaseOrdersList />} />
           <Route path="/purchase-orders/new" element={<NewPurchaseOrder />} />
+          <Route
+            path="/purchase-orders/returns/new"
+            element={<NewPurchaseReturn />}
+          />
+          <Route
+            path="/purchase-orders/returns/:id"
+            element={<PurchaseReturnDetail />}
+          />
+          <Route path="/purchase-orders/returns" element={<PurchaseReturns />} />
           <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
           <Route path="/purchase-orders" element={<PurchaseOrdersHome />} />
           <Route path="*" element={<NotFound />} />
